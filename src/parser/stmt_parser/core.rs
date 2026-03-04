@@ -99,6 +99,7 @@ impl StmtParser {
         matches!(
             self.peek().unwrap(),
             Token::Newline
+                | Token::Colon  // 冒号也作为语句分隔符
                 | Token::Keyword(Keyword::Then)
                 | Token::Keyword(Keyword::Else)
                 | Token::Keyword(Keyword::ElseIf)

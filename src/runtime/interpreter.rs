@@ -64,6 +64,11 @@ impl Interpreter {
             Stmt::ExitFor => self.eval_exit_for(),
             Stmt::ExitFunction => self.eval_exit_function(),
             Stmt::ExitSub => self.eval_exit_sub(),
+            Stmt::OptionExplicit => {
+                // Option Explicit: 要求所有变量必须先声明
+                // 当前实现暂时忽略，不强制检查
+                Ok(Value::Empty)
+            }
             Stmt::Expr(expr) => self.eval_expr(expr),
             _ => Err(RuntimeError::Generic(format!("Unimplemented: {:?}", stmt))),
         }
