@@ -16,8 +16,19 @@ impl Parser {
                 break;
             }
 
-            if let Some(stmt) = self.parse_stmt()? {
-                stmts.push(stmt);
+            let start_pos = self.pos;
+            match self.parse_stmt()? {
+                Some(stmt) => stmts.push(stmt),
+                None => {
+                    // 如果没有解析到语句且位置没有前进，强制前进避免死循环
+                    if self.pos == start_pos && !self.is_at_end() {
+                        return Err(ParseError::ParserError(format!(
+                            "Unexpected token at position {}: {:?}",
+                            self.pos,
+                            self.peek()
+                        )));
+                    }
+                }
             }
         }
 
