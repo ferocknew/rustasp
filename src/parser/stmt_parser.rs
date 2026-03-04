@@ -12,12 +12,18 @@ use crate::ast::{Expr, IfBranch, Param, Program, Stmt};
 pub struct StmtParser {
     tokens: Vec<Token>,
     pos: usize,
+    /// 待插入的多变量声明（Dim a, b, c 产生多个 Dim 语句）
+    pending_dims: Vec<Stmt>,
 }
 
 impl StmtParser {
     /// 创建新的语句解析器
     pub fn new(tokens: Vec<Token>) -> Self {
-        StmtParser { tokens, pos: 0 }
+        StmtParser {
+            tokens,
+            pos: 0,
+            pending_dims: vec![],
+        }
     }
 
     /// 解析程序
@@ -31,10 +37,20 @@ impl StmtParser {
                 continue;
             }
 
+            // 先处理待插入的 Dim 语句
+            while let Some(stmt) = self.pending_dims.pop() {
+                program.push(stmt);
+            }
+
             // 解析语句
             if let Some(stmt) = self.parse_stmt()? {
                 program.push(stmt);
             }
+        }
+
+        // 处理剩余的待插入语句
+        while let Some(stmt) = self.pending_dims.pop() {
+            program.push(stmt);
         }
 
         Ok(program)
@@ -68,25 +84,63 @@ impl StmtParser {
 
     /// 解析 Dim 语句
     ///
-    /// 语法：Dim name [ = expr ]
+    /// 语法：Dim name1, name2, ...  或  Dim name = expr
+    /// 支持多变量声明：Dim str, n, i
     fn parse_dim(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::Dim)?;
-        let name = self.expect_ident()?;
-        self.skip_newlines();
 
-        let init = if self.match_token(&Token::Eq) {
+        // 收集所有变量名
+        let names = self.parse_dim_var_list()?;
+
+        // 如果只有一个变量，检查是否有初始化表达式
+        if names.len() == 1 {
             self.skip_newlines();
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
+            if self.match_token(&Token::Eq) {
+                self.skip_newlines();
+                let init = Some(self.parse_expr()?);
+                return Ok(Some(Stmt::Dim {
+                    name: names.into_iter().next().unwrap(),
+                    init,
+                    is_array: false,
+                    sizes: vec![],
+                }));
+            }
+        }
 
+        // 多变量声明：Dim a, b, c -> 转换为多个 Dim 语句
+        let mut names_iter = names.into_iter();
+        let first = names_iter.next().unwrap();
+
+        // 将剩余的变量存入 pending_dims
+        for name in names_iter {
+            self.pending_dims.push(Stmt::Dim {
+                name,
+                init: None,
+                is_array: false,
+                sizes: vec![],
+            });
+        }
+
+        // 返回第一个 Dim 语句
         Ok(Some(Stmt::Dim {
-            name,
-            init,
+            name: first,
+            init: None,
             is_array: false,
             sizes: vec![],
         }))
+    }
+
+    /// 解析 Dim 变量列表
+    fn parse_dim_var_list(&mut self) -> Result<Vec<String>, ParseError> {
+        let mut names = vec![];
+        names.push(self.expect_ident()?);
+
+        // 支持逗号分隔的多变量声明
+        while self.match_token(&Token::Comma) {
+            names.push(self.expect_ident()?);
+        }
+
+        Ok(names)
     }
 
     /// 解析 Const 语句

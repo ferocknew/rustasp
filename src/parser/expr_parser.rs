@@ -86,7 +86,7 @@ impl ExprParser {
             // 变量或标识符
             Token::Ident(name) => {
                 self.next()?;
-                self.parse_ident_or_call(name)
+                self.parse_postfix(Expr::Variable(name))
             }
 
             // 一元运算符
@@ -113,7 +113,8 @@ impl ExprParser {
                 self.next()?;
                 let expr = self.parse_expression(0)?;
                 self.expect(Token::RParen)?;
-                Ok(expr)
+                // 括号表达式后也可能有后缀，如 (expr)(args)
+                self.parse_postfix(expr)
             }
 
             _ => Err(ParseError::ParserError(format!(
@@ -121,6 +122,77 @@ impl ExprParser {
                 token
             ))),
         }
+    }
+
+    /// 解析后缀表达式（成员访问、方法调用、索引访问）
+    ///
+    /// 支持：
+    /// - obj.property
+    /// - obj.method(args)
+    /// - obj(index)
+    /// - 链式访问：obj.method()(index).property
+    fn parse_postfix(&mut self, mut lhs: Expr) -> Result<Expr, ParseError> {
+        loop {
+            match self.peek() {
+                // 成员访问：obj.property 或 obj.method(...)
+                Token::Dot => {
+                    self.next()?; // 消耗 .
+                    let name = self.expect_ident()?;
+                    lhs = Expr::Property {
+                        object: Box::new(lhs),
+                        property: name,
+                    };
+                }
+
+                // 方法调用或索引访问：(args)
+                Token::LParen => {
+                    self.next()?; // 消耗 (
+                    let mut args = Vec::new();
+                    if !self.is_at(Token::RParen) {
+                        loop {
+                            args.push(self.parse_expression(0)?);
+                            if !self.match_comma() {
+                                break;
+                            }
+                        }
+                    }
+                    self.expect(Token::RParen)?;
+
+                    // 如果 lhs 是 Property，转换为 Method
+                    // 否则作为 Index 处理
+                    lhs = match lhs {
+                        Expr::Property { object, property } => Expr::Method {
+                            object,
+                            method: property,
+                            args,
+                        },
+                        _ => {
+                            // 单参数时作为索引，多参数报错
+                            if args.len() == 1 {
+                                Expr::Index {
+                                    object: Box::new(lhs),
+                                    index: Box::new(args.into_iter().next().unwrap()),
+                                }
+                            } else if args.is_empty() {
+                                // 空参数也作为索引（空括号）
+                                return Err(ParseError::ParserError(
+                                    "Empty index access is not supported".to_string(),
+                                ));
+                            } else {
+                                return Err(ParseError::ParserError(
+                                    "Multiple indices not supported, use array".to_string(),
+                                ));
+                            }
+                        }
+                    };
+                }
+
+                // 不再是后缀操作符，结束循环
+                _ => break,
+            }
+        }
+
+        Ok(lhs)
     }
 
     /// 解析标识符或函数调用
@@ -141,10 +213,12 @@ impl ExprParser {
             }
 
             self.expect(Token::RParen)?;
-            Ok(Expr::Call { name, args })
+            let expr = Expr::Call { name, args };
+            // 函数调用后可能有后缀，如 func()(index)
+            self.parse_postfix(expr)
         } else {
-            // 普通变量
-            Ok(Expr::Variable(name))
+            // 普通变量，可能有后缀
+            self.parse_postfix(Expr::Variable(name))
         }
     }
 
@@ -264,6 +338,19 @@ impl ExprParser {
                 "Expected {:?}, got {:?}",
                 expected, token
             )))
+        }
+    }
+
+    fn expect_ident(&mut self) -> Result<String, ParseError> {
+        match self.peek().clone() {
+            Token::Ident(name) => {
+                self.pos += 1;
+                Ok(name)
+            }
+            _ => Err(ParseError::ParserError(format!(
+                "Expected identifier, got {:?}",
+                self.peek()
+            ))),
         }
     }
 
