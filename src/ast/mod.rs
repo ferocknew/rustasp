@@ -10,4 +10,4 @@ mod stmt;
 pub use expr::Expr;
 pub use op::{BinaryOp, UnaryOp};
 pub use program::Program;
-pub use stmt::{ClassMember, IfBranch, Param, Stmt};
+pub use stmt::{CaseClause, ClassMember, IfBranch, Param, Stmt};

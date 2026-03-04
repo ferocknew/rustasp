@@ -1,9 +1,9 @@
 //! 控制流语句解析
 //!
-//! If, For, While
+//! If, For, While, Select Case
 
 use super::core::StmtParser;
-use crate::ast::{IfBranch, Stmt};
+use crate::ast::{CaseClause, IfBranch, Stmt};
 use crate::parser::error::ParseError;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
