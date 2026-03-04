@@ -16,8 +16,6 @@ pub use scope::Scope;
 pub use value::Value;
 pub use value::ValueConversion;
 
-use std::collections::HashMap;
-
 /// 函数定义
 #[derive(Debug, Clone)]
 pub struct Function {

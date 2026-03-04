@@ -6,4 +6,3 @@ mod engine;
 mod segmenter;
 
 pub use engine::Engine;
-pub use segmenter::Segment;

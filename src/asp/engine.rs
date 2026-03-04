@@ -1,7 +1,6 @@
 //! ASP 执行引擎
 
 use super::segmenter::{Segment, Segmenter};
-use crate::ast::Expr;
 use crate::parser;
 use crate::runtime::Interpreter;
 

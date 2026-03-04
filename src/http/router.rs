@@ -1,7 +1,7 @@
 //! 路由配置
 
 use axum::{routing::get, Router};
-use axum::response::Response;
+use axum::response::{IntoResponse, Response};
 
 use super::handler;
 use super::state::AppState;

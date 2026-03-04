@@ -2,7 +2,7 @@
 
 use axum::{
     body::Body,
-    http::{Request, StatusCode, Uri},
+    http::{StatusCode, Uri},
     response::{Html, IntoResponse, Response},
 };
 use std::path::PathBuf;
@@ -106,7 +106,7 @@ async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
     html.push_str(&format!("<h1>Directory listing for {}</h1>\n", url_path));
     html.push_str("<hr>\n<ul>\n");
 
-    if let Ok mut entries = fs::read_dir(dir).await {
+    if let Ok(mut entries) = fs::read_dir(dir).await {
         let mut entry_list = Vec::new();
         while let Ok(Some(entry)) = entries.next_entry().await {
             entry_list.push(entry);
