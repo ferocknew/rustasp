@@ -11,6 +11,8 @@ pub enum Segment {
     Code(String),
     /// ASP 表达式 `<%= ... %>`
     Expr(String),
+    /// ASP 指令 `<%@ ... %>`（如 @LANGUAGE, @CODEPAGE 等）
+    Directive(String),
 }
 
 /// 带位置信息的代码段
@@ -84,10 +86,13 @@ impl Segmenter {
 
                 self.pos = abs_start + 2; // 跳过 <%
 
-                // 检查是否是表达式 <%= %>
+                // 检查标签类型
+                let is_directive = self.source[self.pos..].starts_with('@');
                 let is_expr = self.source[self.pos..].starts_with('=');
 
-                if is_expr {
+                if is_directive {
+                    self.pos += 1; // 跳过 @
+                } else if is_expr {
                     self.pos += 1; // 跳过 =
                 }
 
@@ -99,7 +104,13 @@ impl Segmenter {
                     let code_start_line = get_line_number(abs_start);
                     let code_end_line = get_line_number(abs_end);
 
-                    if is_expr {
+                    if is_directive {
+                        segments.push(SegmentWithPos {
+                            segment: Segment::Directive(code.trim().to_string()),
+                            start_line: code_start_line,
+                            end_line: code_end_line,
+                        });
+                    } else if is_expr {
                         segments.push(SegmentWithPos {
                             segment: Segment::Expr(code.trim().to_string()),
                             start_line: code_start_line,

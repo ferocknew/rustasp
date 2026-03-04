@@ -166,13 +166,12 @@ impl Default for Engine {
 fn format_error_with_context(
     error_type: &str,
     message: &str,
-    code: &str,
+    _code: &str,
     source: &str,
     start_line: usize,
 ) -> String {
     // 获取源文件行
     let source_lines: Vec<&str> = source.lines().collect();
-    let code_lines: Vec<&str> = code.lines().collect();
 
     // 确定错误发生的行（从消息中提取相对于代码段的行号）
     let relative_line = extract_error_line(message).unwrap_or(1);
@@ -196,33 +195,16 @@ fn format_error_with_context(
         code_summary.push_str(&format!("{}{:3} | {}\n", marker, line_num, line));
     }
 
-    // 同时显示代码段信息
-    let _code_info = if code_lines.len() > 1 {
-        format!(
-            "\n\nSegment code (lines {}-{}, {} lines):\n{}",
-            start_line,
-            start_line + code_lines.len() - 1,
-            code_lines.len(),
-            code.lines()
-                .take(5)
-                .enumerate()
-                .map(|(i, l)| format!("    {:3} | {}", start_line + i, l))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+    // 格式化消息
+    let msg = if message.starts_with(error_type) {
+        message.to_string()
     } else {
-        String::new()
+        format!("{}: {}", error_type, message)
     };
 
-    let msg_suffix = if message.starts_with(error_type) {
-        String::new()
-    } else {
-        format!(": {}", message)
-    };
     format!(
-        "{}{}\n\nError at line {}:\n{}",
-        error_type,
-        msg_suffix,
+        "{}\n\nError at line {}:\n{}",
+        msg,
         absolute_line,
         code_summary.trim_end()
     )
