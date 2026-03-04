@@ -2,11 +2,13 @@
 //!
 //! 输入源码字符串，输出 AST，不执行代码
 
+mod keyword;
 mod lexer;
 mod parser;
 mod error;
 
-pub use lexer::{Token, Lexer, Keyword};
+pub use keyword::Keyword;
+pub use lexer::{Token, Lexer};
 pub use parser::Parser;
 pub use error::ParseError;
 
