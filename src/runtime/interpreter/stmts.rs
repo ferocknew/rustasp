@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 语句的执行逻辑
 
 use crate::ast::{BinaryOp, Expr, IfBranch, Param, Stmt};
-use crate::runtime::{Context, Function, RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::runtime::{Function, RuntimeError, Value, ValueCompare, ValueConversion};
 use crate::utils::normalize_identifier;
 
 use super::Interpreter;
@@ -140,7 +140,7 @@ impl Interpreter {
         let start_val = self.eval_expr(start)?.to_number();
         let end_val = self.eval_expr(end)?.to_number();
         let step_val = step
-            .map(|e| self.eval_expr(e).map(|v| v.to_number()))
+            .map(|e| self.eval_expr(e).map(|v: Value| v.to_number()))
             .transpose()?
             .unwrap_or(1.0);
 
