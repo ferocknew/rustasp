@@ -4,7 +4,6 @@
 
 use super::segmenter::{segment, Segment};
 use vbscript::parser::{parse_expression, parse_program, tokenize};
-use vbscript::runtime::{Interpreter, Value, ValueConversion};
 
 use crate::http::RequestContext;
 
@@ -39,31 +38,28 @@ impl Engine {
 
     /// 执行 ASP 文件
     pub fn execute(&mut self, source: &str) -> Result<String, String> {
-        if self.debug {
-            eprintln!("=== ASP 引擎开始 ===");
-            eprintln!("源文件长度: {} 字节", source.len());
-        }
-
         // 1. 分割代码
         let segments = segment(source)?;
 
-        if self.debug {
-            eprintln!("分段数量: {}", segments.len());
-        }
-
         // 2. 创建解释器
-        let mut interpreter = Interpreter::new();
+        let mut interpreter = vbscript::runtime::Interpreter::new();
 
         // 3. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
             // 将 QueryString 注入为变量
             for (key, value) in &ctx.query_string {
-                context.define_var(key.clone(), Value::String(value.clone()));
+                context.define_var(
+                    key.clone(),
+                    vbscript::runtime::Value::String(value.clone()),
+                );
             }
             // 将 Form 数据注入为变量
             for (key, value) in &ctx.form_data {
-                context.define_var(key.clone(), Value::String(value.clone()));
+                context.define_var(
+                    key.clone(),
+                    vbscript::runtime::Value::String(value.clone()),
+                );
             }
         }
 
@@ -73,27 +69,23 @@ impl Engine {
         for (i, segment) in segments.iter().enumerate() {
             match segment {
                 Segment::Html(html) => {
-                    if self.debug {
-                        eprintln!("[段 #{}] HTML: {} 字节", i + 1, html.len());
-                    }
                     output.push_str(html);
                 }
                 Segment::Code(code) => {
-                    if self.debug {
-                        eprintln!("[段 #{}] 代码: {:?}", i + 1, code);
-                    }
-
                     // 词法分析
-                    let tokens = tokenize(code)
-                        .map_err(|e| format!("Lexer error: {:?}", e))?;
+                    let tokens = tokenize(code).map_err(|e| {
+                        format_error_with_code("Lexer error", &e.to_string(), code, i + 1)
+                    })?;
 
                     // 语法分析
-                    let program = parse_program(tokens)
-                        .map_err(|e| format!("Parser error: {:?}", e))?;
+                    let program = parse_program(tokens).map_err(|e| {
+                        format_error_with_code("Parser error", &e.to_string(), code, i + 1)
+                    })?;
 
                     // 执行
-                    interpreter.execute(&program)
-                        .map_err(|e| format!("Runtime error: {:?}", e))?;
+                    interpreter.execute(&program).map_err(|e| {
+                        format_error_with_code("Runtime error", &e.to_string(), code, i + 1)
+                    })?;
 
                     // 收集输出
                     {
@@ -103,30 +95,25 @@ impl Engine {
                     interpreter.context_mut().clear_output();
                 }
                 Segment::Expr(expr) => {
-                    if self.debug {
-                        eprintln!("[段 #{}] 表达式: {:?}", i + 1, expr);
-                    }
-
                     // 解析并执行表达式
-                    let tokens = tokenize(expr)
-                        .map_err(|e| format!("Lexer error: {:?}", e))?;
+                    let tokens = tokenize(expr).map_err(|e| {
+                        format_error_with_code("Lexer error", &e.to_string(), expr, i + 1)
+                    })?;
 
-                    let ast = parse_expression(tokens)
-                        .map_err(|e| format!("Parser error: {:?}", e))?;
+                    let ast = parse_expression(tokens).map_err(|e| {
+                        format_error_with_code("Parser error", &e.to_string(), expr, i + 1)
+                    })?;
 
                     // 求值
-                    let value = interpreter.eval_expr(&ast)
-                        .map_err(|e| format!("Runtime error: {:?}", e))?;
+                    let value = interpreter.eval_expr(&ast).map_err(|e| {
+                        format_error_with_code("Runtime error", &e.to_string(), expr, i + 1)
+                    })?;
 
                     // 输出
+                    use vbscript::runtime::ValueConversion;
                     output.push_str(&ValueConversion::to_string(&value));
                 }
             }
-        }
-
-        if self.debug {
-            eprintln!("=== ASP 引擎结束 ===");
-            eprintln!("输出长度: {} 字节", output.len());
         }
 
         Ok(output)
@@ -137,4 +124,28 @@ impl Default for Engine {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// 格式化错误信息，包含代码段
+fn format_error_with_code(error_type: &str, message: &str, code: &str, segment_num: usize) -> String {
+    // 截取代码摘要（最多 200 字符）
+    let code_preview = if code.len() > 200 {
+        format!("{}...", &code[..200])
+    } else {
+        code.to_string()
+    };
+
+    // 转义换行符以便单行显示
+    let code_single_line = code_preview
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t");
+
+    format!(
+        "{}: {}\n[Segment #{} Code]: {}",
+        error_type,
+        message,
+        segment_num,
+        code_single_line
+    )
 }

@@ -26,6 +26,10 @@ pub struct ErrorInfo {
     pub file_path: String,
     pub kind: ErrorKind,
     pub message: String,
+    /// 源代码（可选，用于 ASP 执行错误）
+    pub source_code: Option<String>,
+    /// 错误发生的代码段（可选）
+    pub error_segment: Option<String>,
 }
 
 impl ErrorInfo {
@@ -44,7 +48,21 @@ impl ErrorInfo {
             file_path: file_path.into(),
             kind,
             message: message.into(),
+            source_code: None,
+            error_segment: None,
         }
+    }
+
+    /// 设置源代码
+    pub fn with_source_code(mut self, code: impl Into<String>) -> Self {
+        self.source_code = Some(code.into());
+        self
+    }
+
+    /// 设置错误代码段
+    pub fn with_error_segment(mut self, segment: impl Into<String>) -> Self {
+        self.error_segment = Some(segment.into());
+        self
     }
 
     /// 获取错误类型标题
@@ -131,6 +149,25 @@ fn format_simple_error() -> String {
 
 /// 格式化详细错误信息
 fn format_detailed_error(error: &ErrorInfo) -> String {
+    // 格式化代码块（带行号）
+    let code_section = if let Some(ref code) = error.source_code {
+        let error_line = extract_error_line(&error.message);
+        format_code_with_lines(code, error_line)
+    } else {
+        String::new()
+    };
+
+    // 错误代码段
+    let segment_section = if let Some(ref segment) = error.error_segment {
+        format!(
+            r#"<div><span class="label">Error in code:</span>
+            <pre class="code-segment">{}</pre></div>"#,
+            html_escape(segment)
+        )
+    } else {
+        String::new()
+    };
+
     format!(
         r#"
 <!DOCTYPE html>
@@ -145,7 +182,14 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         .error-type {{ color: #d32f2f; font-weight: bold; margin: 10px 0; }}
         .details {{ margin: 10px 0; }}
         .label {{ color: #1976d2; font-weight: bold; }}
-        pre {{ background: #f5f5f5; padding: 10px; overflow-x: auto; }}
+        pre {{ background: #f5f5f5; padding: 10px; overflow-x: auto; margin: 5px 0; }}
+        .code-container {{ margin: 10px 0; }}
+        .code-block {{ background: #282c34; color: #abb2bf; padding: 12px; overflow-x: auto; border-radius: 4px; }}
+        .code-block .line {{ display: flex; min-height: 1.4em; }}
+        .code-block .line.error-line {{ background: rgba(229, 115, 115, 0.2); border-left: 3px solid #e57373; }}
+        .code-block .line-num {{ color: #636d83; min-width: 50px; padding-right: 15px; text-align: right; user-select: none; }}
+        .code-block .line-content {{ white-space: pre; flex: 1; }}
+        .code-segment {{ background: #fff3e0; border-left: 3px solid #ff9800; }}
     </style>
 </head>
 <body>
@@ -156,7 +200,9 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         <div class="details">
             <div><span class="label">Request URI:</span> <pre>{}</pre></div>
             <div><span class="label">File Path:</span> <pre>{}</pre></div>
+            {}
             <div><span class="label">Details:</span> <pre>{}</pre></div>
+            {}
         </div>
     </div>
 </body>
@@ -167,8 +213,95 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         error.title(),
         error.uri,
         error.file_path,
-        error.message
+        segment_section,
+        html_escape(&error.message),
+        code_section
     )
+}
+
+/// 从错误消息中提取行号
+fn extract_error_line(message: &str) -> Option<usize> {
+    // 尝试匹配 "at line X" 或 "行 X" 等模式
+    let lower = message.to_lowercase();
+
+    // 尝试找 "at line X" 模式
+    if let Some(pos) = lower.find("at line") {
+        let rest = &message[pos + 7..];
+        let rest = rest.trim_start();
+        if let Some(num_end) = rest.find(|c: char| !c.is_ascii_digit()) {
+            if let Ok(line) = rest[..num_end].parse::<usize>() {
+                return Some(line);
+            }
+        } else if let Ok(line) = rest.parse::<usize>() {
+            return Some(line);
+        }
+    }
+
+    // 尝试找 "line X" 模式
+    if let Some(pos) = lower.find("line") {
+        let rest = &message[pos + 4..];
+        let rest = rest.trim_start();
+        if let Some(num_end) = rest.find(|c: char| !c.is_ascii_digit()) {
+            if let Ok(line) = rest[..num_end].parse::<usize>() {
+                return Some(line);
+            }
+        }
+    }
+
+    None
+}
+
+/// 格式化代码并添加行号，可选高亮错误行
+fn format_code_with_lines(code: &str, error_line: Option<usize>) -> String {
+    let lines: Vec<&str> = code.lines().collect();
+    let total_lines = lines.len();
+
+    // 确定显示范围（错误行前后各显示上下文）
+    let (start, end) = if let Some(err_line) = error_line {
+        let err_idx = err_line.saturating_sub(1); // 转为 0-indexed
+        let context = 2; // 前后各 2 行
+        let start = err_idx.saturating_sub(context);
+        let end = (err_idx + context + 1).min(total_lines);
+        (start, end)
+    } else {
+        // 没有错误行信息，显示前 20 行或全部
+        (0, total_lines.min(20))
+    };
+
+    let mut result = String::new();
+    result.push_str(r#"<div class="code-container"><span class="label">Source Code:</span><div class="code-block">"#);
+
+    for (idx, line) in lines.iter().enumerate().skip(start).take(end - start) {
+        let line_num = idx + 1;
+        let is_error = error_line == Some(line_num);
+        let error_class = if is_error { " error-line" } else { "" };
+
+        result.push_str(&format!(
+            r#"<div class="line{}"><span class="line-num">{}</span><span class="line-content">{}</span></div>"#,
+            error_class,
+            line_num,
+            html_escape(line)
+        ));
+    }
+
+    // 如果截断了代码，显示省略提示
+    if end < total_lines {
+        result.push_str(&format!(
+            r#"<div class="line"><span class="line-num">...</span><span class="line-content">/* {} more lines */</span></div>"#,
+            total_lines - end
+        ));
+    }
+
+    result.push_str("</div></div>");
+    result
+}
+
+/// HTML 转义
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// 读取自定义错误页面

@@ -180,14 +180,18 @@ async fn execute_asp_file(
 
     match engine.execute(&content) {
         Ok(output) => Html(output).into_response(),
-        Err(e) => error_gen.generate(&ErrorInfo::new(
-            "engine.rs",
-            0,
-            uri_str,
-            file_path.display().to_string(),
-            ErrorKind::AspExecution,
-            e.to_string(),
-        )),
+        Err(e) => {
+            let error_info = ErrorInfo::new(
+                "engine.rs",
+                0,
+                uri_str,
+                file_path.display().to_string(),
+                ErrorKind::AspExecution,
+                e.to_string(),
+            )
+            .with_source_code(&content);
+            error_gen.generate(&error_info)
+        }
     }
 }
 
