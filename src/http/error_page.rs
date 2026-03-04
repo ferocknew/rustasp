@@ -28,8 +28,6 @@ pub struct ErrorInfo {
     pub message: String,
     /// 源代码（可选，用于 ASP 执行错误）
     pub source_code: Option<String>,
-    /// 错误发生的代码段（可选）
-    pub error_segment: Option<String>,
 }
 
 impl ErrorInfo {
@@ -49,19 +47,12 @@ impl ErrorInfo {
             kind,
             message: message.into(),
             source_code: None,
-            error_segment: None,
         }
     }
 
     /// 设置源代码
     pub fn with_source_code(mut self, code: impl Into<String>) -> Self {
         self.source_code = Some(code.into());
-        self
-    }
-
-    /// 设置错误代码段
-    pub fn with_error_segment(mut self, segment: impl Into<String>) -> Self {
-        self.error_segment = Some(segment.into());
         self
     }
 

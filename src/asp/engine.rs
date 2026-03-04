@@ -127,7 +127,7 @@ impl Default for Engine {
 }
 
 /// 格式化错误信息，包含代码段
-fn format_error_with_code(error_type: &str, message: &str, code: &str, segment_num: usize) -> String {
+fn format_error_with_code(_error_type: &str, message: &str, code: &str, segment_num: usize) -> String {
     // 找到错误发生的行（从消息中提取，或者默认第1行）
     let error_line_num = extract_error_line(message).unwrap_or(1);
 
