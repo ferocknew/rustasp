@@ -1,11 +1,13 @@
 //! 简化的 ASP 引擎（不依赖 chumsky 解析器）
 
 use std::collections::HashMap;
+use crate::http::RequestContext;
 
 /// 简化的 ASP 引擎
 pub struct SimpleEngine {
     variables: HashMap<String, String>,
     debug: bool,
+    request_context: Option<RequestContext>,
 }
 
 impl SimpleEngine {
@@ -13,12 +15,19 @@ impl SimpleEngine {
         SimpleEngine {
             variables: HashMap::new(),
             debug: false,
+            request_context: None,
         }
     }
 
     /// 设置调试模式
     pub fn with_debug(mut self, debug: bool) -> Self {
         self.debug = debug;
+        self
+    }
+
+    /// 设置请求上下文
+    pub fn with_request_context(mut self, ctx: RequestContext) -> Self {
+        self.request_context = Some(ctx);
         self
     }
 
