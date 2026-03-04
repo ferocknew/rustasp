@@ -184,9 +184,14 @@ fn resolve_include_path(
 /// * `file_path` - 当前文件的完整路径
 /// * `web_root` - 网站根目录路径
 pub fn preprocess(source: &str, file_path: &Path, web_root: &Path) -> Result<String, String> {
+    // 确保 web_root 是 canonicalized 路径
+    let web_root = web_root
+        .canonicalize()
+        .map_err(|e| format!("无法解析 web root 路径: {}", e))?;
+    
     let mut processed_files = HashSet::new();
     processed_files.insert(file_path.to_path_buf());
-    process_includes(source, file_path, web_root, &mut processed_files)
+    process_includes(source, file_path, &web_root, &mut processed_files)
 }
 
 #[cfg(test)]
