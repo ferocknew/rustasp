@@ -87,7 +87,9 @@ impl StmtParser {
         eprintln!("DEBUG parse_assignment_or_expr: collected tokens={:#?}", tokens);
 
         // 检查是否是赋值语句（查找非表达式内的 =）
-        if let Some(eq_pos) = find_assignment_eq(&tokens) {
+        let eq_pos = find_assignment_eq(&tokens);
+        eprintln!("DEBUG find_assignment_eq: eq_pos={:?}", eq_pos);
+        if let Some(eq_pos) = eq_pos {
             // 分割为 target 和 value
             let mut target_tokens = tokens[..eq_pos].to_vec();
             target_tokens.push(Token::Eof);
@@ -100,7 +102,9 @@ impl StmtParser {
         }
         
         // 检查是否是不带括号的方法调用 (obj.method arg1, arg2)
-        if let Some(call_pos) = find_method_call_position(&tokens) {
+        let call_pos = find_method_call_position(&tokens);
+        eprintln!("DEBUG find_method_call_position: call_pos={:?}", call_pos);
+        if let Some(call_pos) = call_pos {
             let mut obj_tokens = tokens[..call_pos].to_vec();
             obj_tokens.push(Token::Eof);
             
@@ -197,7 +201,7 @@ fn find_method_call_position(tokens: &[Token]) -> Option<usize> {
                     let next = &tokens[i + 1];
                     if !matches!(
                         next,
-                        Token::LParen | Token::Dot | Token::Eq | Token::Newline | Token::Colon | Token::Eof
+                        Token::LParen | Token::RParen | Token::Dot | Token::Eq | Token::Newline | Token::Colon | Token::Eof
                     ) {
                         // 检查 next 是否不是操作符
                         if !is_operator(next) {
