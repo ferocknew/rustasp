@@ -30,7 +30,8 @@ impl StmtParser {
         let mut program = Program::new();
 
         while !self.is_at_end() {
-            if self.check(&Token::Newline) {
+            // 跳过换行和冒号（语句分隔符）
+            if self.check(&Token::Newline) || self.check(&Token::Colon) {
                 self.advance();
                 continue;
             }

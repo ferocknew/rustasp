@@ -23,6 +23,7 @@ pub struct SegmentWithPos {
     /// 在源文件中的起始行号（1-indexed）
     pub start_line: usize,
     /// 在源文件中的结束行号（1-indexed）
+    #[allow(dead_code)]
     pub end_line: usize,
 }
 
@@ -39,12 +40,6 @@ impl Segmenter {
             source: source.to_string(),
             pos: 0,
         }
-    }
-
-    /// 分割源代码为段列表
-    pub fn segment(&mut self) -> Result<Vec<Segment>, String> {
-        let segments_with_pos = self.segment_with_pos()?;
-        Ok(segments_with_pos.into_iter().map(|s| s.segment).collect())
     }
 
     /// 分割源代码为带位置信息的段列表
