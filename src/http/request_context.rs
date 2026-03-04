@@ -12,10 +12,10 @@ pub struct RequestContext {
     pub method: String,
     /// 请求路径
     pub path: String,
-    /// 查询字符串参数
-    pub query_string: HashMap<String, String>,
-    /// 表单数据 (POST body)
-    pub form_data: HashMap<String, String>,
+    /// 查询字符串参数（支持多值）
+    pub query_string: HashMap<String, Vec<String>>,
+    /// 表单数据 (POST body，支持多值)
+    pub form_data: HashMap<String, Vec<String>>,
     /// Cookies
     pub cookies: HashMap<String, String>,
     /// 服务器变量
@@ -44,52 +44,46 @@ impl RequestContext {
         }
     }
 
-    /// 解析查询字符串
-    pub fn parse_query_string(query: &str) -> HashMap<String, String> {
+    /// 解析查询字符串（支持多值）
+    pub fn parse_query_string(query: &str) -> HashMap<String, Vec<String>> {
         if query.is_empty() {
             return HashMap::new();
         }
 
         urlencoding::decode(query)
             .map(|decoded| {
-                decoded
-                    .split('&')
-                    .filter_map(|pair| {
-                        let parts: Vec<&str> = pair.splitn(2, '=').collect();
-                        if parts.len() == 2 {
-                            Some((parts[0].to_lowercase(), parts[1].to_string()))
-                        } else if !parts[0].is_empty() {
-                            Some((parts[0].to_lowercase(), String::new()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
+                let mut map = HashMap::new();
+                for pair in decoded.split('&') {
+                    let parts: Vec<&str> = pair.splitn(2, '=').collect();
+                    if !parts.is_empty() && !parts[0].is_empty() {
+                        let key = parts[0].to_lowercase();
+                        let value = if parts.len() == 2 { parts[1].to_string() } else { String::new() };
+                        map.entry(key).or_insert_with(Vec::new).push(value);
+                    }
+                }
+                map
             })
             .unwrap_or_default()
     }
 
-    /// 解析表单数据
-    pub fn parse_form_data(body: &str) -> HashMap<String, String> {
+    /// 解析表单数据（支持多值）
+    pub fn parse_form_data(body: &str) -> HashMap<String, Vec<String>> {
         if body.is_empty() {
             return HashMap::new();
         }
 
         urlencoding::decode(body)
             .map(|decoded| {
-                decoded
-                    .split('&')
-                    .filter_map(|pair| {
-                        let parts: Vec<&str> = pair.splitn(2, '=').collect();
-                        if parts.len() == 2 {
-                            Some((parts[0].to_lowercase(), parts[1].to_string()))
-                        } else if !parts[0].is_empty() {
-                            Some((parts[0].to_lowercase(), String::new()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
+                let mut map = HashMap::new();
+                for pair in decoded.split('&') {
+                    let parts: Vec<&str> = pair.splitn(2, '=').collect();
+                    if !parts.is_empty() && !parts[0].is_empty() {
+                        let key = parts[0].to_lowercase();
+                        let value = if parts.len() == 2 { parts[1].to_string() } else { String::new() };
+                        map.entry(key).or_insert_with(Vec::new).push(value);
+                    }
+                }
+                map
             })
             .unwrap_or_default()
     }
@@ -190,15 +184,27 @@ impl RequestContext {
         }
     }
 
-    /// 获取查询字符串参数
+    /// 获取查询字符串第一个值
     #[allow(dead_code)]
-    pub fn query(&self, key: &str) -> Option<&String> {
+    pub fn query_first(&self, key: &str) -> Option<&String> {
+        self.query_string.get(&key.to_lowercase()).and_then(|v| v.first())
+    }
+
+    /// 获取查询字符串所有值
+    #[allow(dead_code)]
+    pub fn query_all(&self, key: &str) -> Option<&Vec<String>> {
         self.query_string.get(&key.to_lowercase())
     }
 
-    /// 获取表单数据
+    /// 获取表单数据第一个值
     #[allow(dead_code)]
-    pub fn form(&self, key: &str) -> Option<&String> {
+    pub fn form_first(&self, key: &str) -> Option<&String> {
+        self.form_data.get(&key.to_lowercase()).and_then(|v| v.first())
+    }
+
+    /// 获取表单数据所有值
+    #[allow(dead_code)]
+    pub fn form_all(&self, key: &str) -> Option<&Vec<String>> {
         self.form_data.get(&key.to_lowercase())
     }
 

@@ -27,8 +27,8 @@ pub struct Context {
     pub output: String,
     /// 是否应该退出
     pub should_exit: bool,
-    /// 请求参数（用于 Request 对象）
-    pub request_data: HashMap<String, String>,
+    /// 请求参数（用于 Request 对象，支持多值）
+    pub request_data: HashMap<String, Vec<String>>,
 }
 
 /// 类定义
@@ -137,13 +137,18 @@ impl Context {
         self.output.clear();
     }
 
-    /// 设置请求参数
-    pub fn set_request_data(&mut self, data: HashMap<String, String>) {
+    /// 设置请求参数（支持多值）
+    pub fn set_request_data(&mut self, data: HashMap<String, Vec<String>>) {
         self.request_data = data;
     }
 
-    /// 获取请求参数
+    /// 获取请求参数的第一个值
     pub fn get_request_param(&self, key: &str) -> Option<&String> {
+        self.request_data.get(&key.to_lowercase()).and_then(|v| v.first())
+    }
+
+    /// 获取请求参数的所有值
+    pub fn get_request_param_all(&self, key: &str) -> Option<&Vec<String>> {
         self.request_data.get(&key.to_lowercase())
     }
 }

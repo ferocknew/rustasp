@@ -49,25 +49,31 @@ impl Engine {
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
 
-            // 构建请求参数数据
+            // 构建请求参数数据（合并 QueryString 和 Form，支持多值）
             let mut request_data = HashMap::new();
 
-            // 将 QueryString 注入为变量和请求数据
-            for (key, value) in &ctx.query_string {
-                context.define_var(
-                    key.clone(),
-                    vbscript::runtime::Value::String(value.clone()),
-                );
-                request_data.insert(key.to_lowercase(), value.clone());
+            // 合并 QueryString（Form 数据优先级更高，后处理）
+            for (key, values) in &ctx.query_string {
+                if let Some(first_value) = values.first() {
+                    // 注入第一个值为变量
+                    context.define_var(
+                        key.clone(),
+                        vbscript::runtime::Value::String(first_value.clone()),
+                    );
+                }
+                request_data.insert(key.to_lowercase(), values.clone());
             }
 
-            // 将 Form 数据注入为变量和请求数据
-            for (key, value) in &ctx.form_data {
-                context.define_var(
-                    key.clone(),
-                    vbscript::runtime::Value::String(value.clone()),
-                );
-                request_data.insert(key.to_lowercase(), value.clone());
+            // 合并 Form 数据（覆盖 QueryString）
+            for (key, values) in &ctx.form_data {
+                if let Some(first_value) = values.first() {
+                    // 注入第一个值为变量
+                    context.define_var(
+                        key.clone(),
+                        vbscript::runtime::Value::String(first_value.clone()),
+                    );
+                }
+                request_data.insert(key.to_lowercase(), values.clone());
             }
 
             // 设置请求数据（用于 Request("key") 语法）

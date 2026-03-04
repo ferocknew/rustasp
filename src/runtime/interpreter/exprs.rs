@@ -200,9 +200,17 @@ impl Interpreter {
                 if !args.is_empty() {
                     let key = self.eval_expr(&args[0])?;
                     let key_str = ValueConversion::to_string(&key);
-                    // 从 request_data 获取 QueryString
-                    Ok(self.context.get_request_param(&key_str)
-                        .map(|s| Value::String(s.clone()))
+                    // 从 request_data 获取 QueryString（智能处理多值）
+                    Ok(self.context.get_request_param_all(&key_str)
+                        .map(|values| {
+                            if values.len() == 1 {
+                                // 单值：返回字符串
+                                Value::String(values[0].clone())
+                            } else {
+                                // 多值：返回数组
+                                Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
+                            }
+                        })
                         .unwrap_or(Value::Empty))
                 } else {
                     Ok(Value::Empty)
@@ -212,9 +220,17 @@ impl Interpreter {
                 if !args.is_empty() {
                     let key = self.eval_expr(&args[0])?;
                     let key_str = ValueConversion::to_string(&key);
-                    // 从 request_data 获取 Form 数据
-                    Ok(self.context.get_request_param(&key_str)
-                        .map(|s| Value::String(s.clone()))
+                    // 从 request_data 获取 Form 数据（智能处理多值）
+                    Ok(self.context.get_request_param_all(&key_str)
+                        .map(|values| {
+                            if values.len() == 1 {
+                                // 单值：返回字符串
+                                Value::String(values[0].clone())
+                            } else {
+                                // 多值：返回数组
+                                Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
+                            }
+                        })
                         .unwrap_or(Value::Empty))
                 } else {
                     Ok(Value::Empty)
@@ -254,19 +270,28 @@ impl Interpreter {
             Some("request") => {
                 match property_lower.as_str() {
                     "form" => {
-                        // 返回表单数据集合
+                        // 返回表单数据集合（多值转为逗号分隔字符串）
                         let mut form_data = std::collections::HashMap::new();
-                        // 从 request_data 中提取所有表单数据
-                        for (key, value) in self.context.request_data.iter() {
-                            form_data.insert(key.clone(), Value::String(value.clone()));
+                        for (key, values) in self.context.request_data.iter() {
+                            let value_str = if values.len() == 1 {
+                                values[0].clone()
+                            } else {
+                                values.join(", ")
+                            };
+                            form_data.insert(key.clone(), Value::String(value_str));
                         }
                         Ok(Value::Object(form_data))
                     }
                     "querystring" => {
-                        // 返回查询字符串集合
+                        // 返回查询字符串集合（多值转为逗号分隔字符串）
                         let mut query_data = std::collections::HashMap::new();
-                        for (key, value) in self.context.request_data.iter() {
-                            query_data.insert(key.clone(), Value::String(value.clone()));
+                        for (key, values) in self.context.request_data.iter() {
+                            let value_str = if values.len() == 1 {
+                                values[0].clone()
+                            } else {
+                                values.join(", ")
+                            };
+                            query_data.insert(key.clone(), Value::String(value_str));
                         }
                         Ok(Value::Object(query_data))
                     }
