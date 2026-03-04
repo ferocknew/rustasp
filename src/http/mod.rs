@@ -2,6 +2,7 @@
 //!
 //! 负责：路由、文件加载、构建 Request 上下文、返回 HTTP 响应
 
+mod error_page;
 mod handler;
 pub mod path_resolver;
 mod request_context;
