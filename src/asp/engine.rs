@@ -197,7 +197,7 @@ fn format_error_with_context(
     }
 
     // 同时显示代码段信息
-    let code_info = if code_lines.len() > 1 {
+    let _code_info = if code_lines.len() > 1 {
         format!(
             "\n\nSegment code (lines {}-{}, {} lines):\n{}",
             start_line,
@@ -214,10 +214,15 @@ fn format_error_with_context(
         String::new()
     };
 
+    let msg_suffix = if message.starts_with(error_type) {
+        String::new()
+    } else {
+        format!(": {}", message)
+    };
     format!(
         "{}{}\n\nError at line {}:\n{}",
         error_type,
-        if message.starts_with(error_type) { "" } else { &format!(": {}", message) },
+        msg_suffix,
         absolute_line,
         code_summary.trim_end()
     )
