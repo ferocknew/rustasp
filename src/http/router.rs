@@ -22,12 +22,23 @@ async fn root_handler(
     let index_path = state.config.home_dir.join(&state.config.index_file);
 
     if index_path.exists() {
-        // 索引文件存在，执行它
+        // 检查索引文件是否是 ASP 文件
+        let is_asp = state.config.asp_ext.iter().any(|ext| {
+            state.config.index_file.to_lowercase().ends_with(&format!(".{}", ext.to_lowercase()))
+        });
+
         let uri = axum::http::Uri::builder()
             .path_and_query(&format!("/{}", state.config.index_file))
             .build()
             .unwrap();
-        handler::handle_asp(uri, state).await.into_response()
+
+        if is_asp {
+            // ASP 文件执行
+            handler::handle_asp(uri, state).await.into_response()
+        } else {
+            // 静态文件直接返回
+            handler::handle_static(uri, state).await.into_response()
+        }
     } else {
         // 索引文件不存在，显示目录列表或返回 403
         if state.config.directory_listing {
@@ -51,8 +62,12 @@ async fn path_handler(
         .build()
         .unwrap();
 
-    // ASP 文件处理
-    if path.ends_with(".asp") || path.ends_with(".asa") {
+    // 检查是否是 ASP 文件（根据配置的扩展名）
+    let is_asp = state.config.asp_ext.iter().any(|ext| {
+        path.to_lowercase().ends_with(&format!(".{}", ext.to_lowercase()))
+    });
+
+    if is_asp {
         return handler::handle_asp(uri, state).await.into_response();
     }
 

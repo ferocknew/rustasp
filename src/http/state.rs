@@ -36,6 +36,7 @@ impl Default for Config {
             allow_parent_paths: false,
             detailed_error: false,
             error_page: None,
+            asp_ext: vec!["asp".to_string(), "asa".to_string()],
         }
     }
 }
@@ -71,6 +72,12 @@ impl Config {
                 .parse()
                 .unwrap_or(false),
             error_page: std::env::var("ERROR_PAGE").ok(),
+            asp_ext: std::env::var("ASP_EXT")
+                .unwrap_or_else(|_| "asp,asa".to_string())
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
         }
     }
 }
