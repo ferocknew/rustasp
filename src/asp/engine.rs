@@ -89,6 +89,7 @@ impl Engine {
                     output.push_str(html);
                 }
                 Segment::Code(code) => {
+                    eprintln!("DEBUG ASP: 开始解析代码段: {}", code);
                     // 词法分析
                     let tokens = tokenize(code).map_err(|e| {
                         let error_msg = format_error_with_context(

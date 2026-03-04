@@ -6,6 +6,7 @@ use crate::ast::{Expr, Program, Stmt};
 use crate::parser::error::ParseError;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
+use std::io::Write;
 
 /// 语句解析器
 pub struct StmtParser {
@@ -27,14 +28,21 @@ impl StmtParser {
 
     /// 解析程序
     pub fn parse(&mut self) -> Result<Program, ParseError> {
+        eprintln!("DEBUG parse_program: 开始，tokens.len()={}", self.tokens.len());
+        let _ = std::io::stdout().flush();
         let mut program = Program::new();
         let mut loop_count = 0;
         let mut last_pos = self.pos;
 
         while !self.is_at_end() {
             loop_count += 1;
+            eprintln!("DEBUG parse_program: 迭代 {}, pos={}, peek={:?}",
+                loop_count, self.pos, self.peek());
+            let _ = std::io::stdout().flush();
 
-            if loop_count > 10000 {
+            if loop_count > 100 {
+                eprintln!("DEBUG parse_program: 循环次数过多！");
+                let _ = std::io::stdout().flush();
                 return Err(ParseError::ParserError(format!(
                     "解析程序时检测到可能的死循环（当前 token: {:?}）",
                     self.peek()
@@ -43,6 +51,8 @@ impl StmtParser {
 
             // 检查位置是否前进
             if self.pos == last_pos && loop_count > 1 {
+                eprintln!("DEBUG parse_program: 位置未前进！");
+                let _ = std::io::stdout().flush();
                 return Err(ParseError::ParserError(format!(
                     "解析器卡住，位置未前进（pos={}, token: {:?}）",
                     self.pos, self.peek()
