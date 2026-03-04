@@ -1,29 +1,32 @@
-//! Parser 模块 - 词法分析 + 表达式解析 + 语句解析
+//! Parser 模块 - 统一的语法解析器
 //!
 //! - Lexer: 手写词法分析器
-//! - ExprParser: Pratt 算法表达式解析器
-//! - StmtParser: 递归下降语句解析器
+//! - Parser: 统一解析器（表达式用 Pratt，语句用递归下降）
 
 mod error;
-pub mod expr_parser;
 pub mod keyword;
 pub mod lexer;
-mod stmt_parser;
+
+// 子模块
+mod parser;
+mod expr;
+mod stmt;
 
 pub use error::ParseError;
-pub use expr_parser::{parse_expression, ExprParser};
 pub use keyword::Keyword;
 pub use lexer::{tokenize, Lexer, Token};
-pub use stmt_parser::{parse_program, StmtParser};
+pub use parser::Parser;
 
 /// 解析表达式（便捷函数）
 pub fn parse_expr(source: &str) -> Result<crate::ast::Expr, ParseError> {
     let tokens = tokenize(source)?;
-    parse_expression(tokens)
+    let mut parser = Parser::new(tokens);
+    parser.parse_expr()
 }
 
 /// 解析程序（便捷函数）
 pub fn parse(source: &str) -> Result<crate::ast::Program, ParseError> {
     let tokens = tokenize(source)?;
-    parse_program(tokens)
+    let mut parser = Parser::new(tokens);
+    parser.parse_program()
 }
