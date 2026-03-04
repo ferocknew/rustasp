@@ -61,6 +61,7 @@ impl StmtParser {
             Token::Keyword(Keyword::If) => self.parse_if(),
             Token::Keyword(Keyword::For) => self.parse_for(),
             Token::Keyword(Keyword::While) => self.parse_while(),
+            Token::Keyword(Keyword::Select) => self.parse_select(),
             Token::Keyword(Keyword::Function) => self.parse_function(),
             Token::Keyword(Keyword::Sub) => self.parse_sub(),
             Token::Keyword(Keyword::Call) => self.parse_call(),
@@ -146,6 +147,7 @@ impl StmtParser {
                 | Token::Keyword(Keyword::Next)
                 | Token::Keyword(Keyword::Loop)
                 | Token::Keyword(Keyword::Wend)
+                | Token::Keyword(Keyword::Case)  // Case 也作为语句分隔符
                 | Token::Eof
         )
     }
