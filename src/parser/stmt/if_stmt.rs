@@ -1,8 +1,11 @@
 //! If 语句解析
 
-use crate::ast::{Expr, IfBranch, Stmt};
+use crate::ast::IfBranch;
+use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
-use crate::parser::{ParseError, Parser};
+use crate::parser::lexer::Token;
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析 If 语句

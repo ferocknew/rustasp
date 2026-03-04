@@ -48,7 +48,7 @@ impl Parser {
     }
 
     /// 将 Token 转换为 BinaryOp
-    fn token_to_binary_op(&self, token: &Token) -> Result<BinaryOp, ParseError> {
+    pub(super) fn token_to_binary_op(&self, token: &Token) -> Result<BinaryOp, ParseError> {
         match token {
             Token::Plus => Ok(BinaryOp::Add),
             Token::Minus => Ok(BinaryOp::Sub),

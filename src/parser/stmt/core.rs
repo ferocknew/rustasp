@@ -3,7 +3,8 @@
 use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
-use crate::parser::{ParseError, Parser};
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析单条语句（核心分发器）

@@ -1,8 +1,10 @@
 //! 循环语句解析 - For / While / Do
 
-use crate::ast::{Expr, Stmt};
+use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
-use crate::parser::{ParseError, Parser};
+use crate::parser::lexer::Token;
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析 For 循环
