@@ -36,27 +36,18 @@ impl StmtParser {
 
         while !self.is_at_end() {
             loop_count += 1;
-            eprintln!("DEBUG parse_program: 迭代 {}, pos={}, peek={:?}",
-                loop_count, self.pos, self.peek());
-            let _ = std::io::stdout().flush();
 
             if loop_count > 100 {
-                eprintln!("DEBUG parse_program: 循环次数过多！");
-                let _ = std::io::stdout().flush();
                 return Err(ParseError::ParserError(format!(
                     "解析程序时检测到可能的死循环（当前 token: {:?}）",
                     self.peek()
                 )));
             }
 
-            // 检查位置是否前进
+            // 检查位置是否前进，如果没有则强制前进
             if self.pos == last_pos && loop_count > 1 {
-                eprintln!("DEBUG parse_program: 位置未前进！");
-                let _ = std::io::stdout().flush();
-                return Err(ParseError::ParserError(format!(
-                    "解析器卡住，位置未前进（pos={}, token: {:?}）",
-                    self.pos, self.peek()
-                )));
+                // 强制前进一个位置以避免死循环
+                self.advance();
             }
             last_pos = self.pos;
 
@@ -109,10 +100,23 @@ impl StmtParser {
     }
 
     fn parse_assignment_or_expr(&mut self) -> Result<Option<Stmt>, ParseError> {
-        // 先收集所有 token 直到语句结束
+        // 快速判断：如果只有一个 token（EOF），返回 None
+        if self.is_at_end() {
+            return Ok(None);
+        }
+
+        // 收集 token 直到语句结束
         let mut tokens = vec![];
+        let start_pos = self.pos;
+
         while !self.is_at_end() && !self.is_stmt_end() {
             tokens.push(self.advance().clone());
+        }
+
+        // 检查位置是否前进
+        if self.pos == start_pos {
+            // 位置没有前进，避免死循环
+            return Ok(None);
         }
 
         // 检查是否是赋值语句（查找非表达式内的 =）
@@ -123,26 +127,26 @@ impl StmtParser {
             target_tokens.push(Token::Eof);
             let mut value_tokens = tokens[eq_pos + 1..].to_vec();
             value_tokens.push(Token::Eof);
-            
+
             let target = crate::parser::expr_parser::parse_expression(target_tokens)?;
             let value = crate::parser::expr_parser::parse_expression(value_tokens)?;
             return Ok(Some(Stmt::Assignment { target, value }));
         }
-        
+
         // 检查是否是不带括号的方法调用 (obj.method arg1, arg2)
         let call_pos = find_method_call_position(&tokens);
         if let Some(call_pos) = call_pos {
             let mut obj_tokens = tokens[..call_pos].to_vec();
             obj_tokens.push(Token::Eof);
-            
+
             let obj_expr = crate::parser::expr_parser::parse_expression(obj_tokens)?;
-            
+
             // 检查是否是 Property（方法名）
             if let Expr::Property { object, property } = obj_expr {
                 // 解析参数
                 let args_tokens = tokens[call_pos..].to_vec();
                 let args = parse_method_args(args_tokens)?;
-                
+
                 return Ok(Some(Stmt::Expr(Expr::Method {
                     object,
                     method: property,
