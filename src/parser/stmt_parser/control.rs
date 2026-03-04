@@ -137,7 +137,6 @@ impl StmtParser {
     /// 解析 Select Case 语句
     pub(super) fn parse_select(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::Select)?;
-        self.skip_newlines();
         self.expect_keyword(Keyword::Case)?;
         
         // 解析 Select Case 的表达式
