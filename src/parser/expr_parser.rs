@@ -21,6 +21,7 @@ impl ExprParser {
     /// 解析表达式（入口函数）
     pub fn parse(&mut self) -> Result<Expr, ParseError> {
         let expr = self.parse_expression(0)?;
+        eprintln!("DEBUG: After parse_expression, pos={}, len={}, peek={:?}", self.pos, self.tokens.len(), self.peek());
         self.expect_end()?;
         Ok(expr)
     }
@@ -147,16 +148,21 @@ impl ExprParser {
                 // 方法调用或索引访问：(args)
                 Token::LParen => {
                     self.next()?; // 消耗 (
+                    eprintln!("DEBUG: LParen branch: consumed (, pos={}, peek={:?}", self.pos, self.peek());
                     let mut args = Vec::new();
                     if !self.is_at(Token::RParen) {
                         loop {
+                            eprintln!("DEBUG: Parsing arg, pos={}, peek={:?}", self.pos, self.peek());
                             args.push(self.parse_expression(0)?);
+                            eprintln!("DEBUG: After arg parse, pos={}, peek={:?}", self.pos, self.peek());
                             if !self.match_comma() {
                                 break;
                             }
                         }
                     }
+                    eprintln!("DEBUG: Before expecting RParen, pos={}, peek={:?}", self.pos, self.peek());
                     self.expect(Token::RParen)?;
+                    eprintln!("DEBUG: After RParen, pos={}, peek={:?}", self.pos, self.peek());
 
                     // 如果 lhs 是 Property，转换为 Method
                     // 否则作为 Index 处理
