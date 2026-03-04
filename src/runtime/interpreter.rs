@@ -315,6 +315,9 @@ impl Interpreter {
                 // TODO: 实现属性访问
                 Err(RuntimeError::PropertyNotFound(property.clone()))
             }
+            Expr::Method { object, method, args } => {
+                self.eval_method(object, method, args)
+            }
             Expr::Array(elements) => {
                 let values: Result<Vec<Value>, _> =
                     elements.iter().map(|e| self.eval_expr(e)).collect();
@@ -324,6 +327,84 @@ impl Interpreter {
                 "Unimplemented expr: {:?}",
                 expr
             ))),
+        }
+    }
+
+    /// 执行方法调用
+    fn eval_method(
+        &mut self,
+        object: &Expr,
+        method: &str,
+        args: &[Expr],
+    ) -> Result<Value, RuntimeError> {
+        // 获取对象名称（如果是变量）
+        let object_name = match object {
+            Expr::Variable(name) => Some(name.to_lowercase()),
+            _ => None,
+        };
+
+        let method_lower = method.to_lowercase();
+
+        // 处理内建对象的方法
+        match (object_name.as_deref(), method_lower.as_str()) {
+            // Response.Write
+            (Some("response"), "write") => {
+                if !args.is_empty() {
+                    let value = self.eval_expr(&args[0])?;
+                    use crate::runtime::ValueConversion;
+                    self.context.write(&ValueConversion::to_string(&value));
+                }
+                Ok(Value::Empty)
+            }
+            // Response.End
+            (Some("response"), "end") => {
+                // TODO: 实现响应结束
+                Ok(Value::Empty)
+            }
+            // Response.Redirect
+            (Some("response"), "redirect") => {
+                // TODO: 实现重定向
+                Ok(Value::Empty)
+            }
+            // Request.QueryString / Request.Form
+            (Some("request"), "querystring") => {
+                if !args.is_empty() {
+                    let key = self.eval_expr(&args[0])?;
+                    use crate::runtime::ValueConversion;
+                    let key_str = ValueConversion::to_string(&key);
+                    // 从上下文获取 QueryString
+                    Ok(self.context.get_var(&key_str).cloned().unwrap_or(Value::Empty))
+                } else {
+                    Ok(Value::Empty)
+                }
+            }
+            (Some("request"), "form") => {
+                if !args.is_empty() {
+                    let key = self.eval_expr(&args[0])?;
+                    use crate::runtime::ValueConversion;
+                    let key_str = ValueConversion::to_string(&key);
+                    // 从上下文获取 Form 数据
+                    Ok(self.context.get_var(&key_str).cloned().unwrap_or(Value::Empty))
+                } else {
+                    Ok(Value::Empty)
+                }
+            }
+            // Server.CreateObject
+            (Some("server"), "createobject") => {
+                // 不支持 COM 对象创建
+                Err(RuntimeError::Generic(
+                    "COM object creation is not supported".to_string(),
+                ))
+            }
+            // 其他方法调用
+            _ => {
+                // 尝试调用用户定义的方法
+                let arg_values: Result<Vec<Value>, _> =
+                    args.iter().map(|e| self.eval_expr(e)).collect();
+                let _arg_values = arg_values?;
+                // TODO: 实现用户定义方法调用
+                Ok(Value::Empty)
+            }
         }
     }
 }
