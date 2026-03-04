@@ -3,6 +3,7 @@
 //! 使用 StmtParser + Runtime 执行 ASP 代码
 
 use super::segmenter::{segment_with_pos, Segment};
+use std::collections::HashMap;
 use vbscript::parser::{parse_expression, parse_program, tokenize};
 
 use crate::http::RequestContext;
@@ -47,20 +48,30 @@ impl Engine {
         // 3. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
-            // 将 QueryString 注入为变量
+            
+            // 构建请求参数数据
+            let mut request_data = HashMap::new();
+            
+            // 将 QueryString 注入为变量和请求数据
             for (key, value) in &ctx.query_string {
                 context.define_var(
                     key.clone(),
                     vbscript::runtime::Value::String(value.clone()),
                 );
+                request_data.insert(key.to_lowercase(), value.clone());
             }
-            // 将 Form 数据注入为变量
+            
+            // 将 Form 数据注入为变量和请求数据
             for (key, value) in &ctx.form_data {
                 context.define_var(
                     key.clone(),
                     vbscript::runtime::Value::String(value.clone()),
                 );
+                request_data.insert(key.to_lowercase(), value.clone());
             }
+            
+            // 设置请求数据（用于 Request("key") 语法）
+            context.set_request_data(request_data);
         }
 
         // 4. 执行每个代码段
