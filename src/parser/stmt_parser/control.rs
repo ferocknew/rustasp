@@ -21,7 +21,9 @@ impl StmtParser {
         let mut else_block = None;
 
         loop {
-            if self.check_keyword(Keyword::End)
+            // 检查是否到达语句结束（支持单行 If 语句）
+            if self.is_at_end()
+                || self.check_keyword(Keyword::End)
                 || self.check_keyword(Keyword::Else)
                 || self.check_keyword(Keyword::ElseIf)
             {
@@ -42,7 +44,8 @@ impl StmtParser {
 
                 let mut body = vec![];
                 loop {
-                    if self.check_keyword(Keyword::End)
+                    if self.is_at_end()
+                        || self.check_keyword(Keyword::End)
                         || self.check_keyword(Keyword::Else)
                         || self.check_keyword(Keyword::ElseIf)
                     {
@@ -58,7 +61,7 @@ impl StmtParser {
                 self.skip_newlines();
                 let mut body = vec![];
                 loop {
-                    if self.check_keyword(Keyword::End) {
+                    if self.is_at_end() || self.check_keyword(Keyword::End) {
                         break;
                     }
                     if let Some(stmt) = self.parse_stmt()? {
@@ -94,7 +97,7 @@ impl StmtParser {
 
         let mut body = vec![];
         loop {
-            if self.check_keyword(Keyword::Next) {
+            if self.is_at_end() || self.check_keyword(Keyword::Next) {
                 break;
             }
             if let Some(stmt) = self.parse_stmt()? {
@@ -121,7 +124,7 @@ impl StmtParser {
 
         let mut body = vec![];
         loop {
-            if self.check_keyword(Keyword::Wend) {
+            if self.is_at_end() || self.check_keyword(Keyword::Wend) {
                 break;
             }
             if let Some(stmt) = self.parse_stmt()? {
@@ -149,7 +152,7 @@ impl StmtParser {
         // 解析所有 Case 分支
         loop {
             // 检查是否到达 End Select
-            if self.check_keyword(Keyword::End) {
+            if self.is_at_end() || self.check_keyword(Keyword::End) {
                 break;
             }
 
@@ -164,7 +167,7 @@ impl StmtParser {
                 
                 let mut body = vec![];
                 loop {
-                    if self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
+                    if self.is_at_end() || self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
                         break;
                     }
                     if let Some(stmt) = self.parse_stmt()? {
@@ -205,7 +208,7 @@ impl StmtParser {
 
                 let mut body = vec![];
                 loop {
-                    if self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
+                    if self.is_at_end() || self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
                         break;
                     }
                     if let Some(stmt) = self.parse_stmt()? {
