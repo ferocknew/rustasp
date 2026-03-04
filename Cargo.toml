@@ -30,6 +30,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 # 本地模块
+vbscript_ast = { path = "src/lib/vbscript_ast" }
 vbscript_core = { path = "src/lib/vbscript_core" }
 asp_runtime = { path = "src/lib/asp_runtime" }
 asp_host = { path = "src/lib/asp_host" }
@@ -37,6 +38,7 @@ db_adapter = { path = "src/lib/db_adapter" }
 
 [workspace]
 members = [
+    "src/lib/vbscript_ast",
     "src/lib/vbscript_core",
     "src/lib/asp_runtime",
     "src/lib/asp_host",
