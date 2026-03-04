@@ -74,35 +74,50 @@ impl Engine {
                 Segment::Code(code) => {
                     // 词法分析
                     let tokens = tokenize(code).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Lexer error",
                             &e.to_string(),
                             code,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     // 语法分析
                     let program = parse_program(tokens).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Parser error",
                             &e.to_string(),
                             code,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     // 执行
                     interpreter.execute(&program).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Runtime error",
                             &e.to_string(),
                             code,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     // 收集输出
@@ -115,34 +130,49 @@ impl Engine {
                 Segment::Expr(expr) => {
                     // 解析并执行表达式
                     let tokens = tokenize(expr).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Lexer error",
                             &e.to_string(),
                             expr,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     let ast = parse_expression(tokens).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Parser error",
                             &e.to_string(),
                             expr,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     // 求值
                     let value = interpreter.eval_expr(&ast).map_err(|e| {
-                        format_error_with_context(
+                        let error_msg = format_error_with_context(
                             "Runtime error",
                             &e.to_string(),
                             expr,
                             source,
                             seg.start_line,
-                        )
+                        );
+                        eprintln!("❌ ASP Error in {}:\n{}\n", 
+                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
+                            error_msg
+                        );
+                        error_msg
                     })?;
 
                     // 输出
