@@ -39,6 +39,8 @@ pub enum Keyword {
     Function,
     Call,
     Return,
+    ByRef,
+    ByVal,
 
     // 类
     Class,
@@ -111,6 +113,8 @@ impl Keyword {
             Keyword::Function => "Function",
             Keyword::Call => "Call",
             Keyword::Return => "Return",
+            Keyword::ByRef => "ByRef",
+            Keyword::ByVal => "ByVal",
             Keyword::Class => "Class",
             Keyword::Property => "Property",
             Keyword::Get => "Get",
