@@ -42,7 +42,7 @@ async fn root_handler(
             handler::handle_asp(uri, state, request).await.into_response()
         } else {
             // 静态文件直接返回
-            handler::handle_static(uri, state).await.into_response()
+            handler::handle_static(uri, state, request).await.into_response()
         }
     } else {
         // 索引文件不存在，显示目录列表或返回 403
@@ -78,5 +78,5 @@ async fn path_handler(
     }
 
     // 静态文件处理
-    handler::handle_static(uri, state).await.into_response()
+    handler::handle_static(uri, state, request).await.into_response()
 }
