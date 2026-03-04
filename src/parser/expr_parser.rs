@@ -87,6 +87,7 @@ impl ExprParser {
             // 变量或标识符
             Token::Ident(name) => {
                 self.next()?;
+                eprintln!("DEBUG Ident: Consumed {}, pos={}, peek={:?}", name, self.pos, self.peek());
                 self.parse_postfix(Expr::Variable(name))
             }
 
@@ -112,8 +113,11 @@ impl ExprParser {
             // 括号表达式
             Token::LParen => {
                 self.next()?;
+                eprintln!("DEBUG LParen: After consuming (, pos={}, peek={:?}", self.pos, self.peek());
                 let expr = self.parse_expression(0)?;
+                eprintln!("DEBUG LParen: After parse_expression, pos={}, peek={:?}", self.pos, self.peek());
                 self.expect(Token::RParen)?;
+                eprintln!("DEBUG LParen: After consuming ), pos={}, peek={:?}", self.pos, self.peek());
                 // 括号表达式后也可能有后缀，如 (expr)(args)
                 self.parse_postfix(expr)
             }
