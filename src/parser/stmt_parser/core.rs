@@ -78,11 +78,49 @@ impl StmtParser {
     }
 
     fn parse_assignment_or_expr(&mut self) -> Result<Option<Stmt>, ParseError> {
-        let expr = self.parse_expr()?;
-        if self.match_token(&Token::Eq) {
-            let value = self.parse_expr()?;
-            return Ok(Some(Stmt::Assignment { target: expr, value }));
+        // 先收集所有 token 直到语句结束
+        let mut tokens = vec![];
+        while !self.is_at_end() && !self.is_stmt_end() {
+            tokens.push(self.advance().clone());
         }
+        
+        // 检查是否是赋值语句（查找非表达式内的 =）
+        if let Some(eq_pos) = find_assignment_eq(&tokens) {
+            // 分割为 target 和 value
+            let mut target_tokens = tokens[..eq_pos].to_vec();
+            target_tokens.push(Token::Eof);
+            let mut value_tokens = tokens[eq_pos + 1..].to_vec();
+            value_tokens.push(Token::Eof);
+            
+            let target = crate::parser::expr_parser::parse_expression(target_tokens)?;
+            let value = crate::parser::expr_parser::parse_expression(value_tokens)?;
+            return Ok(Some(Stmt::Assignment { target, value }));
+        }
+        
+        // 检查是否是不带括号的方法调用 (obj.method arg1, arg2)
+        if let Some(call_pos) = find_method_call_position(&tokens) {
+            let mut obj_tokens = tokens[..call_pos].to_vec();
+            obj_tokens.push(Token::Eof);
+            
+            let obj_expr = crate::parser::expr_parser::parse_expression(obj_tokens)?;
+            
+            // 检查是否是 Property（方法名）
+            if let Expr::Property { object, property } = obj_expr {
+                // 解析参数
+                let args_tokens = tokens[call_pos..].to_vec();
+                let args = parse_method_args(args_tokens)?;
+                
+                return Ok(Some(Stmt::Expr(Expr::Method {
+                    object,
+                    method: property,
+                    args,
+                })));
+            }
+        }
+        
+        // 普通表达式
+        tokens.push(Token::Eof);
+        let expr = crate::parser::expr_parser::parse_expression(tokens)?;
         Ok(Some(Stmt::Expr(expr)))
     }
 
@@ -117,4 +155,98 @@ impl StmtParser {
 pub fn parse_program(tokens: Vec<Token>) -> Result<Program, ParseError> {
     let mut parser = StmtParser::new(tokens);
     parser.parse()
+}
+
+// ========== 辅助函数 ==========
+
+/// 查找赋值语句中的等号位置（不在括号内的 =）
+fn find_assignment_eq(tokens: &[Token]) -> Option<usize> {
+    let mut paren_depth = 0;
+    for (i, token) in tokens.iter().enumerate() {
+        match token {
+            Token::LParen => paren_depth += 1,
+            Token::RParen => {
+                if paren_depth > 0 {
+                    paren_depth -= 1;
+                }
+            }
+            Token::Eq if paren_depth == 0 => return Some(i),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// 查找方法调用参数的起始位置
+/// 方法调用模式：obj.method arg1, arg2
+/// 返回参数开始的位置
+fn find_method_call_position(tokens: &[Token]) -> Option<usize> {
+    // 找到 . 后面的标识符位置
+    let mut found_dot = false;
+    for (i, token) in tokens.iter().enumerate() {
+        match token {
+            Token::Dot => found_dot = true,
+            Token::Ident(_) if found_dot => {
+                // 检查下一个 token 是否不是 ( 或 . 或操作符
+                if i + 1 < tokens.len() {
+                    let next = &tokens[i + 1];
+                    if !matches!(
+                        next,
+                        Token::LParen | Token::Dot | Token::Eq | Token::Newline | Token::Colon | Token::Eof
+                    ) {
+                        // 检查 next 是否不是操作符
+                        if !is_operator(next) {
+                            return Some(i + 1);
+                        }
+                    }
+                }
+                found_dot = false;
+            }
+            _ => found_dot = false,
+        }
+    }
+    None
+}
+
+/// 检查 token 是否是操作符
+fn is_operator(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Plus | Token::Minus | Token::Star | Token::Slash
+            | Token::Backslash | Token::Caret | Token::Ampersand
+            | Token::Eq | Token::Ne | Token::Lt | Token::Le | Token::Gt | Token::Ge
+            | Token::Keyword(Keyword::And) | Token::Keyword(Keyword::Or) | Token::Keyword(Keyword::Mod)
+    )
+}
+
+/// 解析方法参数（逗号分隔的表达式列表）
+fn parse_method_args(tokens: Vec<Token>) -> Result<Vec<Expr>, ParseError> {
+    if tokens.is_empty() {
+        return Ok(vec![]);
+    }
+    
+    let mut args = vec![];
+    let mut current_tokens = vec![];
+    
+    for token in tokens {
+        if token == Token::Comma {
+            if !current_tokens.is_empty() {
+                current_tokens.push(Token::Eof);
+                let arg = crate::parser::expr_parser::parse_expression(current_tokens)?;
+                args.push(arg);
+                current_tokens = vec![];
+            }
+        } else {
+            current_tokens.push(token);
+        }
+    }
+    
+    // 处理最后一个参数
+    if !current_tokens.is_empty() {
+        current_tokens.push(Token::Eof);
+        let arg = crate::parser::expr_parser::parse_expression(current_tokens)?;
+        args.push(arg);
+    }
+    
+    Ok(args)
 }
