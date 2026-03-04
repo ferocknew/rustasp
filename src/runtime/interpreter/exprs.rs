@@ -121,6 +121,41 @@ impl Interpreter {
                 }
                 Err(RuntimeError::InvalidIndex)
             }
+            // 处理方法调用后的索引访问，如 Request.Form("name")(1)
+            Expr::Method { .. } | Expr::Property { .. } => {
+                // 先求值 object
+                let obj_val = self.eval_expr(object)?;
+
+                // 根据索引值的类型进行访问
+                match obj_val {
+                    Value::Array(arr) => {
+                        if let Value::Number(i) = index_val {
+                            let i = i as usize;
+                            // ASP 中索引从 1 开始
+                            if i >= 1 && i <= arr.len() {
+                                return Ok(arr[i - 1].clone());
+                            }
+                        }
+                        Ok(Value::Empty)
+                    }
+                    Value::String(s) => {
+                        // ASP 中字符串的索引访问：对于单值，(1) 返回字符串本身
+                        if let Value::Number(i) = index_val {
+                            if i == 1.0 {
+                                return Ok(Value::String(s));
+                            }
+                        }
+                        Ok(Value::Empty)
+                    }
+                    Value::Object(obj) => {
+                        if let Some(v) = obj.get(&index_key) {
+                            return Ok(v.clone());
+                        }
+                        Ok(Value::Empty)
+                    }
+                    _ => Ok(Value::Empty),
+                }
+            }
             _ => Err(RuntimeError::InvalidIndex),
         }
     }
@@ -255,19 +290,29 @@ impl Interpreter {
                 }
             }
             _ => {
-                // 尝试从变量中获取对象属性
-                if let Expr::Variable(name) = object {
-                    if let Some(var_value) = self.context.get_var(name) {
-                        match var_value {
-                            Value::Object(obj) => {
-                                if let Some(v) = obj.get(&property_lower) {
-                                    return Ok(v.clone());
-                                }
-                            }
-                            _ => {}
+                // 处理通用属性访问（从变量或表达式中获取对象）
+                let obj_value = self.eval_expr(object)?;
+
+                // 处理 .Count 属性（适用于各种类型）
+                if property_lower == "count" {
+                    return Ok(match &obj_value {
+                        Value::Array(arr) => Value::Number(arr.len() as f64),
+                        Value::Object(obj) => Value::Number(obj.len() as f64),
+                        Value::String(_) | Value::Number(_) | Value::Boolean(_)
+                        | Value::Empty | Value::Null | Value::Nothing => Value::Number(1.0),
+                    });
+                }
+
+                // 处理对象的属性访问
+                match obj_value {
+                    Value::Object(obj) => {
+                        if let Some(v) = obj.get(&property_lower) {
+                            return Ok(v.clone());
                         }
                     }
+                    _ => {}
                 }
+
                 Err(RuntimeError::PropertyNotFound(property.to_string()))
             }
         }
