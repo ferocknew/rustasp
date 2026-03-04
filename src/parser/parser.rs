@@ -39,11 +39,15 @@ impl Parser {
         }
     }
 
-    /// 前进一个位置
+    /// 前进一个位置并返回 token
     pub fn advance(&mut self) -> &Token {
-        let token = self.peek();
-        self.pos += 1;
-        token
+        if self.pos < self.tokens.len() {
+            let token = &self.tokens[self.pos];
+            self.pos += 1;
+            token
+        } else {
+            &Token::Eof
+        }
     }
 
     /// 是否到达末尾

@@ -57,6 +57,7 @@ pub enum Keyword {
     Nothing,
     Empty,
     Null,
+    New,
 
     // 运算符
     And,
@@ -127,6 +128,7 @@ impl Keyword {
             Keyword::Nothing => "Nothing",
             Keyword::Empty => "Empty",
             Keyword::Null => "Null",
+            Keyword::New => "New",
             Keyword::And => "And",
             Keyword::Or => "Or",
             Keyword::Not => "Not",

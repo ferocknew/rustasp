@@ -42,6 +42,10 @@ pub enum Token {
     // 特殊
     Newline,
     Eof,
+
+    // 特殊值（可选，也可以用关键字表示）
+    Null,
+    Empty,
 }
 
 /// 词法分析器
