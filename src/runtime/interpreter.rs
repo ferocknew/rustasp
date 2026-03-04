@@ -58,6 +58,11 @@ impl Interpreter {
                 body,
             } => self.eval_for(var, start, end, step.as_ref(), body),
             Stmt::While { cond, body } => self.eval_while(cond, body),
+            Stmt::Select {
+                expr,
+                cases,
+                else_block,
+            } => self.eval_select(expr, cases, else_block),
             Stmt::Sub { name, params, body } => self.eval_sub(name, params, body),
             Stmt::Function { name, params, body } => self.eval_function(name, params, body),
             Stmt::Call { name, args } => self.eval_call(name, args),
