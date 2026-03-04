@@ -14,6 +14,7 @@ pub use context::Context;
 pub use scope::Scope;
 pub use error::RuntimeError;
 pub use value::Value;
+pub use value::ValueConversion;
 
 use std::collections::HashMap;
 
