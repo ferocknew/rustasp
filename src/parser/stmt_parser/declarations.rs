@@ -1,6 +1,6 @@
 //! 声明语句解析
 //!
-//! Dim, Const, Set, Call, Exit
+//! Dim, Const, Set, Call, Exit, Option
 
 use super::core::StmtParser;
 use crate::ast::Stmt;
@@ -63,6 +63,19 @@ impl StmtParser {
         self.expect(Token::Eq)?;
         let value = self.parse_expr()?;
         Ok(Some(Stmt::Const { name, value }))
+    }
+
+    /// 解析 Option 语句（如 Option Explicit）
+    pub(super) fn parse_option(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.expect_keyword(Keyword::Option)?;
+        
+        if self.match_keyword(Keyword::Explicit) {
+            Ok(Some(Stmt::OptionExplicit))
+        } else {
+            Err(ParseError::ParserError(
+                "Expected Explicit after Option".into(),
+            ))
+        }
     }
 
     /// 解析 Set 语句
