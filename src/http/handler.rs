@@ -2,7 +2,7 @@
 
 use axum::{
     body::Body,
-    http::{StatusCode, Uri},
+    http::{Request, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
 };
 use std::path::Path;
@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use tokio::fs;
 
 use super::path_resolver::PathResolver;
+use super::request_context::RequestContext;
 use super::state::AppState;
 
 /// 格式化简单错误信息
@@ -92,8 +93,11 @@ async fn load_custom_error_page(state: &AppState) -> Option<String> {
 }
 
 /// 处理 ASP 请求（使用简化引擎）
-pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
+pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
     let uri_str = uri.path();
+
+    // 构建请求上下文
+    let request_ctx = RequestContext::from_request(request).await;
 
     // 使用路径解析器安全解析路径
     let resolver = PathResolver::new(
@@ -170,7 +174,9 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     match fs::read_to_string(&file_path).await {
         Ok(content) => {
             // 使用简化的 ASP 引擎执行
-            let mut engine = crate::asp::Engine::new().with_debug(state.config.debug);
+            let mut engine = crate::asp::Engine::new()
+                .with_debug(state.config.debug)
+                .with_request_context(request_ctx);
             match engine.execute(&content) {
                 Ok(output) => Html(output).into_response(),
                 Err(e) => {
@@ -215,7 +221,7 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
 }
 
 /// 处理静态文件请求
-pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
+pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
     let uri_str = uri.path();
 
     // 使用路径解析器安全解析路径
@@ -239,7 +245,7 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
         // 尝试返回索引文件
         let index_path = file_path.join(&state.config.index_file);
         if index_path.exists() {
-            return handle_asp(uri, state).await.into_response();
+            return handle_asp(uri, state, request).await.into_response();
         }
 
         // 显示目录列表
