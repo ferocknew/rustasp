@@ -1,10 +1,10 @@
 //! ASP 完整引擎
 //!
-//! 使用 StmtParser + Runtime 执行 ASP 代码
+//! 使用 Parser + Runtime 执行 ASP 代码
 
 use super::segmenter::{segment_with_pos, Segment};
 use std::collections::HashMap;
-use vbscript::parser::{parse_expression, parse_program, tokenize};
+use vbscript::parser::{parse, parse_expr, tokenize, Parser};
 
 use crate::http::RequestContext;
 
@@ -107,7 +107,8 @@ impl Engine {
                     })?;
 
                     // 语法分析
-                    let program = parse_program(tokens).map_err(|e| {
+                    let mut parser = Parser::new(tokens);
+                    let program = parser.parse_program().map_err(|e| {
                         let error_msg = format_error_with_context(
                             "Parser error",
                             &e.to_string(),
@@ -162,7 +163,8 @@ impl Engine {
                         error_msg
                     })?;
 
-                    let ast = parse_expression(tokens).map_err(|e| {
+                    let mut parser = Parser::new(tokens);
+                    let ast = parser.parse_expr(0).map_err(|e| {
                         let error_msg = format_error_with_context(
                             "Parser error",
                             &e.to_string(),

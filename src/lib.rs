@@ -6,5 +6,5 @@ pub mod runtime;
 pub mod utils;
 
 // 重导出常用类型
-pub use parser::{parse_expression, parse_program, tokenize};
+pub use parser::{parse, parse_expr, tokenize, Parser};
 pub use runtime::{Context, Interpreter, Value};
