@@ -157,17 +157,6 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         String::new()
     };
 
-    // 错误代码段
-    let segment_section = if let Some(ref segment) = error.error_segment {
-        format!(
-            r#"<div><span class="label">Error in code:</span>
-            <pre class="code-segment">{}</pre></div>"#,
-            html_escape(segment)
-        )
-    } else {
-        String::new()
-    };
-
     format!(
         r#"
 <!DOCTYPE html>
@@ -189,7 +178,7 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         .code-block .line.error-line {{ background: rgba(229, 115, 115, 0.2); border-left: 3px solid #e57373; }}
         .code-block .line-num {{ color: #636d83; min-width: 50px; padding-right: 15px; text-align: right; user-select: none; }}
         .code-block .line-content {{ white-space: pre; flex: 1; }}
-        .code-segment {{ background: #fff3e0; border-left: 3px solid #ff9800; }}
+        .error-code {{ background: #fff3e0; border-left: 3px solid #ff9800; padding: 10px; margin: 5px 0; white-space: pre-wrap; word-break: break-all; }}
     </style>
 </head>
 <body>
@@ -200,7 +189,6 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         <div class="details">
             <div><span class="label">Request URI:</span> <pre>{}</pre></div>
             <div><span class="label">File Path:</span> <pre>{}</pre></div>
-            {}
             <div><span class="label">Details:</span> <pre>{}</pre></div>
             {}
         </div>
@@ -213,7 +201,6 @@ fn format_detailed_error(error: &ErrorInfo) -> String {
         error.title(),
         error.uri,
         error.file_path,
-        segment_section,
         html_escape(&error.message),
         code_section
     )

@@ -128,24 +128,75 @@ impl Default for Engine {
 
 /// 格式化错误信息，包含代码段
 fn format_error_with_code(error_type: &str, message: &str, code: &str, segment_num: usize) -> String {
-    // 截取代码摘要（最多 200 字符）
-    let code_preview = if code.len() > 200 {
-        format!("{}...", &code[..200])
-    } else {
-        code.to_string()
-    };
+    // 找到错误发生的行（从消息中提取，或者默认第1行）
+    let error_line_num = extract_error_line(message).unwrap_or(1);
 
-    // 转义换行符以便单行显示
-    let code_single_line = code_preview
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t");
+    // 获取代码行
+    let lines: Vec<&str> = code.lines().collect();
+    let total_lines = lines.len();
+
+    // 确定显示范围（错误行前后各 2 行）
+    let context_lines = 2;
+    let start_line = (error_line_num.saturating_sub(context_lines + 1)).max(0);
+    let end_line = (error_line_num + context_lines).min(total_lines);
+
+    // 构建代码摘要
+    let mut code_summary = String::new();
+    for (idx, line) in lines.iter().enumerate().skip(start_line).take(end_line - start_line) {
+        let line_num = idx + 1;
+        let marker = if line_num == error_line_num { " >>>" } else { "    " };
+        code_summary.push_str(&format!("{}{:3} | {}\n", marker, line_num, line));
+    }
+
+    // 如果错误行超出代码范围，显示前几行
+    if code_summary.is_empty() && !lines.is_empty() {
+        let show_lines = lines.len().min(5);
+        for (idx, line) in lines.iter().enumerate().take(show_lines) {
+            let line_num = idx + 1;
+            let marker = if line_num == 1 { " >>>" } else { "    " };
+            code_summary.push_str(&format!("{}{:3} | {}\n", marker, line_num, line));
+        }
+        if lines.len() > show_lines {
+            code_summary.push_str(&format!("      ... ({} more lines)\n", lines.len() - show_lines));
+        }
+    }
 
     format!(
-        "{}: {}\n[Segment #{} Code]: {}",
-        error_type,
+        "{}\n\nError in segment #{} at line {}:\n{}",
         message,
         segment_num,
-        code_single_line
+        error_line_num,
+        code_summary.trim_end()
     )
+}
+
+/// 从错误消息中提取行号
+fn extract_error_line(message: &str) -> Option<usize> {
+    let lower = message.to_lowercase();
+
+    // 尝试找 "at line X" 模式
+    if let Some(pos) = lower.find("at line") {
+        let rest = &message[pos + 7..];
+        let rest = rest.trim_start();
+        if let Some(num_end) = rest.find(|c: char| !c.is_ascii_digit()) {
+            if let Ok(line) = rest[..num_end].parse::<usize>() {
+                return Some(line);
+            }
+        } else if let Ok(line) = rest.parse::<usize>() {
+            return Some(line);
+        }
+    }
+
+    // 尝试找 "line X" 模式
+    if let Some(pos) = lower.find("line") {
+        let rest = &message[pos + 4..];
+        let rest = rest.trim_start();
+        if let Some(num_end) = rest.find(|c: char| !c.is_ascii_digit()) {
+            if let Ok(line) = rest[..num_end].parse::<usize>() {
+                return Some(line);
+            }
+        }
+    }
+
+    None
 }
