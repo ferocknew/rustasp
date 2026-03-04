@@ -1,9 +1,11 @@
 //! 函数和过程语句解析 - Function / Sub / Call / Exit
 
-use crate::ast::{Param, Stmt};
+use crate::ast::Param;
+use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
-use crate::parser::{ParseError, Parser};
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析 Function 定义

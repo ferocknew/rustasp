@@ -1,7 +1,8 @@
 //! 赋值语句和表达式语句解析
 
-use crate::ast::{Expr, Stmt};
-use crate::parser::{ParseError, Parser};
+use crate::ast::Stmt;
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析标识符开头的语句（赋值或表达式）

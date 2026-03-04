@@ -1,5 +1,6 @@
 //! 循环语句解析 - For / While / Do
 
+use crate::ast::Expr;
 use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
@@ -78,14 +79,14 @@ impl Parser {
             false
         };
 
-        let (cond, is_while): (Option<Expr>, bool) = if is_while_top || is_until_top {
+        let cond_top: Option<Expr> = if is_while_top || is_until_top {
             // Do While/Until condition ... Loop
             let cond = self.parse_expr(0)?;
             self.skip_newlines();
-            (Some(cond), is_while_top)
+            Some(cond)
         } else {
             // Do ... Loop While/Until condition
-            (None, true)
+            None
         };
 
         let mut body = vec![];
@@ -102,7 +103,7 @@ impl Parser {
         self.expect_keyword(Keyword::Loop)?;
 
         // 检查 Loop 后是否有 While/Until
-        if cond.is_none() {
+        if cond_top.is_none() {
             let is_while_bottom = self.match_keyword(Keyword::While);
             let is_until_bottom = if !is_while_bottom {
                 self.match_keyword(Keyword::Until)
@@ -112,18 +113,20 @@ impl Parser {
 
             if is_while_bottom || is_until_bottom {
                 let cond_expr = self.parse_expr(0)?;
-                return Ok(Some(Stmt::Do {
-                    cond: Some(cond_expr),
-                    body,
-                    is_while: is_while_bottom,
-                }));
+                return Ok(if is_while_bottom {
+                    Some(Stmt::DoLoopWhile { body, cond: cond_expr })
+                } else {
+                    Some(Stmt::DoLoopUntil { body, cond: cond_expr })
+                });
             }
         }
 
-        Ok(Some(Stmt::Do {
-            cond,
-            body,
-            is_while,
-        }))
+        // Do While/Until ... Loop
+        let cond = cond_top.unwrap();
+        Ok(if is_while_top {
+            Some(Stmt::DoWhile { cond, body })
+        } else {
+            Some(Stmt::DoUntil { cond, body })
+        })
     }
 }
