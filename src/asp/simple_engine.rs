@@ -118,7 +118,7 @@ impl SimpleEngine {
                 eprintln!("    类型: 表达式输出");
                 eprintln!("    表达式: {:?}", expr);
             }
-            return Ok(format!("[{}]", expr));
+            return self.eval_expression(expr);
         }
 
         // 处理 Response.Write("xxx")
@@ -136,14 +136,29 @@ impl SimpleEngine {
             }
         }
 
-        // 简单的变量赋值: Dim x = "value"
+        // 简单的变量赋值: Dim x = "value" 或 x = Request("key")
         if code.starts_with("Dim") {
             let rest = code[3..].trim();
             if let Some(eq_pos) = rest.find('=') {
                 let name = rest[..eq_pos].trim().to_string();
-                let value = rest[eq_pos + 1..].trim().trim_matches('"').to_string();
+                let value = self.eval_value_expr(rest[eq_pos + 1..].trim());
                 if self.debug {
                     eprintln!("    类型: 变量声明");
+                    eprintln!("    变量: {:?} = {:?}", name, value);
+                }
+                self.variables.insert(name, value);
+                return Ok(String::new());
+            }
+        }
+
+        // 处理变量赋值: x = value
+        if code.contains('=') && !code.starts_with("If") && !code.starts_with("ElseIf") {
+            let parts: Vec<&str> = code.splitn(2, '=').collect();
+            if parts.len() == 2 {
+                let name = parts[0].trim().to_string();
+                let value = self.eval_value_expr(parts[1].trim());
+                if self.debug {
+                    eprintln!("    类型: 变量赋值");
                     eprintln!("    变量: {:?} = {:?}", name, value);
                 }
                 self.variables.insert(name, value);
@@ -155,6 +170,114 @@ impl SimpleEngine {
             eprintln!("    类型: 未知（忽略）");
         }
 
+        Ok(String::new())
+    }
+
+    /// 求值表达式（用于 <%= %> 输出）
+    fn eval_expression(&self, expr: &str) -> Result<String, String> {
+        // 处理 Request("key")
+        if expr.starts_with("Request(") {
+            return self.eval_request_call(expr);
+        }
+        // 处理变量
+        if let Some(value) = self.variables.get(expr) {
+            return Ok(value.clone());
+        }
+        // 处理字面量
+        if expr.starts_with('"') && expr.ends_with('"') {
+            return Ok(expr[1..expr.len()-1].to_string());
+        }
+        Ok(format!("[{}]", expr))
+    }
+
+    /// 求值表达式（用于赋值右侧）
+    fn eval_value_expr(&self, expr: &str) -> String {
+        // 处理 Request("key")
+        if expr.starts_with("Request(") {
+            return self.eval_request_call(expr).unwrap_or_default();
+        }
+        // 处理 Request.QueryString("key")
+        if expr.starts_with("Request.QueryString(") {
+            return self.eval_request_querystring(expr).unwrap_or_default();
+        }
+        // 处理 Request.Form("key")
+        if expr.starts_with("Request.Form(") {
+            return self.eval_request_form(expr).unwrap_or_default();
+        }
+        // 处理 CInt() 转换
+        if expr.starts_with("CInt(") {
+            let inner = self.extract_paren_content(expr, "CInt(");
+            let inner_val = self.eval_value_expr(&inner);
+            return inner_val.parse::<i32>().unwrap_or(0).to_string();
+        }
+        // 处理变量
+        if let Some(value) = self.variables.get(expr) {
+            return value.clone();
+        }
+        // 处理字面量
+        if expr.starts_with('"') && expr.ends_with('"') {
+            return expr[1..expr.len()-1].to_string();
+        }
+        expr.to_string()
+    }
+
+    /// 提取括号内容
+    fn extract_paren_content(&self, expr: &str, prefix: &str) -> String {
+        let start = prefix.len();
+        if expr[start..].starts_with('(') {
+            if let Some(end) = expr[start..].rfind(')') {
+                return expr[start + 1..start + end].trim().to_string();
+            }
+        }
+        // 如果没有额外的括号，直接找结束括号
+        if let Some(end) = expr[start..].rfind(')') {
+            expr[start..end].trim().to_string()
+        } else {
+            expr[start..].trim().to_string()
+        }
+    }
+
+    /// 处理 Request("key") 调用
+    fn eval_request_call(&self, expr: &str) -> Result<String, String> {
+        // 提取参数: Request("key")
+        let key = self.extract_paren_content(expr, "Request(");
+        let key = key.trim_matches('"');
+
+        if let Some(ref ctx) = self.request_context {
+            // 先查找 Form，再查找 QueryString
+            if let Some(value) = ctx.form(key) {
+                return Ok(value.clone());
+            }
+            if let Some(value) = ctx.query(key) {
+                return Ok(value.clone());
+            }
+        }
+        Ok(String::new())
+    }
+
+    /// 处理 Request.QueryString("key") 调用
+    fn eval_request_querystring(&self, expr: &str) -> Result<String, String> {
+        let key = self.extract_paren_content(expr, "Request.QueryString(");
+        let key = key.trim_matches('"');
+
+        if let Some(ref ctx) = self.request_context {
+            if let Some(value) = ctx.query(key) {
+                return Ok(value.clone());
+            }
+        }
+        Ok(String::new())
+    }
+
+    /// 处理 Request.Form("key") 调用
+    fn eval_request_form(&self, expr: &str) -> Result<String, String> {
+        let key = self.extract_paren_content(expr, "Request.Form(");
+        let key = key.trim_matches('"');
+
+        if let Some(ref ctx) = self.request_context {
+            if let Some(value) = ctx.form(key) {
+                return Ok(value.clone());
+            }
+        }
         Ok(String::new())
     }
 }

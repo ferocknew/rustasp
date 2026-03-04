@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// VBScript 关键字
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Keyword {
     // 声明
     Dim,
