@@ -372,7 +372,7 @@ impl Interpreter {
                 let index_val = self.eval_expr(index)?;
                 let index_key = match &index_val {
                     Value::String(s) => s.clone(),
-                    _ => index_val.to_string(),
+                    _ => ValueConversion::to_string(&index_val),
                 };
                 
                 match object.as_ref() {

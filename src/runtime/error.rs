@@ -37,6 +37,9 @@ pub enum RuntimeError {
     #[error("Invalid assignment target")]
     InvalidAssignment,
 
+    #[error("Invalid index")]
+    InvalidIndex,
+
     #[error("Runtime error: {0}")]
     Generic(String),
 }
