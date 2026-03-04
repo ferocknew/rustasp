@@ -103,6 +103,16 @@ impl PathResolver {
     }
 
     /// 获取相对路径（用于显示）
+    ///
+    /// # 示例
+    /// ```
+    /// # use vbscript::http::path_resolver::PathResolver;
+    /// # use std::path::PathBuf;
+    /// let resolver = PathResolver::new(PathBuf::from("/var/www"), true);
+    /// let full_path = PathBuf::from("/var/www/images/logo.png");
+    /// assert_eq!(resolver.get_relative_path(&full_path), Some("images/logo.png".to_string()));
+    /// ```
+    #[allow(dead_code)]
     pub fn get_relative_path(&self, full_path: &Path) -> Option<String> {
         full_path
             .strip_prefix(&self.web_root)

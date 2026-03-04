@@ -5,31 +5,109 @@ use axum::{
     http::{StatusCode, Uri},
     response::{Html, IntoResponse, Response},
 };
+use std::path::Path;
 use std::path::PathBuf;
 use tokio::fs;
 
 use super::path_resolver::PathResolver;
 use super::state::AppState;
 
+/// 格式化详细错误信息
+fn format_error(
+    location: &str,
+    line: u32,
+    uri: &str,
+    file_path: &Path,
+    error_type: &str,
+    error_msg: &str,
+) -> String {
+    format!(
+        r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Error</title>
+    <style>
+        body {{ font-family: monospace; padding: 20px; background: #f5f5f5; }}
+        .error-box {{ background: white; border-left: 4px solid #d32f2f; padding: 15px; margin: 10px 0; }}
+        .location {{ color: #666; font-size: 12px; }}
+        .error-type {{ color: #d32f2f; font-weight: bold; margin: 10px 0; }}
+        .details {{ margin: 10px 0; }}
+        .label {{ color: #1976d2; font-weight: bold; }}
+        pre {{ background: #f5f5f5; padding: 10px; overflow-x: auto; }}
+    </style>
+</head>
+<body>
+    <div class="error-box">
+        <div class="location">📍 {}:{}</div>
+        <h1>Error</h1>
+        <div class="error-type">❌ {}</div>
+        <div class="details">
+            <div><span class="label">Request URI:</span> <pre>{}</pre></div>
+            <div><span class="label">File Path:</span> <pre>{}</pre></div>
+            <div><span class="label">Details:</span> <pre>{}</pre></div>
+        </div>
+    </div>
+</body>
+</html>
+"#,
+        location, line, error_type, uri, file_path.display(), error_msg
+    )
+}
+
 /// 处理 ASP 请求（使用简化引擎）
 pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
+    let uri_str = uri.path();
+
     // 使用路径解析器安全解析路径
     let resolver = PathResolver::new(
         state.config.home_dir.clone(),
         state.config.allow_parent_paths,
     );
 
-    let file_path = match resolver.resolve(uri.path()) {
+    let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
-            return Html(format!("<h1>403 - Forbidden</h1><pre>{}</pre>", e))
-                .into_response();
+            return Html(format_error(
+                "handler.rs",
+                22, // resolver.resolve 调用行号
+                uri_str,
+                Path::new("(path resolution failed)"),
+                "Path Resolution Error",
+                &e.to_string(),
+            ))
+            .into_response();
         }
     };
 
     // 检查文件是否存在
     if !file_path.exists() {
-        return Html("<h1>404 - File not found</h1>".to_string()).into_response();
+        return Html(format_error(
+            "handler.rs",
+            31,
+            uri_str,
+            &file_path,
+            "File Not Found",
+            "The requested file does not exist.",
+        ))
+        .into_response();
+    }
+
+    // 检查是否是目录
+    if file_path.is_dir() {
+        return Html(format_error(
+            "handler.rs",
+            52,
+            uri_str,
+            &file_path,
+            "Is a Directory",
+            &format!(
+                "The requested path is a directory, not a file.\n\nHint: Try accessing {}/",
+                uri_str.trim_end_matches('/')
+            ),
+        ))
+        .into_response();
     }
 
     // 读取文件内容
@@ -39,22 +117,40 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
             let mut engine = crate::asp::Engine::new().with_debug(state.config.debug);
             match engine.execute(&content) {
                 Ok(output) => Html(output).into_response(),
-                Err(e) => Html(format!("<pre>Error: {}</pre>", e)).into_response(),
+                Err(e) => Html(format_error(
+                    "simple_engine.rs",
+                    0, // 引擎内部错误
+                    uri_str,
+                    &file_path,
+                    "ASP Execution Error",
+                    &e.to_string(),
+                ))
+                .into_response(),
             }
         }
-        Err(e) => Html(format!("<pre>Error reading file: {}</pre>", e)).into_response(),
+        Err(e) => Html(format_error(
+            "handler.rs",
+            36,
+            uri_str,
+            &file_path,
+            "File Read Error",
+            &e.to_string(),
+        ))
+        .into_response(),
     }
 }
 
 /// 处理静态文件请求
 pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
+    let uri_str = uri.path();
+
     // 使用路径解析器安全解析路径
     let resolver = PathResolver::new(
         state.config.home_dir.clone(),
         state.config.allow_parent_paths,
     );
 
-    let file_path = match resolver.resolve(uri.path()) {
+    let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
             return Response::builder()
@@ -87,7 +183,14 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
     if !file_path.exists() {
         return Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::from("File not found"))
+            .body(Body::from(format_error(
+                "handler.rs",
+                87,
+                uri_str,
+                &file_path,
+                "File Not Found",
+                "The requested file does not exist.",
+            )))
             .unwrap();
     }
 
@@ -103,10 +206,20 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
                 .body(Body::from(content))
                 .unwrap()
         }
-        Err(_) => Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::from("Internal server error"))
-            .unwrap(),
+        Err(e) => {
+            let error_html = format_error(
+                "handler.rs",
+                95,
+                uri_str,
+                &file_path,
+                "File Read Error",
+                &e.to_string(),
+            );
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(error_html))
+                .unwrap()
+        }
     }
 }
 
