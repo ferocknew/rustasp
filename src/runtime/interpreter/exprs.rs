@@ -84,7 +84,7 @@ impl Interpreter {
             _ => ValueConversion::to_string(&index_val),
         };
 
-        match object.as_ref() {
+        match object {
             // 特殊处理 Request 对象
             Expr::Variable(name) if identifier_matches(name, "request") => {
                 // 从 request_data 中获取值
