@@ -74,8 +74,6 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, ParseError> {
 }
 
 fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
-    let comment = just('\'').then_ignore(take_until(just('\n').or(end())));
-
     let string = just('"')
         .ignore_then(filter(|c| *c != '"' && *c != '\n').repeated())
         .then_ignore(just('"'))
@@ -175,9 +173,13 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
 
     let newline = just('\n').map(|_| Token::Newline);
 
-    let token = comment
-        .ignore_then(newline.clone())
-        .or(comment.ignore_then(end()))
+    // 注释：从 ' 到行尾，不产生任何 token（被忽略）
+    // 注释后可能有换行或文件结尾
+    let comment_with_newline = just('\'')
+        .then_ignore(filter(|c| *c != '\n').repeated())
+        .ignore_then(just('\n').map(|_| Token::Newline));
+
+    let token = comment_with_newline
         .or(string)
         .or(number)
         .or(boolean)

@@ -106,11 +106,14 @@ async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
     html.push_str(&format!("<h1>Directory listing for {}</h1>\n", url_path));
     html.push_str("<hr>\n<ul>\n");
 
-    if let Ok(mut entries) = fs::read_dir(dir).await {
-        let mut entries: Vec<_> = entries.filter_map(|e| e.ok()).collect();
-        entries.sort_by_key(|e| e.file_name());
+    if let Ok mut entries = fs::read_dir(dir).await {
+        let mut entry_list = Vec::new();
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            entry_list.push(entry);
+        }
+        entry_list.sort_by_key(|e| e.file_name());
 
-        for entry in entries {
+        for entry in entry_list {
             if let Ok(name) = entry.file_name().into_string() {
                 let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
                 let display_name = if is_dir {
