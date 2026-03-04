@@ -32,3 +32,12 @@ tracing-subscriber = "0.3"
 # 错误处理
 thiserror = "1"
 anyhow = "1"
+
+# MIME 类型
+mime_guess = "2"
+
+# URL 编码
+urlencoding = "2"
+
+# HTML 转义
+html-escape = "0.2"
