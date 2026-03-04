@@ -174,11 +174,26 @@ async fn execute_asp_file(
         }
     };
 
+    // 预处理 include 指令
+    let processed_content = match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
+        Ok(c) => c,
+        Err(e) => {
+            return error_gen.generate(&ErrorInfo::new(
+                "handler.rs",
+                0,
+                uri_str,
+                file_path.display().to_string(),
+                ErrorKind::AspExecution,
+                format!("Include error: {}", e),
+            ));
+        }
+    };
+
     let mut engine = crate::asp::Engine::new()
         .with_debug(state.config.debug)
         .with_request_context(request_ctx.clone());
 
-    match engine.execute(&content) {
+    match engine.execute(&processed_content) {
         Ok(output) => Html(output).into_response(),
         Err(e) => {
             let error_info = ErrorInfo::new(
@@ -189,7 +204,7 @@ async fn execute_asp_file(
                 ErrorKind::AspExecution,
                 e.to_string(),
             )
-            .with_source_code(&content);
+            .with_source_code(&processed_content);
             error_gen.generate(&error_info)
         }
     }

@@ -2,7 +2,7 @@
 //!
 //! 使用 StmtParser + Runtime 执行 ASP 代码
 
-use super::segmenter::{segment, Segment};
+use super::segmenter::{segment_with_pos, Segment};
 use vbscript::parser::{parse_expression, parse_program, tokenize};
 
 use crate::http::RequestContext;
@@ -38,8 +38,8 @@ impl Engine {
 
     /// 执行 ASP 文件
     pub fn execute(&mut self, source: &str) -> Result<String, String> {
-        // 1. 分割代码
-        let segments = segment(source)?;
+        // 1. 分割代码（带位置信息）
+        let segments_with_pos = segment_with_pos(source)?;
 
         // 2. 创建解释器
         let mut interpreter = vbscript::runtime::Interpreter::new();
@@ -66,25 +66,43 @@ impl Engine {
         // 4. 执行每个代码段
         let mut output = String::new();
 
-        for (i, segment) in segments.iter().enumerate() {
-            match segment {
+        for seg in &segments_with_pos {
+            match &seg.segment {
                 Segment::Html(html) => {
                     output.push_str(html);
                 }
                 Segment::Code(code) => {
                     // 词法分析
                     let tokens = tokenize(code).map_err(|e| {
-                        format_error_with_code("Lexer error", &e.to_string(), code, i + 1)
+                        format_error_with_context(
+                            "Lexer error",
+                            &e.to_string(),
+                            code,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     // 语法分析
                     let program = parse_program(tokens).map_err(|e| {
-                        format_error_with_code("Parser error", &e.to_string(), code, i + 1)
+                        format_error_with_context(
+                            "Parser error",
+                            &e.to_string(),
+                            code,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     // 执行
                     interpreter.execute(&program).map_err(|e| {
-                        format_error_with_code("Runtime error", &e.to_string(), code, i + 1)
+                        format_error_with_context(
+                            "Runtime error",
+                            &e.to_string(),
+                            code,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     // 收集输出
@@ -97,16 +115,34 @@ impl Engine {
                 Segment::Expr(expr) => {
                     // 解析并执行表达式
                     let tokens = tokenize(expr).map_err(|e| {
-                        format_error_with_code("Lexer error", &e.to_string(), expr, i + 1)
+                        format_error_with_context(
+                            "Lexer error",
+                            &e.to_string(),
+                            expr,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     let ast = parse_expression(tokens).map_err(|e| {
-                        format_error_with_code("Parser error", &e.to_string(), expr, i + 1)
+                        format_error_with_context(
+                            "Parser error",
+                            &e.to_string(),
+                            expr,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     // 求值
                     let value = interpreter.eval_expr(&ast).map_err(|e| {
-                        format_error_with_code("Runtime error", &e.to_string(), expr, i + 1)
+                        format_error_with_context(
+                            "Runtime error",
+                            &e.to_string(),
+                            expr,
+                            source,
+                            seg.start_line,
+                        )
                     })?;
 
                     // 输出
@@ -126,46 +162,63 @@ impl Default for Engine {
     }
 }
 
-/// 格式化错误信息，包含代码段
-fn format_error_with_code(_error_type: &str, message: &str, code: &str, segment_num: usize) -> String {
-    // 找到错误发生的行（从消息中提取，或者默认第1行）
-    let error_line_num = extract_error_line(message).unwrap_or(1);
+/// 格式化错误信息，包含源文件上下文
+fn format_error_with_context(
+    error_type: &str,
+    message: &str,
+    code: &str,
+    source: &str,
+    start_line: usize,
+) -> String {
+    // 获取源文件行
+    let source_lines: Vec<&str> = source.lines().collect();
+    let code_lines: Vec<&str> = code.lines().collect();
 
-    // 获取代码行
-    let lines: Vec<&str> = code.lines().collect();
-    let total_lines = lines.len();
+    // 确定错误发生的行（从消息中提取相对于代码段的行号）
+    let relative_line = extract_error_line(message).unwrap_or(1);
+    let absolute_line = start_line + relative_line - 1;
 
-    // 确定显示范围（错误行前后各 2 行）
+    // 确定显示范围
     let context_lines = 2;
-    let start_line = (error_line_num.saturating_sub(context_lines + 1)).max(0);
-    let end_line = (error_line_num + context_lines).min(total_lines);
+    let show_start = (absolute_line.saturating_sub(context_lines + 1)).max(0);
+    let show_end = (absolute_line + context_lines).min(source_lines.len());
 
     // 构建代码摘要
     let mut code_summary = String::new();
-    for (idx, line) in lines.iter().enumerate().skip(start_line).take(end_line - start_line) {
+    for (idx, line) in source_lines
+        .iter()
+        .enumerate()
+        .skip(show_start)
+        .take(show_end - show_start)
+    {
         let line_num = idx + 1;
-        let marker = if line_num == error_line_num { " >>>" } else { "    " };
+        let marker = if line_num == absolute_line { " >>>" } else { "    " };
         code_summary.push_str(&format!("{}{:3} | {}\n", marker, line_num, line));
     }
 
-    // 如果错误行超出代码范围，显示前几行
-    if code_summary.is_empty() && !lines.is_empty() {
-        let show_lines = lines.len().min(5);
-        for (idx, line) in lines.iter().enumerate().take(show_lines) {
-            let line_num = idx + 1;
-            let marker = if line_num == 1 { " >>>" } else { "    " };
-            code_summary.push_str(&format!("{}{:3} | {}\n", marker, line_num, line));
-        }
-        if lines.len() > show_lines {
-            code_summary.push_str(&format!("      ... ({} more lines)\n", lines.len() - show_lines));
-        }
-    }
+    // 同时显示代码段信息
+    let code_info = if code_lines.len() > 1 {
+        format!(
+            "\n\nSegment code (lines {}-{}, {} lines):\n{}",
+            start_line,
+            start_line + code_lines.len() - 1,
+            code_lines.len(),
+            code.lines()
+                .take(5)
+                .enumerate()
+                .map(|(i, l)| format!("    {:3} | {}", start_line + i, l))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    } else {
+        String::new()
+    };
 
     format!(
-        "{}\n\nError in segment #{} at line {}:\n{}",
-        message,
-        segment_num,
-        error_line_num,
+        "{}{}\n\nError at line {}:\n{}",
+        error_type,
+        if message.starts_with(error_type) { "" } else { &format!(": {}", message) },
+        absolute_line,
         code_summary.trim_end()
     )
 }
