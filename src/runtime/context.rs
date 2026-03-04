@@ -27,6 +27,8 @@ pub struct Context {
     pub output: String,
     /// 是否应该退出
     pub should_exit: bool,
+    /// 请求参数（用于 Request 对象）
+    pub request_data: HashMap<String, String>,
 }
 
 /// 类定义
@@ -46,6 +48,7 @@ impl Context {
             classes: HashMap::new(),
             output: String::new(),
             should_exit: false,
+            request_data: HashMap::new(),
         }
     }
 
@@ -132,6 +135,16 @@ impl Context {
     /// 清空输出
     pub fn clear_output(&mut self) {
         self.output.clear();
+    }
+
+    /// 设置请求参数
+    pub fn set_request_data(&mut self, data: HashMap<String, String>) {
+        self.request_data = data;
+    }
+
+    /// 获取请求参数
+    pub fn get_request_param(&self, key: &str) -> Option<&String> {
+        self.request_data.get(&key.to_lowercase())
     }
 }
 
