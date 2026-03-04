@@ -20,35 +20,35 @@ impl StmtParser {
         let mut branches = vec![IfBranch { cond, body: vec![] }];
         let mut else_block = None;
 
+        eprintln!("DEBUG parse_if: 开始解析 if 语句体");
         let mut loop_count = 0;
         loop {
-            // 检查是否到达语句结束（支持单行 If 语句）
             let at_end = self.is_at_end();
-            let has_end = self.check_keyword(Keyword::End);
-            let has_else = self.check_keyword(Keyword::Else);
-            let has_elseif = self.check_keyword(Keyword::ElseIf);
+            eprintln!("DEBUG parse_if: 循环检查, pos={}, at_end={}", self.pos, at_end);
 
-            if at_end || has_end || has_else || has_elseif {
-                eprintln!("DEBUG: 循环退出: at_end={}, has_end={}, has_else={}, has_elseif={}",
-                    at_end, has_end, has_else, has_elseif);
+            // 检查是否到达语句结束（支持单行 If 语句）
+            if at_end
+                || self.check_keyword(Keyword::End)
+                || self.check_keyword(Keyword::Else)
+                || self.check_keyword(Keyword::ElseIf)
+            {
+                eprintln!("DEBUG parse_if: 退出循环");
                 break;
             }
 
-            loop_count += 1;
-            if loop_count > 10 {
-                eprintln!("DEBUG: 循环次数过多！当前 pos={}, token={:?}",
-                    self.pos, self.peek());
-                return Err(ParseError::ParserError("If 语句解析超时，可能存在死循环".to_string()));
-            }
-
-            eprintln!("DEBUG: 循环迭代 {}, 调用 parse_stmt", loop_count);
             // 如果没有解析到语句（到达末尾），退出循环
             let stmt = self.parse_stmt()?;
-            eprintln!("DEBUG: parse_stmt 返回: {:?}", stmt.is_some());
+            eprintln!("DEBUG parse_if: parse_stmt 返回 {:?}", stmt.is_some());
             if stmt.is_none() {
                 break;
             }
             branches[0].body.push(stmt.unwrap());
+
+            loop_count += 1;
+            if loop_count > 10 {
+                eprintln!("DEBUG parse_if: 循环次数过多！");
+                return Err(ParseError::ParserError("If 语句解析超时，可能存在死循环".to_string()));
+            }
 
             self.skip_newlines();
         }
