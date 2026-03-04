@@ -3,8 +3,42 @@ name = "vbscript"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "vbscript"
+path = "src/bin/main.rs"
+
 [dependencies]
-actix-web = "4"
-actix-files = "0.6"
+# 异步运行时
 tokio = { version = "1", features = ["full"] }
+
+# Web 框架
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs"] }
+
+# 解析器
+chumsky = "0.9"
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+
+# 配置
 dotenv = "0.15"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# 本地模块
+vbscript_core = { path = "src/lib/vbscript_core" }
+asp_runtime = { path = "src/lib/asp_runtime" }
+asp_host = { path = "src/lib/asp_host" }
+db_adapter = { path = "src/lib/db_adapter" }
+
+[workspace]
+members = [
+    "src/lib/vbscript_core",
+    "src/lib/asp_runtime",
+    "src/lib/asp_host",
+    "src/lib/db_adapter",
+]

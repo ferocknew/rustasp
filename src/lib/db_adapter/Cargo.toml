@@ -1,0 +1,18 @@
+[package]
+name = "db_adapter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vbscript_core = { path = "../vbscript_core" }
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# 数据库驱动（按需启用）
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"], optional = true }
+tiberius = { version = "0.12", features = ["tokio-rustls"], optional = true }
+
+[features]
+default = ["sqlite"]
+sqlite = ["sqlx"]
+mssql = ["tiberius"]
