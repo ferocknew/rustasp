@@ -149,6 +149,9 @@ impl Engine {
                     use vbscript::runtime::ValueConversion;
                     output.push_str(&ValueConversion::to_string(&value));
                 }
+                Segment::Directive(_) => {
+                    // 指令暂不处理，直接跳过
+                }
             }
         }
 
