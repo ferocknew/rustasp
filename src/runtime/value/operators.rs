@@ -1,7 +1,7 @@
 //! 值运算操作
 
-use crate::ast::BinaryOp;
 use super::{Value, ValueConversion};
+use crate::ast::BinaryOp;
 use crate::runtime::error::RuntimeError;
 
 /// 值运算 trait
@@ -13,15 +13,17 @@ pub trait ValueOps {
 impl ValueOps for Value {
     fn binary_op(&self, op: BinaryOp, right: &Value) -> Result<Value, RuntimeError> {
         match op {
-            BinaryOp::Add => {
-                match (self, right) {
-                    (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
-                    (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
-                    (Value::String(a), Value::Number(b)) => Ok(Value::String(format!("{}{}", a, b))),
-                    (Value::Number(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
-                    _ => Ok(Value::String(format!("{}{}", self.to_string(), right.to_string()))),
-                }
-            }
+            BinaryOp::Add => match (self, right) {
+                (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
+                (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
+                (Value::String(a), Value::Number(b)) => Ok(Value::String(format!("{}{}", a, b))),
+                (Value::Number(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
+                _ => Ok(Value::String(format!(
+                    "{}{}",
+                    self.to_string(),
+                    right.to_string()
+                ))),
+            },
             BinaryOp::Sub => {
                 let a = self.to_number();
                 let b = right.to_number();
@@ -64,10 +66,15 @@ impl ValueOps for Value {
                 let b = right.to_number();
                 Ok(Value::Number(a.powf(b)))
             }
-            BinaryOp::Concat => {
-                Ok(Value::String(format!("{}{}", self.to_string(), right.to_string())))
-            }
-            _ => Err(RuntimeError::Generic(format!("Unsupported operator: {:?}", op))),
+            BinaryOp::Concat => Ok(Value::String(format!(
+                "{}{}",
+                self.to_string(),
+                right.to_string()
+            ))),
+            _ => Err(RuntimeError::Generic(format!(
+                "Unsupported operator: {:?}",
+                op
+            ))),
         }
     }
 }

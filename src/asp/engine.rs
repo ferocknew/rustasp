@@ -1,9 +1,9 @@
 //! ASP 执行引擎
 
+use super::segmenter::{Segment, Segmenter};
+use crate::ast::Expr;
 use crate::parser;
 use crate::runtime::Interpreter;
-use crate::ast::Expr;
-use super::segmenter::{Segment, Segmenter};
 
 /// ASP 引擎
 pub struct Engine {
@@ -36,9 +36,10 @@ impl Engine {
                 }
                 Segment::Code(code) => {
                     // 解析并执行代码
-                    let program = parser::parse(&code)
-                        .map_err(|e| format!("Parse error: {}", e))?;
-                    self.interpreter.execute(&program)
+                    let program =
+                        parser::parse(&code).map_err(|e| format!("Parse error: {}", e))?;
+                    self.interpreter
+                        .execute(&program)
                         .map_err(|e| format!("Runtime error: {}", e))?;
                 }
                 Segment::Expr(expr_code) => {
@@ -47,7 +48,9 @@ impl Engine {
                         .map_err(|e| format!("Parse error: {}", e))?;
                     // 这里需要调用解释器的表达式求值
                     // 暂时简化处理
-                    self.interpreter.context_mut().write(&format!("{{{{ {} }}}}", expr_code));
+                    self.interpreter
+                        .context_mut()
+                        .write(&format!("{{{{ {} }}}}", expr_code));
                 }
             }
         }

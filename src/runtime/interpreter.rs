@@ -1,8 +1,8 @@
 //! 解释器 - 调度语句执行
 
-use crate::ast::{Program, Stmt, Expr, BinaryOp, UnaryOp};
+use super::value::{ValueCompare, ValueConversion, ValueOps};
 use super::{Context, RuntimeError, Value};
-use super::value::{ValueConversion, ValueOps, ValueCompare};
+use crate::ast::{BinaryOp, Expr, Program, Stmt, UnaryOp};
 
 /// 解释器
 pub struct Interpreter {
@@ -46,8 +46,17 @@ impl Interpreter {
             Stmt::Const { name, value } => self.eval_const(name, value),
             Stmt::Assignment { target, value } => self.eval_assignment(target, value),
             Stmt::Set { target, value } => self.eval_set(target, value),
-            Stmt::If { branches, else_block } => self.eval_if(branches, else_block),
-            Stmt::For { var, start, end, step, body } => self.eval_for(var, start, end, step.as_ref(), body),
+            Stmt::If {
+                branches,
+                else_block,
+            } => self.eval_if(branches, else_block),
+            Stmt::For {
+                var,
+                start,
+                end,
+                step,
+                body,
+            } => self.eval_for(var, start, end, step.as_ref(), body),
             Stmt::While { cond, body } => self.eval_while(cond, body),
             Stmt::Sub { name, params, body } => self.eval_sub(name, params, body),
             Stmt::Function { name, params, body } => self.eval_function(name, params, body),
@@ -116,7 +125,11 @@ impl Interpreter {
     }
 
     /// 执行 If 语句
-    fn eval_if(&mut self, branches: &[crate::ast::IfBranch], else_block: &Option<Vec<Stmt>>) -> Result<Value, RuntimeError> {
+    fn eval_if(
+        &mut self,
+        branches: &[crate::ast::IfBranch],
+        else_block: &Option<Vec<Stmt>>,
+    ) -> Result<Value, RuntimeError> {
         for branch in branches {
             let cond = self.eval_expr(&branch.cond)?;
             if cond.is_truthy() {
@@ -135,10 +148,20 @@ impl Interpreter {
     }
 
     /// 执行 For 循环
-    fn eval_for(&mut self, var: &str, start: &Expr, end: &Expr, step: Option<&Expr>, body: &[Stmt]) -> Result<Value, RuntimeError> {
+    fn eval_for(
+        &mut self,
+        var: &str,
+        start: &Expr,
+        end: &Expr,
+        step: Option<&Expr>,
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
         let start_val = self.eval_expr(start)?.to_number();
         let end_val = self.eval_expr(end)?.to_number();
-        let step_val = step.map(|e| self.eval_expr(e).map(|v| v.to_number())).transpose()?.unwrap_or(1.0);
+        let step_val = step
+            .map(|e| self.eval_expr(e).map(|v| v.to_number()))
+            .transpose()?
+            .unwrap_or(1.0);
 
         let mut i = start_val;
         let condition = if step_val > 0.0 {
@@ -169,7 +192,12 @@ impl Interpreter {
     }
 
     /// 注册 Sub
-    fn eval_sub(&mut self, name: &str, params: &[crate::ast::Param], body: &[Stmt]) -> Result<Value, RuntimeError> {
+    fn eval_sub(
+        &mut self,
+        name: &str,
+        params: &[crate::ast::Param],
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             name.to_lowercase(),
             super::Function {
@@ -182,7 +210,12 @@ impl Interpreter {
     }
 
     /// 注册 Function
-    fn eval_function(&mut self, name: &str, params: &[crate::ast::Param], body: &[Stmt]) -> Result<Value, RuntimeError> {
+    fn eval_function(
+        &mut self,
+        name: &str,
+        params: &[crate::ast::Param],
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             name.to_lowercase(),
             super::Function {
@@ -236,18 +269,25 @@ impl Interpreter {
             Expr::Nothing => Ok(Value::Nothing),
             Expr::Empty => Ok(Value::Empty),
             Expr::Null => Ok(Value::Null),
-            Expr::Variable(name) => {
-                self.context.get_var(name).cloned()
-                    .ok_or_else(|| RuntimeError::UndefinedVariable(name.clone()))
-            }
+            Expr::Variable(name) => self
+                .context
+                .get_var(name)
+                .cloned()
+                .ok_or_else(|| RuntimeError::UndefinedVariable(name.clone())),
             Expr::Binary { left, op, right } => {
                 let left_val = self.eval_expr(left)?;
                 let right_val = self.eval_expr(right)?;
                 match op {
-                    BinaryOp::Eq | BinaryOp::Ne | BinaryOp::Lt | BinaryOp::Le | BinaryOp::Gt | BinaryOp::Ge |
-                    BinaryOp::And | BinaryOp::Or | BinaryOp::Xor | BinaryOp::Is => {
-                        Ok(left_val.compare(*op, &right_val))
-                    }
+                    BinaryOp::Eq
+                    | BinaryOp::Ne
+                    | BinaryOp::Lt
+                    | BinaryOp::Le
+                    | BinaryOp::Gt
+                    | BinaryOp::Ge
+                    | BinaryOp::And
+                    | BinaryOp::Or
+                    | BinaryOp::Xor
+                    | BinaryOp::Is => Ok(left_val.compare(*op, &right_val)),
                     _ => left_val.binary_op(*op, &right_val),
                 }
             }
@@ -259,7 +299,8 @@ impl Interpreter {
                 }
             }
             Expr::Call { name, args } => {
-                let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+                let arg_values: Result<Vec<Value>, _> =
+                    args.iter().map(|e| self.eval_expr(e)).collect();
                 let _arg_values = arg_values?;
                 // TODO: 实现函数调用
                 Ok(Value::Empty)
@@ -270,10 +311,14 @@ impl Interpreter {
                 Err(RuntimeError::PropertyNotFound(property.clone()))
             }
             Expr::Array(elements) => {
-                let values: Result<Vec<Value>, _> = elements.iter().map(|e| self.eval_expr(e)).collect();
+                let values: Result<Vec<Value>, _> =
+                    elements.iter().map(|e| self.eval_expr(e)).collect();
                 Ok(Value::Array(values?))
             }
-            _ => Err(RuntimeError::Generic(format!("Unimplemented expr: {:?}", expr))),
+            _ => Err(RuntimeError::Generic(format!(
+                "Unimplemented expr: {:?}",
+                expr
+            ))),
         }
     }
 }

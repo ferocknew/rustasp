@@ -1,7 +1,7 @@
 //! Request 对象
 
+use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
-use crate::runtime::{Value, RuntimeError, ValueConversion};
 
 /// Request 对象
 pub struct Request {
@@ -69,7 +69,9 @@ impl crate::runtime::BuiltinObject for Request {
     }
 
     fn set_property(&mut self, _name: &str, _value: Value) -> Result<(), RuntimeError> {
-        Err(RuntimeError::Generic("Request object is read-only".to_string()))
+        Err(RuntimeError::Generic(
+            "Request object is read-only".to_string(),
+        ))
     }
 
     fn call_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
@@ -79,7 +81,9 @@ impl crate::runtime::BuiltinObject for Request {
                     return Ok(Value::Empty);
                 }
                 let key = args[0].to_string().to_lowercase();
-                Ok(self.query_string.get(&key)
+                Ok(self
+                    .query_string
+                    .get(&key)
                     .map(|s| Value::String(s.clone()))
                     .unwrap_or(Value::Empty))
             }
@@ -88,7 +92,9 @@ impl crate::runtime::BuiltinObject for Request {
                     return Ok(Value::Empty);
                 }
                 let key = args[0].to_string().to_lowercase();
-                Ok(self.form.get(&key)
+                Ok(self
+                    .form
+                    .get(&key)
                     .map(|s| Value::String(s.clone()))
                     .unwrap_or(Value::Empty))
             }
@@ -97,7 +103,9 @@ impl crate::runtime::BuiltinObject for Request {
                     return Ok(Value::Empty);
                 }
                 let key = args[0].to_string().to_lowercase();
-                Ok(self.cookies.get(&key)
+                Ok(self
+                    .cookies
+                    .get(&key)
                     .map(|s| Value::String(s.clone()))
                     .unwrap_or(Value::Empty))
             }
@@ -106,7 +114,9 @@ impl crate::runtime::BuiltinObject for Request {
                     return Ok(Value::Empty);
                 }
                 let key = args[0].to_string().to_lowercase();
-                Ok(self.server_variables.get(&key)
+                Ok(self
+                    .server_variables
+                    .get(&key)
                     .map(|s| Value::String(s.clone()))
                     .unwrap_or(Value::Empty))
             }

@@ -1,8 +1,8 @@
 //! 表达式定义
 
-use serde::{Deserialize, Serialize};
 use super::BinaryOp;
 use super::UnaryOp;
+use serde::{Deserialize, Serialize};
 
 /// 表达式
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,15 +28,9 @@ pub enum Expr {
         right: Box<Expr>,
     },
     /// 一元运算
-    Unary {
-        op: UnaryOp,
-        operand: Box<Expr>,
-    },
+    Unary { op: UnaryOp, operand: Box<Expr> },
     /// 函数调用
-    Call {
-        name: String,
-        args: Vec<Expr>,
-    },
+    Call { name: String, args: Vec<Expr> },
     /// 方法调用
     Method {
         object: Box<Expr>,
@@ -44,15 +38,9 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     /// 属性访问
-    Property {
-        object: Box<Expr>,
-        property: String,
-    },
+    Property { object: Box<Expr>, property: String },
     /// 索引访问
-    Index {
-        object: Box<Expr>,
-        index: Box<Expr>,
-    },
+    Index { object: Box<Expr>, index: Box<Expr> },
     /// 数组字面量
     Array(Vec<Expr>),
     /// New 表达式

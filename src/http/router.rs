@@ -1,9 +1,6 @@
 //! 路由配置
 
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 
 use super::handler;
 use super::state::AppState;

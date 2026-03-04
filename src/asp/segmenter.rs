@@ -95,7 +95,10 @@ mod tests {
     fn test_segment_code() {
         let segmenter = Segmenter::new();
         let segments = segmenter.segment("<% Response.Write(\"Hello\") %>");
-        assert_eq!(segments, vec![Segment::Code("Response.Write(\"Hello\")".to_string())]);
+        assert_eq!(
+            segments,
+            vec![Segment::Code("Response.Write(\"Hello\")".to_string())]
+        );
     }
 
     #[test]
@@ -109,10 +112,13 @@ mod tests {
     fn test_segment_mixed() {
         let segmenter = Segmenter::new();
         let segments = segmenter.segment("<html><% Response.Write(\"Hi\") %></html>");
-        assert_eq!(segments, vec![
-            Segment::Html("<html>".to_string()),
-            Segment::Code("Response.Write(\"Hi\")".to_string()),
-            Segment::Html("</html>".to_string()),
-        ]);
+        assert_eq!(
+            segments,
+            vec![
+                Segment::Html("<html>".to_string()),
+                Segment::Code("Response.Write(\"Hi\")".to_string()),
+                Segment::Html("</html>".to_string()),
+            ]
+        );
     }
 }

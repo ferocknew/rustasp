@@ -1,7 +1,7 @@
 //! 值比较操作
 
-use crate::ast::BinaryOp;
 use super::{Value, ValueConversion};
+use crate::ast::BinaryOp;
 
 /// 值比较 trait
 pub trait ValueCompare {
@@ -12,56 +12,37 @@ pub trait ValueCompare {
 impl ValueCompare for Value {
     fn compare(&self, op: BinaryOp, right: &Value) -> Value {
         match op {
-            BinaryOp::Eq => {
-                Value::Boolean(self.equals(right))
-            }
-            BinaryOp::Ne => {
-                Value::Boolean(!self.equals(right))
-            }
-            BinaryOp::Lt => {
-                match (self, right) {
-                    (Value::Number(a), Value::Number(b)) => Value::Boolean(a < b),
-                    (Value::String(a), Value::String(b)) => Value::Boolean(a < b),
-                    _ => Value::Boolean(self.to_number() < right.to_number()),
-                }
-            }
-            BinaryOp::Le => {
-                match (self, right) {
-                    (Value::Number(a), Value::Number(b)) => Value::Boolean(a <= b),
-                    (Value::String(a), Value::String(b)) => Value::Boolean(a <= b),
-                    _ => Value::Boolean(self.to_number() <= right.to_number()),
-                }
-            }
-            BinaryOp::Gt => {
-                match (self, right) {
-                    (Value::Number(a), Value::Number(b)) => Value::Boolean(a > b),
-                    (Value::String(a), Value::String(b)) => Value::Boolean(a > b),
-                    _ => Value::Boolean(self.to_number() > right.to_number()),
-                }
-            }
-            BinaryOp::Ge => {
-                match (self, right) {
-                    (Value::Number(a), Value::Number(b)) => Value::Boolean(a >= b),
-                    (Value::String(a), Value::String(b)) => Value::Boolean(a >= b),
-                    _ => Value::Boolean(self.to_number() >= right.to_number()),
-                }
-            }
-            BinaryOp::And => {
-                Value::Boolean(self.is_truthy() && right.is_truthy())
-            }
-            BinaryOp::Or => {
-                Value::Boolean(self.is_truthy() || right.is_truthy())
-            }
-            BinaryOp::Xor => {
-                Value::Boolean(self.is_truthy() != right.is_truthy())
-            }
-            BinaryOp::Is => {
-                Value::Boolean(matches!((self, right),
-                    (Value::Nothing, Value::Nothing) |
-                    (Value::Null, Value::Null) |
-                    (Value::Empty, Value::Empty)
-                ))
-            }
+            BinaryOp::Eq => Value::Boolean(self.equals(right)),
+            BinaryOp::Ne => Value::Boolean(!self.equals(right)),
+            BinaryOp::Lt => match (self, right) {
+                (Value::Number(a), Value::Number(b)) => Value::Boolean(a < b),
+                (Value::String(a), Value::String(b)) => Value::Boolean(a < b),
+                _ => Value::Boolean(self.to_number() < right.to_number()),
+            },
+            BinaryOp::Le => match (self, right) {
+                (Value::Number(a), Value::Number(b)) => Value::Boolean(a <= b),
+                (Value::String(a), Value::String(b)) => Value::Boolean(a <= b),
+                _ => Value::Boolean(self.to_number() <= right.to_number()),
+            },
+            BinaryOp::Gt => match (self, right) {
+                (Value::Number(a), Value::Number(b)) => Value::Boolean(a > b),
+                (Value::String(a), Value::String(b)) => Value::Boolean(a > b),
+                _ => Value::Boolean(self.to_number() > right.to_number()),
+            },
+            BinaryOp::Ge => match (self, right) {
+                (Value::Number(a), Value::Number(b)) => Value::Boolean(a >= b),
+                (Value::String(a), Value::String(b)) => Value::Boolean(a >= b),
+                _ => Value::Boolean(self.to_number() >= right.to_number()),
+            },
+            BinaryOp::And => Value::Boolean(self.is_truthy() && right.is_truthy()),
+            BinaryOp::Or => Value::Boolean(self.is_truthy() || right.is_truthy()),
+            BinaryOp::Xor => Value::Boolean(self.is_truthy() != right.is_truthy()),
+            BinaryOp::Is => Value::Boolean(matches!(
+                (self, right),
+                (Value::Nothing, Value::Nothing)
+                    | (Value::Null, Value::Null)
+                    | (Value::Empty, Value::Empty)
+            )),
             _ => Value::Boolean(false),
         }
     }

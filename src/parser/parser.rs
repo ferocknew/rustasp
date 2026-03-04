@@ -1,9 +1,11 @@
 //! 语法解析器
 
-use chumsky::prelude::*;
-use crate::ast::{Program, Stmt, Expr, BinaryOp, UnaryOp};
-use super::lexer::{Token, Keyword};
 use super::error::ParseError;
+use super::keyword::Keyword;
+use super::lexer::Token;
+use crate::ast::{BinaryOp, Expr, Program, Stmt, UnaryOp};
+use chumsky::prelude::*;
+use chumsky::Parser as ChumskyParser;
 
 /// 语法解析器
 pub struct Parser;
@@ -41,14 +43,14 @@ pub fn parse_expr_tokens(tokens: &[Token]) -> Result<Expr, ParseError> {
         .map_err(|e| ParseError::ParserError(format!("{:?}", e)))
 }
 
-fn create_parser() -> impl Parser<Token, Program, Error = Simple<Token>> {
+fn create_parser() -> impl ChumskyParser<Token, Program, Error = Simple<Token>> {
     let stmt = create_stmt_parser();
     stmt.then_ignore(just(Token::Newline).or(just(Token::Eof)).repeated())
         .repeated()
         .map(|statements| Program { statements })
 }
 
-fn create_stmt_parser() -> impl Parser<Token, Stmt, Error = Simple<Token>> {
+fn create_stmt_parser() -> impl ChumskyParser<Token, Stmt, Error = Simple<Token>> {
     let expr = create_expr_parser();
 
     // Dim 语句
@@ -58,13 +60,9 @@ fn create_stmt_parser() -> impl Parser<Token, Stmt, Error = Simple<Token>> {
             just(Token::LParen)
                 .ignore_then(create_expr_parser().separated_by(just(Token::Comma)))
                 .then_ignore(just(Token::RParen))
-                .or_not()
+                .or_not(),
         )
-        .then(
-            just(Token::Eq)
-                .ignore_then(create_expr_parser())
-                .or_not()
-        )
+        .then(just(Token::Eq).ignore_then(create_expr_parser()).or_not())
         .map(|((name, sizes), init)| Stmt::Dim {
             name,
             init,
@@ -78,7 +76,7 @@ fn create_stmt_parser() -> impl Parser<Token, Stmt, Error = Simple<Token>> {
     dim_stmt.or(expr_stmt)
 }
 
-fn create_expr_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
+fn create_expr_parser() -> impl ChumskyParser<Token, Expr, Error = Simple<Token>> {
     recursive(|expr| {
         let atom = select! {
             Token::String(s) => Expr::String(s),
@@ -88,7 +86,8 @@ fn create_expr_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
         };
 
         // 成员访问和方法调用
-        let member_or_call = atom.clone()
+        let member_or_call = atom
+            .clone()
             .then(
                 just(Token::Dot)
                     .ignore_then(select! { Token::Ident(name) => name })
@@ -97,10 +96,12 @@ fn create_expr_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
                         .ignore_then(expr.clone().separated_by(just(Token::Comma)))
                         .then_ignore(just(Token::RParen))
                         .map(Either::Right))
-                    .repeated()
-            ).map(|(first, suffixes)| {
-                suffixes.into_iter().fold(first, |acc, suffix| {
-                    match suffix {
+                    .repeated(),
+            )
+            .map(|(first, suffixes)| {
+                suffixes
+                    .into_iter()
+                    .fold(first, |acc, suffix| match suffix {
                         Either::Left(member) => Expr::Property {
                             object: Box::new(acc),
                             property: member,
@@ -113,8 +114,7 @@ fn create_expr_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
                                 args,
                             },
                         },
-                    }
-                })
+                    })
             });
 
         // 一元运算符
@@ -129,7 +129,8 @@ fn create_expr_parser() -> impl Parser<Token, Expr, Error = Simple<Token>> {
             .or(member_or_call);
 
         // 二元运算符
-        let op = just(Token::Plus).map(|_| BinaryOp::Add)
+        let op = just(Token::Plus)
+            .map(|_| BinaryOp::Add)
             .or(just(Token::Minus).map(|_| BinaryOp::Sub))
             .or(just(Token::Star).map(|_| BinaryOp::Mul))
             .or(just(Token::Slash).map(|_| BinaryOp::Div))

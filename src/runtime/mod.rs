@@ -2,17 +2,17 @@
 //!
 //! 执行 AST、管理变量作用域、管理函数调用、实现弱类型系统
 
-mod interpreter;
 mod context;
-mod scope;
 mod error;
+mod interpreter;
+mod scope;
 
 pub mod value;
 
-pub use interpreter::Interpreter;
 pub use context::Context;
-pub use scope::Scope;
 pub use error::RuntimeError;
+pub use interpreter::Interpreter;
+pub use scope::Scope;
 pub use value::Value;
 pub use value::ValueConversion;
 

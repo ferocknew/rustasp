@@ -44,7 +44,13 @@ impl ValueConversion for Value {
     fn to_number(&self) -> f64 {
         match self {
             Value::Number(n) => *n,
-            Value::Boolean(b) => if *b { -1.0 } else { 0.0 },
+            Value::Boolean(b) => {
+                if *b {
+                    -1.0
+                } else {
+                    0.0
+                }
+            }
             Value::String(s) => {
                 if s.is_empty() {
                     0.0

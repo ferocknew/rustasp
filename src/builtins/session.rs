@@ -1,8 +1,8 @@
 //! Session 对象
 
+use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use crate::runtime::{Value, RuntimeError, ValueConversion};
 
 /// Session 存储
 pub type SessionStore = Arc<Mutex<HashMap<String, Value>>>;
@@ -73,7 +73,8 @@ impl crate::runtime::BuiltinObject for Session {
             "timeout" => Ok(Value::Number(self.timeout as f64)),
             _ => {
                 // 尝试获取 Session 值
-                self.get(name).ok_or_else(|| RuntimeError::PropertyNotFound(name.to_string()))
+                self.get(name)
+                    .ok_or_else(|| RuntimeError::PropertyNotFound(name.to_string()))
             }
         }
     }
@@ -102,7 +103,8 @@ impl crate::runtime::BuiltinObject for Session {
                     return Ok(Value::Empty);
                 }
                 let key = args[0].to_string().to_lowercase();
-                self.get(&key).ok_or_else(|| RuntimeError::PropertyNotFound(key))
+                self.get(&key)
+                    .ok_or_else(|| RuntimeError::PropertyNotFound(key))
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }

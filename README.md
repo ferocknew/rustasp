@@ -1,16 +1,132 @@
-# VBScript ASP Server
+# asp-lite - Rust 实现的 Classic ASP 运行时
 
-一个用 Rust 语言实现的 VBScript 解释器，提供 Classic ASP 支持。
+一个用 Rust 实现的 Classic ASP（VBScript 子集）运行时，摆脱 IIS，支持容器化部署。
 
-## 当前功能
+## 项目目标
 
-### HTTP 服务器
-- ASP 文件路由：`.asp` 文件请求会被处理
-- 静态文件服务：其他文件直接返回
-- 目录列表：可配置是否显示目录内容
-- 配置支持：通过 `.env` 文件配置
+- 使用 **Rust** 实现一个 Classic ASP（VBScript 子集）运行时
+- 摆脱 IIS，支持容器化部署
+- 不支持 COM / ActiveX / Windows-only DLL
+- Access 迁移为 SQLite
+- 支持 Nginx 反向代理
+- 强调可维护性、可扩展性、模块解耦
 
-## 配置
+## 架构分层
+
+```
+HTTP 层 (axum)
+    ↓
+ASP 引擎层 (segmenter + engine)
+    ↓
+VBScript Runtime (interpreter + value)
+    ↓
+Parser / AST (chumsky)
+```
+
+## 目录结构
+
+```
+src/
+├── main.rs              # 入口
+│
+├── ast/                 # 抽象语法树（纯数据结构）
+│   ├── mod.rs
+│   ├── op.rs            # 运算符定义
+│   ├── expr.rs          # 表达式
+│   ├── stmt.rs          # 语句
+│   └── program.rs       # 程序
+│
+├── parser/              # 语法解析层
+│   ├── mod.rs
+│   ├── keyword.rs       # 关键字定义
+│   ├── lexer.rs         # 词法分析
+│   ├── parser.rs        # 语法分析
+│   └── error.rs         # 解析错误
+│
+├── runtime/             # 解释执行层
+│   ├── mod.rs
+│   ├── interpreter.rs   # 解释器调度
+│   ├── context.rs       # 执行上下文
+│   ├── scope.rs         # 变量作用域
+│   ├── error.rs         # 运行时错误
+│   └── value/           # 值类型系统
+│       ├── mod.rs
+│       ├── value.rs     # Value 定义
+│       ├── conversion.rs # 类型转换
+│       ├── operators.rs  # 运算操作
+│       ├── compare.rs    # 比较操作
+│       └── display.rs    # 显示格式
+│
+├── builtins/            # ASP 内建对象
+│   ├── mod.rs
+│   ├── response.rs      # Response 对象
+│   ├── request.rs       # Request 对象
+│   ├── server.rs        # Server 对象
+│   └── session.rs       # Session 对象
+│
+├── asp/                 # ASP 引擎层
+│   ├── mod.rs
+│   ├── engine.rs        # 执行引擎
+│   └── segmenter.rs     # 代码分段
+│
+└── http/                # HTTP 服务层
+    ├── mod.rs
+    ├── router.rs        # 路由配置
+    ├── handler.rs       # 请求处理
+    └── state.rs         # 应用状态
+```
+
+## 模块职责
+
+### ast/ - 抽象语法树层
+- 定义 VBScript 语法结构
+- 只包含数据结构，不包含执行逻辑
+- 支持静态分析、代码迁移工具
+
+### parser/ - 语法解析层
+- 词法分析（lexer）
+- 语法分析（parser）
+- 输出 AST，不执行代码
+
+### runtime/ - 解释执行层
+- 执行 AST
+- 管理变量作用域和函数调用
+- 实现 VBScript 弱类型系统
+- value/ 子目录隔离弱类型逻辑
+
+### builtins/ - ASP 内建对象层
+- Response, Request, Server, Session
+- 只实现白名单功能
+- 不支持 COM/ActiveX
+
+### asp/ - ASP 引擎层
+- 分割 HTML 与 `<% %>`
+- 执行脚本片段
+- 拼接输出
+
+### http/ - Web 服务层
+- 路由和文件加载
+- HTTP 响应
+- 不处理 VBScript 逻辑
+
+## 设计原则
+
+### 单一职责
+每个目录代表一个系统维度：语法、执行、内建对象、模板引擎、HTTP
+
+### 控制文件大小
+- 单文件不超过 500 行
+- match 分支过多必须拆文件
+- Value 相关逻辑集中在 value/ 目录
+
+### 子集策略
+支持：Dim, If, Function, 基本表达式, Response.Write
+
+不支持：COM, ActiveX, Windows-only DLL
+
+## 快速开始
+
+### 配置
 
 在项目根目录创建 `.env` 文件：
 
@@ -28,20 +144,17 @@ INDEX_FILE=index.asp
 PORT=8080
 ```
 
-## 快速开始
+### 运行
 
 ```bash
-# 编译项目
-cargo build
-
-# 运行服务器（开发模式）
+# 开发模式
 cargo run
 
-# 运行服务器（ release 模式，性能更好）
+# Release 模式
 cargo run --release
 ```
 
-服务器启动后会显示配置信息：
+服务器启动后会显示：
 ```
 🚀 VBScript ASP Server starting at http://127.0.0.1:8080
 📁 Home directory: ./www
@@ -49,62 +162,41 @@ cargo run --release
 📋 Directory listing: true
 ```
 
-## 使用示例
-
-```bash
-# 访问 ASP 文件
-curl http://127.0.0.1:8080/index.asp
-
-# 访问根目录（返回索引文件或目录列表）
-curl http://127.0.0.1:8080/
-
-# 浏览器访问
-open http://127.0.0.1:8080/
-```
-
-## 项目结构
-
-```
-rust_vbscript/
-├── src/
-│   └── main.rs      # HTTP 服务器入口
-├── www/             # Web 根目录
-│   └── index.asp    # 示例 ASP 文件
-├── .env             # 配置文件
-└── Cargo.toml
-```
-
-## 调试
-
-```bash
-# 编译并显示详细输出
-cargo build --verbose
-
-# 运行并查看日志
-RUST_LOG=debug cargo run
-
-# 检查代码问题
-cargo check
-
-# 运行测试（如果有）
-cargo test
-```
-
 ## 技术栈
 
 - Rust 2021 Edition
-- actix-web 4.x - Web 框架
-- actix-files - 静态文件服务
+- axum 0.7 - Web 框架
+- tower - 中间件
+- chumsky 0.9 - 解析器组合子
 - tokio - 异步运行时
-- dotenv - 环境变量配置
+- serde - 序列化
 
-## 开发计划
+## 开发阶段
 
-- [x] HTTP 服务器基础框架
-- [x] 配置文件支持 (.env)
-- [x] 目录列表功能
-- [ ] VBScript 词法分析器
-- [ ] VBScript 语法解析器
-- [ ] VBScript 解释器
-- [ ] ASP 内置对象 (Response, Request, Session, Application 等)
-- [ ] 数据库连接支持 (ADO)
+### 第一阶段（当前）
+- [x] AST 定义
+- [x] Parser (lexer + parser)
+- [x] 基本 Runtime
+- [x] HTTP 服务器
+- [ ] `<%= %>` 表达式输出
+- [ ] Response.Write
+
+### 第二阶段
+- [ ] 函数支持
+- [ ] 作用域管理
+- [ ] SQLite 支持
+- [ ] Request 对象
+
+### 第三阶段
+- [ ] Session 管理
+- [ ] 完整错误处理
+- [ ] 容器化部署
+- [ ] 生产环境优化
+
+## 总体定位
+
+> 一个安全可控的 Classic ASP 子集运行时
+> 一个面向迁移的过渡引擎
+> 一个容器友好的 IIS 替代方案
+
+不是 100% 复刻 IIS，而是"工程可控的现代化替代实现"。

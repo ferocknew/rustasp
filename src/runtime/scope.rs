@@ -1,7 +1,7 @@
 //! 变量作用域
 
-use std::collections::HashMap;
 use super::Value;
+use std::collections::HashMap;
 
 /// 作用域
 #[derive(Debug, Clone)]
@@ -32,9 +32,9 @@ impl Scope {
     /// 获取变量
     pub fn get(&self, name: &str) -> Option<&Value> {
         let name_lower = name.to_lowercase();
-        self.variables.get(&name_lower).or_else(|| {
-            self.parent.as_ref().and_then(|p| p.get(&name_lower))
-        })
+        self.variables
+            .get(&name_lower)
+            .or_else(|| self.parent.as_ref().and_then(|p| p.get(&name_lower)))
     }
 
     /// 设置变量
@@ -46,8 +46,11 @@ impl Scope {
     /// 检查变量是否存在
     pub fn contains(&self, name: &str) -> bool {
         let name_lower = name.to_lowercase();
-        self.variables.contains_key(&name_lower) ||
-            self.parent.as_ref().map_or(false, |p| p.contains(&name_lower))
+        self.variables.contains_key(&name_lower)
+            || self
+                .parent
+                .as_ref()
+                .map_or(false, |p| p.contains(&name_lower))
     }
 
     /// 在当前作用域定义变量

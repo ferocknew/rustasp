@@ -33,10 +33,9 @@ impl Config {
 
         Config {
             home_dir: PathBuf::from(
-                std::env::var("HOME_DIR").unwrap_or_else(|_| "./www".to_string())
+                std::env::var("HOME_DIR").unwrap_or_else(|_| "./www".to_string()),
             ),
-            index_file: std::env::var("INDEX_FILE")
-                .unwrap_or_else(|_| "index.asp".to_string()),
+            index_file: std::env::var("INDEX_FILE").unwrap_or_else(|_| "index.asp".to_string()),
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()

@@ -1,7 +1,7 @@
 //! 程序定义
 
-use serde::{Deserialize, Serialize};
 use super::Stmt;
+use serde::{Deserialize, Serialize};
 
 /// 程序（顶层 AST）
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -11,7 +11,9 @@ pub struct Program {
 
 impl Program {
     pub fn new() -> Self {
-        Program { statements: Vec::new() }
+        Program {
+            statements: Vec::new(),
+        }
     }
 
     pub fn with_statements(statements: Vec<Stmt>) -> Self {

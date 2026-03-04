@@ -2,12 +2,12 @@
 //!
 //! 只包含数据结构，不包含执行逻辑
 
-mod op;
 mod expr;
-mod stmt;
+mod op;
 mod program;
+mod stmt;
 
-pub use op::{BinaryOp, UnaryOp};
 pub use expr::Expr;
-pub use stmt::{Stmt, IfBranch, Param, ClassMember};
+pub use op::{BinaryOp, UnaryOp};
 pub use program::Program;
+pub use stmt::{ClassMember, IfBranch, Param, Stmt};

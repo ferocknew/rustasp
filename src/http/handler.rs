@@ -11,10 +11,7 @@ use tokio::fs;
 use super::state::AppState;
 
 /// 处理 ASP 请求
-pub async fn handle_asp(
-    uri: Uri,
-    state: AppState,
-) -> impl IntoResponse {
+pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     let path = uri.path().trim_start_matches('/');
     let file_path = state.config.home_dir.join(path);
 
@@ -38,10 +35,7 @@ pub async fn handle_asp(
 }
 
 /// 处理静态文件请求
-pub async fn handle_static(
-    uri: Uri,
-    state: AppState,
-) -> impl IntoResponse {
+pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
     let path = uri.path().trim_start_matches('/');
     let file_path = state.config.home_dir.join(path);
 
@@ -104,7 +98,10 @@ async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
     let mut html = String::new();
     html.push_str("<!DOCTYPE HTML>\n<html lang=\"en\">\n<head>\n");
     html.push_str("<meta charset=\"utf-8\">\n");
-    html.push_str(&format!("<title>Directory listing for {}</title>\n", url_path));
+    html.push_str(&format!(
+        "<title>Directory listing for {}</title>\n",
+        url_path
+    ));
     html.push_str("</head>\n<body>\n");
     html.push_str(&format!("<h1>Directory listing for {}</h1>\n", url_path));
     html.push_str("<hr>\n<ul>\n");
@@ -121,7 +118,10 @@ async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
                 } else {
                     name.clone()
                 };
-                html.push_str(&format!("<li><a href=\"{}\">{}</a></li>\n", name, display_name));
+                html.push_str(&format!(
+                    "<li><a href=\"{}\">{}</a></li>\n",
+                    name, display_name
+                ));
             }
         }
     }

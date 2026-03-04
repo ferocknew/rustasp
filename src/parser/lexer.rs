@@ -1,9 +1,9 @@
 //! 词法分析器
 
+use super::error::ParseError;
+use super::keyword::Keyword;
 use chumsky::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::keyword::Keyword;
-use super::error::ParseError;
 
 /// VBScript Token
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -18,11 +18,26 @@ pub enum Token {
     Keyword(Keyword),
 
     // 运算符
-    Plus, Minus, Star, Slash, Backslash, Caret, Ampersand,
-    Eq, Ne, Lt, Le, Gt, Ge,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Backslash,
+    Caret,
+    Ampersand,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 
     // 分隔符
-    LParen, RParen, Comma, Dot, Colon,
+    LParen,
+    RParen,
+    Comma,
+    Dot,
+    Colon,
 
     // 特殊
     Newline,
@@ -69,7 +84,12 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
 
     let number = filter(|c: &char| c.is_ascii_digit())
         .repeated()
-        .chain(just('.').chain(filter(|c: &char| c.is_ascii_digit()).repeated()).or_not().flatten())
+        .chain(
+            just('.')
+                .chain(filter(|c: &char| c.is_ascii_digit()).repeated())
+                .or_not()
+                .flatten(),
+        )
         .collect::<String>()
         .from_str()
         .unwrapped()
@@ -79,7 +99,8 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
         .map(|_| Token::Boolean(true))
         .or(text::keyword("false").map(|_| Token::Boolean(false)));
 
-    let keyword = text::keyword("dim").map(|_| Token::Keyword(Keyword::Dim))
+    let keyword = text::keyword("dim")
+        .map(|_| Token::Keyword(Keyword::Dim))
         .or(text::keyword("const").map(|_| Token::Keyword(Keyword::Const)))
         .or(text::keyword("if").map(|_| Token::Keyword(Keyword::If)))
         .or(text::keyword("then").map(|_| Token::Keyword(Keyword::Then)))
@@ -130,7 +151,8 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
 
     let ident = text::ident().map(|s: String| Token::Ident(s));
 
-    let op = just('+').map(|_| Token::Plus)
+    let op = just('+')
+        .map(|_| Token::Plus)
         .or(just('-').map(|_| Token::Minus))
         .or(just('*').map(|_| Token::Star))
         .or(just('/').map(|_| Token::Slash))
@@ -144,7 +166,8 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
         .or(just('>').map(|_| Token::Gt))
         .or(just('=').map(|_| Token::Eq));
 
-    let delim = just('(').map(|_| Token::LParen)
+    let delim = just('(')
+        .map(|_| Token::LParen)
         .or(just(')').map(|_| Token::RParen))
         .or(just(',').map(|_| Token::Comma))
         .or(just('.').map(|_| Token::Dot))
@@ -152,7 +175,8 @@ fn create_lexer() -> impl Parser<char, Vec<Token>, Error = Simple<char>> {
 
     let newline = just('\n').map(|_| Token::Newline);
 
-    let token = comment.ignore_then(newline.clone())
+    let token = comment
+        .ignore_then(newline.clone())
         .or(comment.ignore_then(end()))
         .or(string)
         .or(number)

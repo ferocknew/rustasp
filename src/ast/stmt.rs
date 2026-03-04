@@ -1,7 +1,7 @@
 //! 语句定义
 
-use serde::{Deserialize, Serialize};
 use super::Expr;
+use serde::{Deserialize, Serialize};
 
 /// 语句
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,20 +14,11 @@ pub enum Stmt {
         sizes: Vec<Expr>,
     },
     /// Const 常量声明
-    Const {
-        name: String,
-        value: Expr,
-    },
+    Const { name: String, value: Expr },
     /// 赋值语句
-    Assignment {
-        target: Expr,
-        value: Expr,
-    },
+    Assignment { target: Expr, value: Expr },
     /// Set 赋值
-    Set {
-        target: Expr,
-        value: Expr,
-    },
+    Set { target: Expr, value: Expr },
     /// If 语句
     If {
         branches: Vec<IfBranch>,
@@ -48,30 +39,15 @@ pub enum Stmt {
         body: Vec<Stmt>,
     },
     /// Do While 循环
-    DoWhile {
-        cond: Expr,
-        body: Vec<Stmt>,
-    },
+    DoWhile { cond: Expr, body: Vec<Stmt> },
     /// Do Until 循环
-    DoUntil {
-        cond: Expr,
-        body: Vec<Stmt>,
-    },
+    DoUntil { cond: Expr, body: Vec<Stmt> },
     /// Do...Loop While
-    DoLoopWhile {
-        body: Vec<Stmt>,
-        cond: Expr,
-    },
+    DoLoopWhile { body: Vec<Stmt>, cond: Expr },
     /// Do...Loop Until
-    DoLoopUntil {
-        body: Vec<Stmt>,
-        cond: Expr,
-    },
+    DoLoopUntil { body: Vec<Stmt>, cond: Expr },
     /// While...Wend 循环
-    While {
-        cond: Expr,
-        body: Vec<Stmt>,
-    },
+    While { cond: Expr, body: Vec<Stmt> },
     /// Exit For
     ExitFor,
     /// Exit Do
@@ -95,10 +71,7 @@ pub enum Stmt {
         body: Vec<Stmt>,
     },
     /// Call 语句
-    Call {
-        name: String,
-        args: Vec<Expr>,
-    },
+    Call { name: String, args: Vec<Expr> },
     /// 类定义
     Class {
         name: String,

@@ -1,8 +1,8 @@
 //! 执行上下文
 
-use std::collections::HashMap;
 use super::Scope;
 use super::Value;
+use std::collections::HashMap;
 
 /// 函数定义
 #[derive(Debug, Clone)]
@@ -106,7 +106,11 @@ impl Context {
 
     /// 压入新作用域
     pub fn push_scope(&mut self) {
-        let parent = self.scope_stack.last().cloned().unwrap_or_else(|| self.global.clone());
+        let parent = self
+            .scope_stack
+            .last()
+            .cloned()
+            .unwrap_or_else(|| self.global.clone());
         self.scope_stack.push(Scope::with_parent(parent));
     }
 
