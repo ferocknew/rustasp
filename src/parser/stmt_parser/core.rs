@@ -84,7 +84,8 @@ impl StmtParser {
         while !self.is_at_end() && !self.is_stmt_end() {
             tokens.push(self.advance().clone());
         }
-        
+        eprintln!("DEBUG parse_assignment_or_expr: collected tokens={:#?}", tokens);
+
         // 检查是否是赋值语句（查找非表达式内的 =）
         if let Some(eq_pos) = find_assignment_eq(&tokens) {
             // 分割为 target 和 value
@@ -120,7 +121,9 @@ impl StmtParser {
         }
         
         // 普通表达式
+        eprintln!("DEBUG before push Eof: tokens.len()={}, last token={:?}", tokens.len(), tokens.last());
         tokens.push(Token::Eof);
+        eprintln!("DEBUG after push Eof: tokens.len()={}, last token={:?}", tokens.len(), tokens.last());
         let expr = crate::parser::expr_parser::parse_expression(tokens)?;
         Ok(Some(Stmt::Expr(expr)))
     }

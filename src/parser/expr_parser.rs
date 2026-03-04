@@ -20,6 +20,7 @@ impl ExprParser {
 
     /// 解析表达式（入口函数）
     pub fn parse(&mut self) -> Result<Expr, ParseError> {
+        eprintln!("DEBUG parse(): tokens={:#?}, len={}", self.tokens, self.tokens.len());
         let expr = self.parse_expression(0)?;
         eprintln!("DEBUG: After parse_expression, pos={}, len={}, peek={:?}", self.pos, self.tokens.len(), self.peek());
         self.expect_end()?;
