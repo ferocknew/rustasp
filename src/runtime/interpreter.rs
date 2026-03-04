@@ -1,7 +1,7 @@
 //! 解释器 - 调度语句执行
 
 use super::value::{ValueCompare, ValueConversion, ValueOps};
-use super::{Context, RuntimeError, Value};
+use super::{Context, Function, RuntimeError, Value};
 use crate::ast::{BinaryOp, Expr, Program, Stmt, UnaryOp};
 
 /// 解释器
@@ -200,7 +200,7 @@ impl Interpreter {
     ) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             name.to_lowercase(),
-            super::Function {
+            Function {
                 name: name.to_string(),
                 params: params.iter().map(|p| p.name.clone()).collect(),
                 body: body.to_vec(),
@@ -218,7 +218,7 @@ impl Interpreter {
     ) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             name.to_lowercase(),
-            super::Function {
+            Function {
                 name: name.to_string(),
                 params: params.iter().map(|p| p.name.clone()).collect(),
                 body: body.to_vec(),
@@ -261,7 +261,7 @@ impl Interpreter {
     }
 
     /// 求值表达式
-    fn eval_expr(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
+    pub fn eval_expr(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
         match expr {
             Expr::Number(n) => Ok(Value::Number(*n)),
             Expr::String(s) => Ok(Value::String(s.clone())),

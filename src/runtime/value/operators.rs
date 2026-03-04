@@ -20,8 +20,8 @@ impl ValueOps for Value {
                 (Value::Number(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
                 _ => Ok(Value::String(format!(
                     "{}{}",
-                    self.to_string(),
-                    right.to_string()
+                    ValueConversion::to_string(self),
+                    ValueConversion::to_string(right)
                 ))),
             },
             BinaryOp::Sub => {
@@ -68,8 +68,8 @@ impl ValueOps for Value {
             }
             BinaryOp::Concat => Ok(Value::String(format!(
                 "{}{}",
-                self.to_string(),
-                right.to_string()
+                ValueConversion::to_string(self),
+                ValueConversion::to_string(right)
             ))),
             _ => Err(RuntimeError::Generic(format!(
                 "Unsupported operator: {:?}",

@@ -9,27 +9,12 @@ mod scope;
 
 pub mod value;
 
-pub use context::Context;
+pub use context::{ClassDef, Context, Function};
 pub use error::RuntimeError;
 pub use interpreter::Interpreter;
 pub use scope::Scope;
 pub use value::Value;
 pub use value::ValueConversion;
-
-/// 函数定义
-#[derive(Debug, Clone)]
-pub struct Function {
-    pub name: String,
-    pub params: Vec<String>,
-    pub body: Vec<crate::ast::Stmt>,
-}
-
-/// 类定义
-#[derive(Debug, Clone)]
-pub struct ClassDef {
-    pub name: String,
-    pub members: Vec<crate::ast::ClassMember>,
-}
 
 /// 内置对象 trait
 pub trait BuiltinObject: Send + Sync {

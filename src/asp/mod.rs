@@ -1,5 +1,7 @@
-//! ASP 引擎模块（简化版）
+//! ASP 引擎模块
 
-mod simple_engine;
+mod segmenter;
+mod engine;
 
-pub use simple_engine::SimpleEngine as Engine;
+pub use engine::Engine;
+pub use segmenter::Segment;

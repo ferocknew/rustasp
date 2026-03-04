@@ -81,7 +81,7 @@ impl ValueConversion for Value {
             Value::Null => "Null".to_string(),
             Value::Nothing => "Nothing".to_string(),
             Value::Array(arr) => {
-                let items: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
+                let items: Vec<String> = arr.iter().map(|v| ValueConversion::to_string(v)).collect();
                 items.join(", ")
             }
             Value::Object(_) => "[object]".to_string(),
