@@ -2,31 +2,14 @@
 //!
 //! 处理各种 VBScript 语句的执行逻辑
 
-use crate::ast::{Expr, IfBranch, Param, Stmt};
-use crate::runtime::{Context, Function, RuntimeError, Value, ValueConversion};
+use crate::ast::{BinaryOp, Expr, IfBranch, Param, Stmt};
+use crate::runtime::{Context, Function, RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::utils::normalize_identifier;
 
 use super::Interpreter;
 
 /// 语句执行器
-pub struct StmtExecutor<'a> {
-    interpreter: &'a mut Interpreter,
-}
-
-impl<'a> StmtExecutor<'a> {
-    pub fn new(interpreter: &'a mut Interpreter) -> Self {
-        StmtExecutor { interpreter }
-    }
-
-    /// 获取上下文引用
-    pub fn context(&self) -> &Context {
-        self.interpreter.context()
-    }
-
-    /// 获取可变上下文引用
-    pub fn context_mut(&mut self) -> &mut Context {
-        self.interpreter.context_mut()
-    }
-
+impl Interpreter {
     /// 执行语句（调度）
     pub fn eval_stmt(&mut self, stmt: &Stmt) -> Result<Value, RuntimeError> {
         match stmt {
@@ -62,7 +45,7 @@ impl<'a> StmtExecutor<'a> {
                 // 当前实现暂时忽略，不强制检查
                 Ok(Value::Empty)
             }
-            Stmt::Expr(expr) => self.interpreter.eval_expr(expr),
+            Stmt::Expr(expr) => self.eval_expr(expr),
             _ => Err(RuntimeError::Generic(format!("Unimplemented: {:?}", stmt))),
         }
     }
@@ -70,40 +53,40 @@ impl<'a> StmtExecutor<'a> {
     /// 执行 Dim 语句
     fn eval_dim(&mut self, name: &str, init: Option<&Expr>) -> Result<Value, RuntimeError> {
         let value = if let Some(expr) = init {
-            self.interpreter.eval_expr(expr)?
+            self.eval_expr(expr)?
         } else {
             Value::Empty
         };
-        self.context_mut().define_var(name.to_string(), value);
+        self.context.define_var(name.to_string(), value);
         Ok(Value::Empty)
     }
 
     /// 执行 Const 语句
     fn eval_const(&mut self, name: &str, value: &Expr) -> Result<Value, RuntimeError> {
-        let val = self.interpreter.eval_expr(value)?;
-        self.context_mut().define_var(name.to_string(), val);
+        let val = self.eval_expr(value)?;
+        self.context.define_var(name.to_string(), val);
         Ok(Value::Empty)
     }
 
     /// 执行赋值语句
     fn eval_assignment(&mut self, target: &Expr, value: &Expr) -> Result<Value, RuntimeError> {
-        let val = self.interpreter.eval_expr(value)?;
+        let val = self.eval_expr(value)?;
         match target {
             Expr::Variable(name) => {
-                self.context_mut().set_var(name.clone(), val);
+                self.context.set_var(name.clone(), val);
                 Ok(Value::Empty)
             }
             Expr::Index { object, index } => {
-                let idx = self.interpreter.eval_expr(index)?;
+                let idx = self.eval_expr(index)?;
                 match object.as_ref() {
                     Expr::Variable(name) => {
-                        if let Some(Value::Array(arr)) = self.context().get_var(name).cloned() {
+                        if let Some(Value::Array(arr)) = self.context.get_var(name).cloned() {
                             let mut arr = arr;
                             if let Value::Number(i) = idx {
                                 let i = i as usize;
                                 if i < arr.len() {
                                     arr[i] = val;
-                                    self.context_mut().set_var(name.clone(), Value::Array(arr));
+                                    self.context.set_var(name.clone(), Value::Array(arr));
                                     return Ok(Value::Empty);
                                 }
                             }
@@ -129,7 +112,7 @@ impl<'a> StmtExecutor<'a> {
         else_block: &Option<Vec<Stmt>>,
     ) -> Result<Value, RuntimeError> {
         for branch in branches {
-            let cond = self.interpreter.eval_expr(&branch.cond)?;
+            let cond = self.eval_expr(&branch.cond)?;
             if cond.is_truthy() {
                 for stmt in &branch.body {
                     self.eval_stmt(stmt)?;
@@ -154,10 +137,10 @@ impl<'a> StmtExecutor<'a> {
         step: Option<&Expr>,
         body: &[Stmt],
     ) -> Result<Value, RuntimeError> {
-        let start_val = self.interpreter.eval_expr(start)?.to_number();
-        let end_val = self.interpreter.eval_expr(end)?.to_number();
+        let start_val = self.eval_expr(start)?.to_number();
+        let end_val = self.eval_expr(end)?.to_number();
         let step_val = step
-            .map(|e| self.interpreter.eval_expr(e).map(|v| v.to_number()))
+            .map(|e| self.eval_expr(e).map(|v| v.to_number()))
             .transpose()?
             .unwrap_or(1.0);
 
@@ -169,8 +152,7 @@ impl<'a> StmtExecutor<'a> {
         };
 
         while condition(i, end_val) {
-            self.context_mut()
-                .define_var(var.to_string(), Value::Number(i));
+            self.context.define_var(var.to_string(), Value::Number(i));
             for stmt in body {
                 self.eval_stmt(stmt)?;
             }
@@ -182,7 +164,7 @@ impl<'a> StmtExecutor<'a> {
 
     /// 执行 While 循环
     fn eval_while(&mut self, cond: &Expr, body: &[Stmt]) -> Result<Value, RuntimeError> {
-        while self.interpreter.eval_expr(cond)?.is_truthy() {
+        while self.eval_expr(cond)?.is_truthy() {
             for stmt in body {
                 self.eval_stmt(stmt)?;
             }
@@ -197,18 +179,15 @@ impl<'a> StmtExecutor<'a> {
         cases: &[crate::ast::CaseClause],
         else_block: &Option<Vec<Stmt>>,
     ) -> Result<Value, RuntimeError> {
-        use crate::ast::BinaryOp;
-        use crate::runtime::ValueCompare;
-
         // 计算表达式的值
-        let select_value = self.interpreter.eval_expr(expr)?;
+        let select_value = self.eval_expr(expr)?;
 
         // 遍历所有 Case 分支
         for case in cases {
             if let Some(values) = &case.values {
                 // 检查是否有匹配的值
                 for value_expr in values {
-                    let case_value = self.interpreter.eval_expr(value_expr)?;
+                    let case_value = self.eval_expr(value_expr)?;
                     // 使用 compare 方法进行相等比较
                     let result = select_value.compare(BinaryOp::Eq, &case_value);
                     if let Value::Boolean(true) = result {
@@ -239,8 +218,8 @@ impl<'a> StmtExecutor<'a> {
         params: &[Param],
         body: &[Stmt],
     ) -> Result<Value, RuntimeError> {
-        self.context_mut().functions.insert(
-            name.to_lowercase(),
+        self.context.functions.insert(
+            normalize_identifier(name),
             Function {
                 name: name.to_string(),
                 params: params.iter().map(|p| p.name.clone()).collect(),
@@ -257,8 +236,8 @@ impl<'a> StmtExecutor<'a> {
         params: &[Param],
         body: &[Stmt],
     ) -> Result<Value, RuntimeError> {
-        self.context_mut().functions.insert(
-            name.to_lowercase(),
+        self.context.functions.insert(
+            normalize_identifier(name),
             Function {
                 name: name.to_string(),
                 params: params.iter().map(|p| p.name.clone()).collect(),
@@ -270,15 +249,15 @@ impl<'a> StmtExecutor<'a> {
 
     /// 执行 Call 语句
     fn eval_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
-        let _args: Result<Vec<Value>, _> = args.iter().map(|e| self.interpreter.eval_expr(e)).collect();
+        let _args: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
         // 简化：直接调用函数
-        let name_lower = name.to_lowercase();
-        if let Some(func) = self.context().functions.get(&name_lower).cloned() {
-            self.context_mut().push_scope();
+        let name_lower = normalize_identifier(name);
+        if let Some(func) = self.context.functions.get(&name_lower).cloned() {
+            self.context.push_scope();
             for stmt in &func.body {
                 self.eval_stmt(stmt)?;
             }
-            self.context_mut().pop_scope();
+            self.context.pop_scope();
         }
         Ok(Value::Empty)
     }
@@ -291,13 +270,13 @@ impl<'a> StmtExecutor<'a> {
 
     /// Exit Function
     fn eval_exit_function(&mut self) -> Result<Value, RuntimeError> {
-        self.context_mut().should_exit = true;
+        self.context.should_exit = true;
         Ok(Value::Empty)
     }
 
     /// Exit Sub
     fn eval_exit_sub(&mut self) -> Result<Value, RuntimeError> {
-        self.context_mut().should_exit = true;
+        self.context.should_exit = true;
         Ok(Value::Empty)
     }
 }
