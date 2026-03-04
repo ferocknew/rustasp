@@ -8,9 +8,6 @@ mod lexer;
 mod parser;
 
 pub use error::ParseError;
-pub use keyword::Keyword;
-pub use lexer::{Lexer, Token};
-pub use parser::Parser;
 
 /// 解析源代码为 AST
 pub fn parse(source: &str) -> Result<crate::ast::Program, ParseError> {
