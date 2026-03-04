@@ -384,23 +384,24 @@ impl Interpreter {
                             None => Ok(Value::Empty),
                         }
                     }
-                    // 处理数组访问
+                    // 处理数组或对象/字典访问
                     Expr::Variable(name) => {
-                        if let Some(Value::Array(arr)) = self.context.get_var(name).cloned() {
-                            if let Value::Number(i) = index_val {
-                                let i = i as usize;
-                                if i < arr.len() {
-                                    return Ok(arr[i].clone());
+                        if let Some(value) = self.context.get_var(name).cloned() {
+                            match value {
+                                Value::Array(arr) => {
+                                    if let Value::Number(i) = index_val {
+                                        let i = i as usize;
+                                        if i < arr.len() {
+                                            return Ok(arr[i].clone());
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        Err(RuntimeError::InvalidIndex)
-                    }
-                    // 处理对象/字典访问
-                    Expr::Variable(name) => {
-                        if let Some(Value::Object(obj)) = self.context.get_var(name).cloned() {
-                            if let Some(value) = obj.get(&index_key) {
-                                return Ok(value.clone());
+                                Value::Object(obj) => {
+                                    if let Some(v) = obj.get(&index_key) {
+                                        return Ok(v.clone());
+                                    }
+                                }
+                                _ => {}
                             }
                         }
                         Err(RuntimeError::InvalidIndex)
