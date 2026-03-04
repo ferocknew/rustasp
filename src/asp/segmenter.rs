@@ -143,12 +143,6 @@ impl Segmenter {
     }
 }
 
-/// 分割 ASP 源代码（便捷函数）
-pub fn segment(source: &str) -> Result<Vec<Segment>, String> {
-    let mut segmenter = Segmenter::new(source);
-    segmenter.segment()
-}
-
 /// 分割 ASP 源代码，返回带位置信息的段列表
 pub fn segment_with_pos(source: &str) -> Result<Vec<SegmentWithPos>, String> {
     let mut segmenter = Segmenter::new(source);
@@ -162,24 +156,24 @@ mod tests {
     #[test]
     fn test_html_only() {
         let mut segmenter = Segmenter::new("<html><body>Hello</body></html>");
-        let segments = segmenter.segment().unwrap();
+        let segments = segmenter.segment_with_pos().unwrap();
         assert_eq!(segments.len(), 1);
-        assert!(matches!(&segments[0], Segment::Html(s) if s.contains("Hello")));
+        assert!(matches!(&segments[0].segment, Segment::Html(s) if s.contains("Hello")));
     }
 
     #[test]
     fn test_code_block() {
         let mut segmenter = Segmenter::new("<html><% Response.Write \"Hi\" %></html>");
-        let segments = segmenter.segment().unwrap();
+        let segments = segmenter.segment_with_pos().unwrap();
         assert_eq!(segments.len(), 3);
-        assert!(matches!(&segments[1], Segment::Code(s) if s.contains("Response.Write")));
+        assert!(matches!(&segments[1].segment, Segment::Code(s) if s.contains("Response.Write")));
     }
 
     #[test]
     fn test_expression() {
         let mut segmenter = Segmenter::new("<html><%= name %></html>");
-        let segments = segmenter.segment().unwrap();
+        let segments = segmenter.segment_with_pos().unwrap();
         assert_eq!(segments.len(), 3);
-        assert!(matches!(&segments[1], Segment::Expr(s) if s == "name"));
+        assert!(matches!(&segments[1].segment, Segment::Expr(s) if s == "name"));
     }
 }
