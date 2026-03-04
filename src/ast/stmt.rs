@@ -48,6 +48,12 @@ pub enum Stmt {
     DoLoopUntil { body: Vec<Stmt>, cond: Expr },
     /// While...Wend 循环
     While { cond: Expr, body: Vec<Stmt> },
+    /// Select Case 语句
+    Select {
+        expr: Expr,
+        cases: Vec<CaseClause>,
+        else_block: Option<Vec<Stmt>>,
+    },
     /// Exit For
     ExitFor,
     /// Exit Do
@@ -125,6 +131,15 @@ pub enum Stmt {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IfBranch {
     pub cond: Expr,
+    pub body: Vec<Stmt>,
+}
+
+/// Case 分支
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CaseClause {
+    /// Case 的值列表，None 表示 Case Else
+    pub values: Option<Vec<Expr>>,
+    /// Case 的执行体
     pub body: Vec<Stmt>,
 }
 
