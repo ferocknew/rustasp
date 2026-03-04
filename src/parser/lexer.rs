@@ -174,17 +174,26 @@ impl Lexer {
         while self.pos < self.input.len() {
             let ch = self.input[self.pos];
             if ch == '"' {
-                self.advance();
-                return Ok(Token::String(content));
-            }
-            if ch == '\n' {
+                // VBScript 转义: "" 表示一个双引号
+                if self.peek(1) == '"' {
+                    // 两个双引号 -> 一个双引号
+                    content.push('"');
+                    self.advance(); // 跳过第一个 "
+                    self.advance(); // 跳过第二个 "
+                } else {
+                    // 单个双引号 -> 字符串结束
+                    self.advance();
+                    return Ok(Token::String(content));
+                }
+            } else if ch == '\n' {
                 return Err(ParseError::LexerError(format!(
                     "Unterminated string at line {}",
                     self.line
                 )));
+            } else {
+                content.push(ch);
+                self.advance();
             }
-            content.push(ch);
-            self.advance();
         }
 
         Err(ParseError::LexerError(format!(

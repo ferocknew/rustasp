@@ -13,6 +13,17 @@ pub enum Segment {
     Expr(String),
 }
 
+/// 带位置信息的代码段
+#[derive(Debug, Clone)]
+pub struct SegmentWithPos {
+    /// 代码段内容
+    pub segment: Segment,
+    /// 在源文件中的起始行号（1-indexed）
+    pub start_line: usize,
+    /// 在源文件中的结束行号（1-indexed）
+    pub end_line: usize,
+}
+
 /// ASP 分段器
 pub struct Segmenter {
     source: String,
@@ -30,20 +41,48 @@ impl Segmenter {
 
     /// 分割源代码为段列表
     pub fn segment(&mut self) -> Result<Vec<Segment>, String> {
+        let segments_with_pos = self.segment_with_pos()?;
+        Ok(segments_with_pos.into_iter().map(|s| s.segment).collect())
+    }
+
+    /// 分割源代码为带位置信息的段列表
+    pub fn segment_with_pos(&mut self) -> Result<Vec<SegmentWithPos>, String> {
         let mut segments = Vec::new();
+
+        // 计算行号
+        let line_starts: Vec<usize> = std::iter::once(0)
+            .chain(self.source.match_indices('\n').map(|(i, _)| i + 1))
+            .collect();
+
+        let get_line_number = |pos: usize| -> usize {
+            for (idx, &start) in line_starts.iter().enumerate() {
+                if start > pos {
+                    return idx;
+                }
+            }
+            line_starts.len()
+        };
 
         while self.pos < self.source.len() {
             // 查找下一个 <% 标签
             if let Some(start) = self.source[self.pos..].find("<%") {
+                let abs_start = self.pos + start;
+
                 // 添加前面的 HTML
                 if start > 0 {
-                    let html = self.source[self.pos..self.pos + start].to_string();
+                    let html = self.source[self.pos..abs_start].to_string();
                     if !html.is_empty() {
-                        segments.push(Segment::Html(html));
+                        let html_start_line = get_line_number(self.pos);
+                        let html_end_line = get_line_number(abs_start);
+                        segments.push(SegmentWithPos {
+                            segment: Segment::Html(html),
+                            start_line: html_start_line,
+                            end_line: html_end_line,
+                        });
                     }
                 }
 
-                self.pos += start + 2; // 跳过 <%
+                self.pos = abs_start + 2; // 跳过 <%
 
                 // 检查是否是表达式 <%= %>
                 let is_expr = self.source[self.pos..].starts_with('=');
@@ -54,15 +93,27 @@ impl Segmenter {
 
                 // 查找结束标签 %>
                 if let Some(end) = self.source[self.pos..].find("%>") {
-                    let code = self.source[self.pos..self.pos + end].to_string();
+                    let abs_end = self.pos + end;
+                    let code = self.source[self.pos..abs_end].to_string();
+
+                    let code_start_line = get_line_number(abs_start);
+                    let code_end_line = get_line_number(abs_end);
 
                     if is_expr {
-                        segments.push(Segment::Expr(code.trim().to_string()));
+                        segments.push(SegmentWithPos {
+                            segment: Segment::Expr(code.trim().to_string()),
+                            start_line: code_start_line,
+                            end_line: code_end_line,
+                        });
                     } else {
-                        segments.push(Segment::Code(code.trim().to_string()));
+                        segments.push(SegmentWithPos {
+                            segment: Segment::Code(code.trim().to_string()),
+                            start_line: code_start_line,
+                            end_line: code_end_line,
+                        });
                     }
 
-                    self.pos += end + 2; // 跳过 %>
+                    self.pos = abs_end + 2; // 跳过 %>
                 } else {
                     return Err("Unclosed <% tag".to_string());
                 }
@@ -70,7 +121,13 @@ impl Segmenter {
                 // 没有更多标签，添加剩余 HTML
                 let html = self.source[self.pos..].to_string();
                 if !html.is_empty() {
-                    segments.push(Segment::Html(html));
+                    let html_start_line = get_line_number(self.pos);
+                    let html_end_line = line_starts.len();
+                    segments.push(SegmentWithPos {
+                        segment: Segment::Html(html),
+                        start_line: html_start_line,
+                        end_line: html_end_line,
+                    });
                 }
                 break;
             }
@@ -84,6 +141,12 @@ impl Segmenter {
 pub fn segment(source: &str) -> Result<Vec<Segment>, String> {
     let mut segmenter = Segmenter::new(source);
     segmenter.segment()
+}
+
+/// 分割 ASP 源代码，返回带位置信息的段列表
+pub fn segment_with_pos(source: &str) -> Result<Vec<SegmentWithPos>, String> {
+    let mut segmenter = Segmenter::new(source);
+    segmenter.segment_with_pos()
 }
 
 #[cfg(test)]
