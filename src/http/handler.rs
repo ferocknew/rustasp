@@ -149,17 +149,71 @@ pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> im
 
     // 检查是否是目录
     if file_path.is_dir() {
+        // 尝试返回索引文件
+        let index_path = file_path.join(&state.config.index_file);
+        if index_path.exists() {
+            // 读取索引文件内容
+            match fs::read_to_string(&index_path).await {
+                Ok(content) => {
+                    let mut engine = crate::asp::Engine::new()
+                        .with_debug(state.config.debug)
+                        .with_request_context(request_ctx);
+                    match engine.execute(&content) {
+                        Ok(output) => return Html(output).into_response(),
+                        Err(e) => {
+                            let error_html = if state.config.detailed_error {
+                                format_detailed_error(
+                                    "engine.rs",
+                                    0,
+                                    uri_str,
+                                    &index_path,
+                                    "ASP Execution Error",
+                                    &e.to_string(),
+                                )
+                            } else {
+                                match load_custom_error_page(&state).await {
+                                    Some(custom) => custom,
+                                    None => format_simple_error(),
+                                }
+                            };
+                            return Html(error_html).into_response();
+                        }
+                    }
+                }
+                Err(e) => {
+                    let error_html = if state.config.detailed_error {
+                        format_detailed_error(
+                            "handler.rs",
+                            155,
+                            uri_str,
+                            &index_path,
+                            "Index File Read Error",
+                            &e.to_string(),
+                        )
+                    } else {
+                        match load_custom_error_page(&state).await {
+                            Some(custom) => custom,
+                            None => format_simple_error(),
+                        }
+                    };
+                    return Html(error_html).into_response();
+                }
+            }
+        }
+
+        // 显示目录列表
+        if state.config.directory_listing {
+            return generate_directory_listing(&file_path, uri.path()).await;
+        }
+
         let error_html = if state.config.detailed_error {
             format_detailed_error(
                 "handler.rs",
-                122,
+                180,
                 uri_str,
                 &file_path,
-                "Is a Directory",
-                &format!(
-                    "The requested path is a directory, not a file.\n\nHint: Try accessing {}/",
-                    uri_str.trim_end_matches('/')
-                ),
+                "Directory Listing Disabled",
+                "Directory listing is disabled and no index file found.",
             )
         } else {
             match load_custom_error_page(&state).await {
