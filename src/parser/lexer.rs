@@ -266,6 +266,8 @@ impl Lexer {
             "else" => Some(Keyword::Else),
             "elseif" => Some(Keyword::ElseIf),
             "end" => Some(Keyword::End),
+            "select" => Some(Keyword::Select),
+            "case" => Some(Keyword::Case),
             "for" => Some(Keyword::For),
             "to" => Some(Keyword::To),
             "step" => Some(Keyword::Step),
