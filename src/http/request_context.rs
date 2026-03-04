@@ -49,9 +49,23 @@ impl RequestContext {
             return HashMap::new();
         }
 
-        urlencoded::parse(query.as_bytes())
-            .into_owned()
-            .collect()
+        urlencoding::decode(query)
+            .map(|decoded| {
+                decoded
+                    .split('&')
+                    .filter_map(|pair| {
+                        let parts: Vec<&str> = pair.splitn(2, '=').collect();
+                        if parts.len() == 2 {
+                            Some((parts[0].to_lowercase(), parts[1].to_string()))
+                        } else if !parts[0].is_empty() {
+                            Some((parts[0].to_lowercase(), String::new()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// 解析表单数据
@@ -60,9 +74,23 @@ impl RequestContext {
             return HashMap::new();
         }
 
-        urlencoded::parse(body.as_bytes())
-            .into_owned()
-            .collect()
+        urlencoding::decode(body)
+            .map(|decoded| {
+                decoded
+                    .split('&')
+                    .filter_map(|pair| {
+                        let parts: Vec<&str> = pair.splitn(2, '=').collect();
+                        if parts.len() == 2 {
+                            Some((parts[0].to_lowercase(), parts[1].to_string()))
+                        } else if !parts[0].is_empty() {
+                            Some((parts[0].to_lowercase(), String::new()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// 解析 Cookie 头
@@ -86,7 +114,6 @@ impl RequestContext {
 
     /// 从 axum Request 构建请求上下文
     pub async fn from_request(request: axum::http::Request<axum::body::Body>) -> Self {
-        use axum::body::Body;
         use axum::http::{header, Method};
 
         let method = request.method().to_string();
