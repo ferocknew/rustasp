@@ -374,7 +374,7 @@ impl Interpreter {
                     Value::String(s) => s.clone(),
                     _ => ValueConversion::to_string(&index_val),
                 };
-                
+
                 match object.as_ref() {
                     // 特殊处理 Request 对象
                     Expr::Variable(name) if name.to_lowercase() == "request" => {
@@ -384,8 +384,16 @@ impl Interpreter {
                             None => Ok(Value::Empty),
                         }
                     }
-                    // 处理数组或对象/字典访问
+                    // 处理数组或对象/字典访问，或内置函数调用
                     Expr::Variable(name) => {
+                        let name_lower = name.to_lowercase();
+
+                        // 检查是否是内置函数调用
+                        if let Some(result) = self.call_builtin_function(&name_lower, &index_val) {
+                            return result;
+                        }
+
+                        // 检查变量是否是数组或对象
                         if let Some(value) = self.context.get_var(name).cloned() {
                             match value {
                                 Value::Array(arr) => {
@@ -413,6 +421,121 @@ impl Interpreter {
                 "Unimplemented expr: {:?}",
                 expr
             ))),
+        }
+    }
+
+    /// 调用内置函数（用于处理类似 CInt(x) 的调用）
+    fn call_builtin_function(&mut self, name: &str, arg: &Value) -> Option<Result<Value, RuntimeError>> {
+        match name {
+            // 类型转换函数
+            "cint" | "cbyte" | "cbool" => {
+                use crate::runtime::ValueConversion;
+                Some(Ok(Value::Number(ValueConversion::to_number(arg) as i32 as f64)))
+            }
+            "clng" | "csng" => {
+                use crate::runtime::ValueConversion;
+                Some(Ok(Value::Number(ValueConversion::to_number(arg))))
+            }
+            "cdbl" => {
+                use crate::runtime::ValueConversion;
+                Some(Ok(Value::Number(ValueConversion::to_number(arg))))
+            }
+            "cstr" => {
+                use crate::runtime::ValueConversion;
+                Some(Ok(Value::String(ValueConversion::to_string(arg))))
+            }
+            "cdate" => {
+                // TODO: 实现日期转换
+                Some(Ok(arg.clone()))
+            }
+            "int" | "fix" => {
+                use crate::runtime::ValueConversion;
+                let n = ValueConversion::to_number(arg);
+                Some(Ok(Value::Number(n.trunc())))
+            }
+            "abs" => {
+                use crate::runtime::ValueConversion;
+                let n = ValueConversion::to_number(arg);
+                Some(Ok(Value::Number(n.abs())))
+            }
+            "sgn" => {
+                use crate::runtime::ValueConversion;
+                let n = ValueConversion::to_number(arg);
+                Some(Ok(Value::Number(if n > 0.0 { 1.0 } else if n < 0.0 { -1.0 } else { 0.0 })))
+            }
+            "sqr" => {
+                use crate::runtime::ValueConversion;
+                let n = ValueConversion::to_number(arg);
+                Some(Ok(Value::Number(n.sqrt())))
+            }
+            "len" => {
+                use crate::runtime::ValueConversion;
+                let s = ValueConversion::to_string(arg);
+                Some(Ok(Value::Number(s.len() as f64)))
+            }
+            "trim" | "ltrim" | "rtrim" => {
+                use crate::runtime::ValueConversion;
+                let s = ValueConversion::to_string(arg);
+                let result = match name {
+                    "trim" => s.trim().to_string(),
+                    "ltrim" => s.trim_start().to_string(),
+                    "rtrim" => s.trim_end().to_string(),
+                    _ => s,
+                };
+                Some(Ok(Value::String(result)))
+            }
+            "ucase" | "lcase" => {
+                use crate::runtime::ValueConversion;
+                let s = ValueConversion::to_string(arg);
+                let result = match name {
+                    "ucase" => s.to_uppercase(),
+                    "lcase" => s.to_lowercase(),
+                    _ => s,
+                };
+                Some(Ok(Value::String(result)))
+            }
+            "chr" => {
+                use crate::runtime::ValueConversion;
+                let n = ValueConversion::to_number(arg) as u32;
+                Some(Ok(Value::String(char::from_u32(n).unwrap_or('\0').to_string())))
+            }
+            "asc" => {
+                use crate::runtime::ValueConversion;
+                let s = ValueConversion::to_string(arg);
+                let code = s.chars().next().map(|c| c as u8 as f64).unwrap_or(0.0);
+                Some(Ok(Value::Number(code)))
+            }
+            "isnumeric" => {
+                // 检查值是否可以转换为数字
+                let is_num = match arg {
+                    Value::Number(_) => true,
+                    Value::Boolean(_) => true,
+                    Value::String(s) => s.parse::<f64>().is_ok(),
+                    Value::Empty => true,
+                    Value::Null => false,
+                    Value::Nothing => false,
+                    Value::Array(_) => false,
+                    Value::Object(_) => false,
+                };
+                Some(Ok(Value::Boolean(is_num)))
+            }
+            "isempty" => {
+                Some(Ok(Value::Boolean(matches!(arg, Value::Empty))))
+            }
+            "isnull" => {
+                Some(Ok(Value::Boolean(matches!(arg, Value::Null))))
+            }
+            "isarray" => {
+                Some(Ok(Value::Boolean(matches!(arg, Value::Array(_)))))
+            }
+            "isobject" => {
+                Some(Ok(Value::Boolean(matches!(arg, Value::Object(_)))))
+            }
+            "isdate" => {
+                // TODO: 实现日期检测
+                Some(Ok(Value::Boolean(false)))
+            }
+            _ => None,
         }
     }
 
