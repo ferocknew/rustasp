@@ -4,7 +4,7 @@
 
 use super::segmenter::{segment, Segment};
 use vbscript::parser::{parse_expression, parse_program, tokenize};
-use vbscript::runtime::{Context, Interpreter, Value, ValueConversion};
+use vbscript::runtime::{Interpreter, Value, ValueConversion};
 
 use crate::http::RequestContext;
 

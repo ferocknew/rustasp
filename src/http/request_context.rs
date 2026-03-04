@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 /// HTTP 请求上下文
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct RequestContext {
     /// 请求方法 (GET, POST, etc.)
     pub method: String,
@@ -190,21 +191,25 @@ impl RequestContext {
     }
 
     /// 获取查询字符串参数
+    #[allow(dead_code)]
     pub fn query(&self, key: &str) -> Option<&String> {
         self.query_string.get(&key.to_lowercase())
     }
 
     /// 获取表单数据
+    #[allow(dead_code)]
     pub fn form(&self, key: &str) -> Option<&String> {
         self.form_data.get(&key.to_lowercase())
     }
 
     /// 获取 Cookie
+    #[allow(dead_code)]
     pub fn cookie(&self, key: &str) -> Option<&String> {
         self.cookies.get(&key.to_lowercase())
     }
 
     /// 获取服务器变量
+    #[allow(dead_code)]
     pub fn server_variable(&self, key: &str) -> Option<&String> {
         self.server_variables.get(&key.to_lowercase())
     }

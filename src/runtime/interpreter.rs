@@ -298,7 +298,7 @@ impl Interpreter {
                     UnaryOp::Not => Ok(Value::Boolean(!val.is_truthy())),
                 }
             }
-            Expr::Call { name, args } => {
+            Expr::Call { name: _, args } => {
                 let arg_values: Result<Vec<Value>, _> =
                     args.iter().map(|e| self.eval_expr(e)).collect();
                 let _arg_values = arg_values?;
