@@ -195,33 +195,6 @@ impl ExprParser {
         Ok(lhs)
     }
 
-    /// 解析标识符或函数调用
-    fn parse_ident_or_call(&mut self, name: String) -> Result<Expr, ParseError> {
-        // 检查是否是函数调用：ident (
-        if let Some(Token::LParen) = self.peek_if() {
-            self.next()?; // 消耗 (
-
-            // 解析参数列表
-            let mut args = Vec::new();
-            if !self.is_at(Token::RParen) {
-                loop {
-                    args.push(self.parse_expression(0)?);
-                    if !self.match_comma() {
-                        break;
-                    }
-                }
-            }
-
-            self.expect(Token::RParen)?;
-            let expr = Expr::Call { name, args };
-            // 函数调用后可能有后缀，如 func()(index)
-            self.parse_postfix(expr)
-        } else {
-            // 普通变量，可能有后缀
-            self.parse_postfix(Expr::Variable(name))
-        }
-    }
-
     /// 匹配逗号，返回是否匹配
     fn match_comma(&mut self) -> bool {
         if let Some(Token::Comma) = self.peek_if() {
