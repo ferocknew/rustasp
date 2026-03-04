@@ -1,8 +1,5 @@
-//! ASP 引擎模块
-//!
-//! 负责：分割 HTML 与 `<% %>`、执行脚本片段、拼接输出、管理单次请求上下文
+//! ASP 引擎模块（简化版）
 
-mod engine;
-mod segmenter;
+mod simple_engine;
 
-pub use engine::Engine;
+pub use simple_engine::SimpleEngine as Engine;

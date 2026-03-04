@@ -142,4 +142,19 @@ impl Keyword {
             Keyword::Eval => "Eval",
         }
     }
+
+    /// 是否是一元运算符
+    pub fn is_unary_op(&self) -> bool {
+        matches!(self, Keyword::Not)
+    }
+
+    /// 是否是逻辑与运算符
+    pub fn is_and(&self) -> bool {
+        matches!(self, Keyword::And)
+    }
+
+    /// 是否是逻辑或运算符
+    pub fn is_or(&self) -> bool {
+        matches!(self, Keyword::Or)
+    }
 }

@@ -10,20 +10,20 @@ use tokio::fs;
 
 use super::state::AppState;
 
-/// 处理 ASP 请求
+/// 处理 ASP 请求（使用简化引擎）
 pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     let path = uri.path().trim_start_matches('/');
     let file_path = state.config.home_dir.join(path);
 
     // 检查文件是否存在
     if !file_path.exists() {
-        return Html("File not found".to_string()).into_response();
+        return Html("<h1>404 - File not found</h1>".to_string()).into_response();
     }
 
     // 读取文件内容
     match fs::read_to_string(&file_path).await {
         Ok(content) => {
-            // 执行 ASP 文件
+            // 使用简化的 ASP 引擎执行
             let mut engine = crate::asp::Engine::new();
             match engine.execute(&content) {
                 Ok(output) => Html(output).into_response(),
@@ -57,7 +57,7 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
 
         // 显示目录列表
         if state.config.directory_listing {
-            return generate_directory_listing(&file_path, path).await;
+            return generate_directory_listing(&file_path, uri.path()).await;
         }
 
         return Response::builder()
@@ -94,7 +94,7 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
 }
 
 /// 生成目录列表
-async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
+pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
     let mut html = String::new();
     html.push_str("<!DOCTYPE HTML>\n<html lang=\"en\">\n<head>\n");
     html.push_str("<meta charset=\"utf-8\">\n");
@@ -121,9 +121,19 @@ async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
                 } else {
                     name.clone()
                 };
+
+                // 构建正确的 URL 路径
+                let href = if url_path == "/" || url_path.is_empty() {
+                    format!("/{}", name)
+                } else {
+                    // 移除 url_path 末尾的 /（如果有），然后拼接
+                    let base = url_path.trim_end_matches('/');
+                    format!("{}/{}", base, name)
+                };
+
                 html.push_str(&format!(
                     "<li><a href=\"{}\">{}</a></li>\n",
-                    name, display_name
+                    href, display_name
                 ));
             }
         }

@@ -3,11 +3,7 @@
 //! 一个用 Rust 实现的 Classic ASP 子集运行时
 
 mod asp;
-mod ast;
-mod builtins;
 mod http;
-mod parser;
-mod runtime;
 
 use http::create_router;
 use http::state::Config;

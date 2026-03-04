@@ -1,22 +1,19 @@
-//! Parser 模块 - 语法解析层
+//! Parser 模块 - 词法分析 + 表达式解析
 //!
-//! 输入源码字符串，输出 AST，不执行代码
+//! - Lexer: 手写词法分析器
+//! - ExprParser: Pratt 算法表达式解析器
 
 mod error;
+pub mod expr_parser;
 pub mod keyword;
-mod lexer;
-mod parser;
+pub mod lexer;
 
 pub use error::ParseError;
+pub use expr_parser::{parse_expression, ExprParser};
+pub use lexer::{tokenize, Lexer, Token};
 
-/// 解析源代码为 AST
-pub fn parse(source: &str) -> Result<crate::ast::Program, ParseError> {
-    let tokens = lexer::tokenize(source)?;
-    parser::parse_tokens(&tokens)
-}
-
-/// 解析表达式
+/// 解析表达式（便捷函数）
 pub fn parse_expr(source: &str) -> Result<crate::ast::Expr, ParseError> {
-    let tokens = lexer::tokenize(source)?;
-    parser::parse_expr_tokens(&tokens)
+    let tokens = tokenize(source)?;
+    parse_expression(tokens)
 }

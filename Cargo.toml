@@ -2,10 +2,19 @@
 name = "vbscript"
 version = "0.1.0"
 edition = "2021"
+default-run = "vbscript"
+
+[lib]
+name = "vbscript"
+path = "src/lib.rs"
 
 [[bin]]
 name = "vbscript"
 path = "src/main.rs"
+
+[[bin]]
+name = "test_parser"
+path = "src/bin/test_parser.rs"
 
 [dependencies]
 # 异步运行时
@@ -15,9 +24,6 @@ tokio = { version = "1", features = ["full"] }
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs"] }
-
-# 解析器
-chumsky = "0.9"
 
 # 序列化
 serde = { version = "1", features = ["derive"] }
