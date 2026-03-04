@@ -47,11 +47,16 @@ impl Engine {
 
         // 3. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
+            // DEBUG: 打印请求数据
+            eprintln!("DEBUG: Method = {}", ctx.method);
+            eprintln!("DEBUG: QueryString = {:?}", ctx.query_string);
+            eprintln!("DEBUG: FormData = {:?}", ctx.form_data);
+
             let context = interpreter.context_mut();
-            
+
             // 构建请求参数数据
             let mut request_data = HashMap::new();
-            
+
             // 将 QueryString 注入为变量和请求数据
             for (key, value) in &ctx.query_string {
                 context.define_var(
@@ -60,7 +65,7 @@ impl Engine {
                 );
                 request_data.insert(key.to_lowercase(), value.clone());
             }
-            
+
             // 将 Form 数据注入为变量和请求数据
             for (key, value) in &ctx.form_data {
                 context.define_var(
@@ -69,7 +74,9 @@ impl Engine {
                 );
                 request_data.insert(key.to_lowercase(), value.clone());
             }
-            
+
+            eprintln!("DEBUG: request_data = {:?}", request_data);
+
             // 设置请求数据（用于 Request("key") 语法）
             context.set_request_data(request_data);
         }

@@ -2,6 +2,7 @@
 
 use super::error::ParseError;
 use super::keyword::Keyword;
+use crate::utils::normalize_identifier;
 use serde::{Deserialize, Serialize};
 
 /// VBScript Token
@@ -239,7 +240,7 @@ impl Lexer {
         }
 
         let ident: String = self.input[start..self.pos].iter().collect();
-        let ident_lower = ident.to_lowercase();
+        let ident_lower = normalize_identifier(&ident);
 
         // 特殊处理布尔值
         match ident_lower.as_str() {
@@ -257,7 +258,7 @@ impl Lexer {
     }
 
     fn match_keyword(&self, ident: &str) -> Option<Keyword> {
-        let ident_lower = ident.to_lowercase();
+        let ident_lower = normalize_identifier(ident);
         match ident_lower.as_str() {
             "dim" => Some(Keyword::Dim),
             "const" => Some(Keyword::Const),
