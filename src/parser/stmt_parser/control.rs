@@ -177,14 +177,29 @@ impl StmtParser {
                 // 解析 Case 的值列表（支持逗号分隔的多个值）
                 let mut values = vec![];
                 loop {
-                    let value = self.parse_expr()?;
+                    // 解析单个值，遇到逗号或换行符时停止
+                    let mut tokens = vec![];
+                    while !self.is_at_end() {
+                        let next_token = self.peek()?;
+                        match next_token {
+                            Token::Comma | Token::Newline | Token::Colon => break,
+                            Token::Keyword(kw) if matches!(kw, Keyword::End | Keyword::Case) => break,
+                            _ => tokens.push(self.advance().clone()),
+                        }
+                    }
+                    
+                    if tokens.is_empty() {
+                        break;
+                    }
+                    
+                    tokens.push(Token::Eof);
+                    let value = crate::parser::expr_parser::parse_expression(tokens)?;
                     values.push(value);
                     
                     // 检查是否有逗号（多个值）
                     if !self.match_token(&Token::Comma) {
                         break;
                     }
-                    self.skip_newlines();
                 }
                 self.skip_newlines();
 
