@@ -165,8 +165,10 @@ impl Interpreter {
                 if !args.is_empty() {
                     let key = self.eval_expr(&args[0])?;
                     let key_str = ValueConversion::to_string(&key);
-                    // 从上下文获取 QueryString
-                    Ok(self.context.get_var(&key_str).cloned().unwrap_or(Value::Empty))
+                    // 从 request_data 获取 QueryString
+                    Ok(self.context.get_request_param(&key_str)
+                        .map(|s| Value::String(s.clone()))
+                        .unwrap_or(Value::Empty))
                 } else {
                     Ok(Value::Empty)
                 }
@@ -175,8 +177,10 @@ impl Interpreter {
                 if !args.is_empty() {
                     let key = self.eval_expr(&args[0])?;
                     let key_str = ValueConversion::to_string(&key);
-                    // 从上下文获取 Form 数据
-                    Ok(self.context.get_var(&key_str).cloned().unwrap_or(Value::Empty))
+                    // 从 request_data 获取 Form 数据
+                    Ok(self.context.get_request_param(&key_str)
+                        .map(|s| Value::String(s.clone()))
+                        .unwrap_or(Value::Empty))
                 } else {
                     Ok(Value::Empty)
                 }
