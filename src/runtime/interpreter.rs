@@ -201,6 +201,45 @@ impl Interpreter {
         Ok(Value::Empty)
     }
 
+    /// 执行 Select Case 语句
+    fn eval_select(
+        &mut self,
+        expr: &Expr,
+        cases: &[crate::ast::CaseClause],
+        else_block: &Option<Vec<Stmt>>,
+    ) -> Result<Value, RuntimeError> {
+        // 计算表达式的值
+        let select_value = self.eval_expr(expr)?;
+
+        // 遍历所有 Case 分支
+        for case in cases {
+            if let Some(values) = &case.values {
+                // 检查是否有匹配的值
+                for value_expr in values {
+                    let case_value = self.eval_expr(value_expr)?;
+                    // 使用 compare 方法进行相等比较
+                    let result = select_value.compare(BinaryOp::Eq, &case_value);
+                    if let Value::Boolean(true) = result {
+                        // 执行匹配的 Case body
+                        for stmt in &case.body {
+                            self.eval_stmt(stmt)?;
+                        }
+                        return Ok(Value::Empty);
+                    }
+                }
+            }
+        }
+
+        // 如果没有匹配的 Case，执行 Else 块
+        if let Some(else_stmts) = else_block {
+            for stmt in else_stmts {
+                self.eval_stmt(stmt)?;
+            }
+        }
+
+        Ok(Value::Empty)
+    }
+
     /// 注册 Sub
     fn eval_sub(
         &mut self,
