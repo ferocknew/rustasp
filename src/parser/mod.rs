@@ -56,5 +56,7 @@ pub fn parse_expr(source: &str) -> Result<crate::ast::Expr, ParseError> {
 pub fn parse(source: &str) -> Result<crate::ast::Program, ParseError> {
     let tokens = tokenize(source)?;
     let mut parser = Parser::new(tokens);
-    Ok(crate::ast::Program(parser.parse_program()?))
+    Ok(crate::ast::Program {
+        statements: parser.parse_program()?,
+    })
 }

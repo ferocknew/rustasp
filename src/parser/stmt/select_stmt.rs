@@ -1,9 +1,11 @@
 //! Select Case 语句解析
 
-use crate::ast::{CaseClause, Expr, Stmt};
+use crate::ast::CaseClause;
+use crate::ast::Stmt;
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
-use crate::parser::{ParseError, Parser};
+use crate::parser::ParseError;
+use crate::parser::Parser;
 
 impl Parser {
     /// 解析 Select Case 语句

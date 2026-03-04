@@ -4,7 +4,9 @@
 
 use super::segmenter::{segment_with_pos, Segment};
 use std::collections::HashMap;
-use vbscript::parser::{parse, parse_expr, tokenize, Parser};
+use vbscript::ast::Program;
+use vbscript::parser::tokenize;
+use vbscript::parser::Parser;
 
 use crate::http::RequestContext;
 
@@ -108,7 +110,7 @@ impl Engine {
 
                     // 语法分析
                     let mut parser = Parser::new(tokens);
-                    let program = parser.parse_program().map_err(|e| {
+                    let stmts = parser.parse_program().map_err(|e| {
                         let error_msg = format_error_with_context(
                             "Parser error",
                             &e.to_string(),
@@ -124,6 +126,7 @@ impl Engine {
                     })?;
 
                     // 执行
+                    let program = Program { statements: stmts };
                     interpreter.execute(&program).map_err(|e| {
                         let error_msg = format_error_with_context(
                             "Runtime error",
