@@ -13,8 +13,7 @@ pub use context::{ClassDef, Context, Function};
 pub use error::RuntimeError;
 pub use interpreter::Interpreter;
 pub use scope::Scope;
-pub use value::Value;
-pub use value::ValueConversion;
+pub use value::{Value, ValueCompare, ValueConversion, ValueOps};
 
 /// 内置对象 trait
 pub trait BuiltinObject: Send + Sync {
