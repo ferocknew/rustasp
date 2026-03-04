@@ -17,6 +17,12 @@ pub struct Config {
     pub debug: bool,
     /// 是否允许父路径访问 (../)
     pub allow_parent_paths: bool,
+    /// 是否显示详细错误信息
+    pub detailed_error: bool,
+    /// 自定义错误页面（相对于 home_dir）
+    pub error_page: Option<String>,
+    /// ASP 文件扩展名（逗号分隔）
+    pub asp_ext: Vec<String>,
 }
 
 impl Default for Config {
@@ -28,6 +34,8 @@ impl Default for Config {
             directory_listing: false,
             debug: false,
             allow_parent_paths: false,
+            detailed_error: false,
+            error_page: None,
         }
     }
 }
@@ -58,6 +66,11 @@ impl Config {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            detailed_error: std::env::var("DETAILED_ERROR")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            error_page: std::env::var("ERROR_PAGE").ok(),
         }
     }
 }

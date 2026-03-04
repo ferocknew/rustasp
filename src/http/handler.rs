@@ -12,8 +12,31 @@ use tokio::fs;
 use super::path_resolver::PathResolver;
 use super::state::AppState;
 
+/// 格式化简单错误信息
+fn format_simple_error() -> String {
+    format!(
+        r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>500 Internal Server Error</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; padding: 40px; text-align: center; }}
+        h1 {{ color: #d32f2f; }}
+    </style>
+</head>
+<body>
+    <h1>500 Internal Server Error</h1>
+    <p>An error occurred while processing your request.</p>
+</body>
+</html>
+"#
+    )
+}
+
 /// 格式化详细错误信息
-fn format_error(
+fn format_detailed_error(
     location: &str,
     line: u32,
     uri: &str,
@@ -56,6 +79,18 @@ fn format_error(
     )
 }
 
+/// 读取自定义错误页面（异步）
+async fn load_custom_error_page(state: &AppState) -> Option<String> {
+    let error_page_path = state.config.error_page.as_ref()?;
+    let full_path = state.config.home_dir.join(error_page_path);
+
+    // 尝试读取自定义错误页面
+    match fs::read_to_string(&full_path).await {
+        Ok(content) => Some(content),
+        Err(_) => None, // 文件不存在，返回 None 使用默认页面
+    }
+}
+
 /// 处理 ASP 请求（使用简化引擎）
 pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     let uri_str = uri.path();
@@ -69,45 +104,66 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
-            return Html(format_error(
-                "handler.rs",
-                22, // resolver.resolve 调用行号
-                uri_str,
-                Path::new("(path resolution failed)"),
-                "Path Resolution Error",
-                &e.to_string(),
-            ))
-            .into_response();
+            let error_html = if state.config.detailed_error {
+                format_detailed_error(
+                    "handler.rs",
+                    93,
+                    uri_str,
+                    Path::new("(path resolution failed)"),
+                    "Path Resolution Error",
+                    &e.to_string(),
+                )
+            } else {
+                match load_custom_error_page(&state).await {
+                    Some(custom) => custom,
+                    None => format_simple_error(),
+                }
+            };
+            return Html(error_html).into_response();
         }
     };
 
     // 检查文件是否存在
     if !file_path.exists() {
-        return Html(format_error(
-            "handler.rs",
-            31,
-            uri_str,
-            &file_path,
-            "File Not Found",
-            "The requested file does not exist.",
-        ))
-        .into_response();
+        let error_html = if state.config.detailed_error {
+            format_detailed_error(
+                "handler.rs",
+                109,
+                uri_str,
+                &file_path,
+                "File Not Found",
+                "The requested file does not exist.",
+            )
+        } else {
+            match load_custom_error_page(&state).await {
+                Some(custom) => custom,
+                None => format_simple_error(),
+            }
+        };
+        return Html(error_html).into_response();
     }
 
     // 检查是否是目录
     if file_path.is_dir() {
-        return Html(format_error(
-            "handler.rs",
-            52,
-            uri_str,
-            &file_path,
-            "Is a Directory",
-            &format!(
-                "The requested path is a directory, not a file.\n\nHint: Try accessing {}/",
-                uri_str.trim_end_matches('/')
-            ),
-        ))
-        .into_response();
+        let error_html = if state.config.detailed_error {
+            format_detailed_error(
+                "handler.rs",
+                122,
+                uri_str,
+                &file_path,
+                "Is a Directory",
+                &format!(
+                    "The requested path is a directory, not a file.\n\nHint: Try accessing {}/",
+                    uri_str.trim_end_matches('/')
+                ),
+            )
+        } else {
+            match load_custom_error_page(&state).await {
+                Some(custom) => custom,
+                None => format_simple_error(),
+            }
+        };
+        return Html(error_html).into_response();
     }
 
     // 读取文件内容
@@ -117,26 +173,44 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
             let mut engine = crate::asp::Engine::new().with_debug(state.config.debug);
             match engine.execute(&content) {
                 Ok(output) => Html(output).into_response(),
-                Err(e) => Html(format_error(
-                    "simple_engine.rs",
-                    0, // 引擎内部错误
-                    uri_str,
-                    &file_path,
-                    "ASP Execution Error",
-                    &e.to_string(),
-                ))
-                .into_response(),
+                Err(e) => {
+                    let error_html = if state.config.detailed_error {
+                        format_detailed_error(
+                            "simple_engine.rs",
+                            0,
+                            uri_str,
+                            &file_path,
+                            "ASP Execution Error",
+                            &e.to_string(),
+                        )
+                    } else {
+                        match load_custom_error_page(&state).await {
+                            Some(custom) => custom,
+                            None => format_simple_error(),
+                        }
+                    };
+                    Html(error_html).into_response()
+                }
             }
         }
-        Err(e) => Html(format_error(
-            "handler.rs",
-            36,
-            uri_str,
-            &file_path,
-            "File Read Error",
-            &e.to_string(),
-        ))
-        .into_response(),
+        Err(e) => {
+            let error_html = if state.config.detailed_error {
+                format_detailed_error(
+                    "handler.rs",
+                    140,
+                    uri_str,
+                    &file_path,
+                    "File Read Error",
+                    &e.to_string(),
+                )
+            } else {
+                match load_custom_error_page(&state).await {
+                    Some(custom) => custom,
+                    None => format_simple_error(),
+                }
+            };
+            Html(error_html).into_response()
+        }
     }
 }
 
@@ -181,16 +255,24 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
 
     // 检查文件是否存在
     if !file_path.exists() {
-        return Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from(format_error(
+        let error_html = if state.config.detailed_error {
+            format_detailed_error(
                 "handler.rs",
-                87,
+                207,
                 uri_str,
                 &file_path,
                 "File Not Found",
                 "The requested file does not exist.",
-            )))
+            )
+        } else {
+            match load_custom_error_page(&state).await {
+                Some(custom) => custom,
+                None => format_simple_error(),
+            }
+        };
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from(error_html))
             .unwrap();
     }
 
@@ -207,14 +289,21 @@ pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
                 .unwrap()
         }
         Err(e) => {
-            let error_html = format_error(
-                "handler.rs",
-                95,
-                uri_str,
-                &file_path,
-                "File Read Error",
-                &e.to_string(),
-            );
+            let error_html = if state.config.detailed_error {
+                format_detailed_error(
+                    "handler.rs",
+                    222,
+                    uri_str,
+                    &file_path,
+                    "File Read Error",
+                    &e.to_string(),
+                )
+            } else {
+                match load_custom_error_page(&state).await {
+                    Some(custom) => custom,
+                    None => format_simple_error(),
+                }
+            };
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Body::from(error_html))
