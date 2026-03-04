@@ -133,4 +133,88 @@ impl StmtParser {
 
         Ok(Some(Stmt::While { cond, body }))
     }
+
+    /// 解析 Select Case 语句
+    pub(super) fn parse_select(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.expect_keyword(Keyword::Select)?;
+        self.skip_newlines();
+        self.expect_keyword(Keyword::Case)?;
+        
+        // 解析 Select Case 的表达式
+        let expr = self.parse_expr()?;
+        self.skip_newlines();
+
+        let mut cases = vec![];
+        let mut else_block = None;
+
+        // 解析所有 Case 分支
+        loop {
+            // 检查是否到达 End Select
+            if self.check_keyword(Keyword::End) {
+                break;
+            }
+
+            // 期望 Case 关键字
+            self.expect_keyword(Keyword::Case)?;
+            self.skip_newlines();
+
+            // 检查是否是 Case Else
+            if self.check_keyword(Keyword::Else) {
+                self.advance();
+                self.skip_newlines();
+                
+                let mut body = vec![];
+                loop {
+                    if self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
+                        break;
+                    }
+                    if let Some(stmt) = self.parse_stmt()? {
+                        body.push(stmt);
+                    }
+                    self.skip_newlines();
+                }
+                else_block = Some(body);
+            } else {
+                // 解析 Case 的值列表（支持逗号分隔的多个值）
+                let mut values = vec![];
+                loop {
+                    let value = self.parse_expr()?;
+                    values.push(value);
+                    
+                    // 检查是否有逗号（多个值）
+                    if !self.match_token(&Token::Comma) {
+                        break;
+                    }
+                    self.skip_newlines();
+                }
+                self.skip_newlines();
+
+                let mut body = vec![];
+                loop {
+                    if self.check_keyword(Keyword::End) || self.check_keyword(Keyword::Case) {
+                        break;
+                    }
+                    if let Some(stmt) = self.parse_stmt()? {
+                        body.push(stmt);
+                    }
+                    self.skip_newlines();
+                }
+                
+                cases.push(CaseClause {
+                    values: Some(values),
+                    body,
+                });
+            }
+        }
+
+        // 期望 End Select
+        self.expect_keyword(Keyword::End)?;
+        self.expect_keyword(Keyword::Select)?;
+
+        Ok(Some(Stmt::Select {
+            expr,
+            cases,
+            else_block,
+        }))
+    }
 }
