@@ -8,12 +8,24 @@ use axum::{
 use std::path::PathBuf;
 use tokio::fs;
 
+use super::path_resolver::PathResolver;
 use super::state::AppState;
 
 /// 处理 ASP 请求（使用简化引擎）
 pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches('/');
-    let file_path = state.config.home_dir.join(path);
+    // 使用路径解析器安全解析路径
+    let resolver = PathResolver::new(
+        state.config.home_dir.clone(),
+        state.config.allow_parent_paths,
+    );
+
+    let file_path = match resolver.resolve(uri.path()) {
+        Ok(path) => path,
+        Err(e) => {
+            return Html(format!("<h1>403 - Forbidden</h1><pre>{}</pre>", e))
+                .into_response();
+        }
+    };
 
     // 检查文件是否存在
     if !file_path.exists() {
@@ -24,7 +36,7 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
     match fs::read_to_string(&file_path).await {
         Ok(content) => {
             // 使用简化的 ASP 引擎执行
-            let mut engine = crate::asp::Engine::new();
+            let mut engine = crate::asp::Engine::new().with_debug(state.config.debug);
             match engine.execute(&content) {
                 Ok(output) => Html(output).into_response(),
                 Err(e) => Html(format!("<pre>Error: {}</pre>", e)).into_response(),
@@ -36,16 +48,21 @@ pub async fn handle_asp(uri: Uri, state: AppState) -> impl IntoResponse {
 
 /// 处理静态文件请求
 pub async fn handle_static(uri: Uri, state: AppState) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches('/');
-    let file_path = state.config.home_dir.join(path);
+    // 使用路径解析器安全解析路径
+    let resolver = PathResolver::new(
+        state.config.home_dir.clone(),
+        state.config.allow_parent_paths,
+    );
 
-    // 安全检查：防止路径遍历
-    if !file_path.starts_with(&state.config.home_dir) {
-        return Response::builder()
-            .status(StatusCode::FORBIDDEN)
-            .body(Body::from("Forbidden"))
-            .unwrap();
-    }
+    let file_path = match resolver.resolve(uri.path()) {
+        Ok(path) => path,
+        Err(e) => {
+            return Response::builder()
+                .status(StatusCode::FORBIDDEN)
+                .body(Body::from(format!("Forbidden: {}", e)))
+                .unwrap();
+        }
+    };
 
     // 检查是否是目录
     if file_path.is_dir() {

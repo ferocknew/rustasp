@@ -13,6 +13,10 @@ pub struct Config {
     pub port: u16,
     /// 是否显示目录列表
     pub directory_listing: bool,
+    /// 是否启用调试模式
+    pub debug: bool,
+    /// 是否允许父路径访问 (../)
+    pub allow_parent_paths: bool,
 }
 
 impl Default for Config {
@@ -22,6 +26,8 @@ impl Default for Config {
             index_file: "index.asp".to_string(),
             port: 8080,
             directory_listing: false,
+            debug: false,
+            allow_parent_paths: false,
         }
     }
 }
@@ -41,6 +47,14 @@ impl Config {
                 .parse()
                 .unwrap_or(8080),
             directory_listing: std::env::var("DIRECTORY_LISTING")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            debug: std::env::var("DEBUG")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            allow_parent_paths: std::env::var("ALLOW_PARENT_PATH")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
