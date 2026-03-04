@@ -56,6 +56,7 @@ impl StmtParser {
         match self.peek()? {
             Token::Keyword(Keyword::Dim) => self.parse_dim(),
             Token::Keyword(Keyword::Const) => self.parse_const(),
+            Token::Keyword(Keyword::Option) => self.parse_option(),
             Token::Keyword(Keyword::If) => self.parse_if(),
             Token::Keyword(Keyword::For) => self.parse_for(),
             Token::Keyword(Keyword::While) => self.parse_while(),

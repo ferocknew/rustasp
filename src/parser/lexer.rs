@@ -294,6 +294,11 @@ impl Lexer {
             "xor" => Some(Keyword::Xor),
             "mod" => Some(Keyword::Mod),
             "is" => Some(Keyword::Is),
+            "option" => Some(Keyword::Option),
+            "explicit" => Some(Keyword::Explicit),
+            "on" => Some(Keyword::On),
+            "error" => Some(Keyword::Error),
+            "resume" => Some(Keyword::Resume),
             "true" | "false" => None, // 布尔值由调用方处理
             _ => None,
         }
