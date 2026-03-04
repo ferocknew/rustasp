@@ -1,67 +1,7 @@
-//! VBScript AST 纯结构体定义
-//!
-//! 这个 crate 只包含 AST 节点的数据结构定义，不包含任何解析或执行逻辑。
-//! 可以用于：
-//! - 静态代码分析
-//! - 代码迁移工具
-//! - LSP 支持
+//! 语句定义
 
 use serde::{Deserialize, Serialize};
-
-/// 表达式
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Expr {
-    /// 数字字面量
-    Number(f64),
-    /// 字符串字面量
-    String(String),
-    /// 布尔字面量
-    Boolean(bool),
-    /// Nothing
-    Nothing,
-    /// Empty
-    Empty,
-    /// Null
-    Null,
-    /// 变量引用
-    Variable(String),
-    /// 二元运算
-    Binary {
-        left: Box<Expr>,
-        op: BinaryOp,
-        right: Box<Expr>,
-    },
-    /// 一元运算
-    Unary {
-        op: UnaryOp,
-        operand: Box<Expr>,
-    },
-    /// 函数调用
-    Call {
-        name: String,
-        args: Vec<Expr>,
-    },
-    /// 方法调用
-    Method {
-        object: Box<Expr>,
-        method: String,
-        args: Vec<Expr>,
-    },
-    /// 属性访问
-    Property {
-        object: Box<Expr>,
-        property: String,
-    },
-    /// 索引访问
-    Index {
-        object: Box<Expr>,
-        index: Box<Expr>,
-    },
-    /// 数组字面量
-    Array(Vec<Expr>),
-    /// New 表达式
-    New(String),
-}
+use super::Expr;
 
 /// 语句
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -223,6 +163,26 @@ pub struct Param {
     pub default: Option<Expr>,
 }
 
+impl Param {
+    pub fn new(name: impl Into<String>) -> Self {
+        Param {
+            name: name.into(),
+            is_byref: false,
+            default: None,
+        }
+    }
+
+    pub fn byref(mut self) -> Self {
+        self.is_byref = true;
+        self
+    }
+
+    pub fn default(mut self, value: Expr) -> Self {
+        self.default = Some(value);
+        self
+    }
+}
+
 /// 类成员
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ClassMember {
@@ -265,54 +225,4 @@ pub enum ClassMember {
         body: Vec<Stmt>,
         is_public: bool,
     },
-}
-
-/// 二元运算符
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum BinaryOp {
-    Add,       // +
-    Sub,       // -
-    Mul,       // *
-    Div,       // /
-    IntDiv,    // \
-    Mod,       // Mod
-    Pow,       // ^
-    Concat,    // &
-    Eq,        // =
-    Ne,        // <>
-    Lt,        // <
-    Le,        // <=
-    Gt,        // >
-    Ge,        // >=
-    And,       // And
-    Or,        // Or
-    Xor,       // Xor
-    Is,        // Is
-    Imp,       // Imp
-    Eqv,       // Eqv
-}
-
-/// 一元运算符
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum UnaryOp {
-    Neg,  // -
-    Not,  // Not
-}
-
-/// 程序（顶层 AST）
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Program {
-    pub statements: Vec<Stmt>,
-}
-
-impl Program {
-    pub fn new() -> Self {
-        Program { statements: Vec::new() }
-    }
-}
-
-impl Default for Program {
-    fn default() -> Self {
-        Self::new()
-    }
 }
