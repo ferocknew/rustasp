@@ -367,6 +367,47 @@ impl Interpreter {
                     elements.iter().map(|e| self.eval_expr(e)).collect();
                 Ok(Value::Array(values?))
             }
+            Expr::Index { object, index } => {
+                // 处理 Request("key") 语法
+                let index_val = self.eval_expr(index)?;
+                let index_key = match &index_val {
+                    Value::String(s) => s.clone(),
+                    _ => index_val.to_string(),
+                };
+                
+                match object.as_ref() {
+                    // 特殊处理 Request 对象
+                    Expr::Variable(name) if name.to_lowercase() == "request" => {
+                        // 从 request_data 中获取值
+                        match self.context.get_request_param(&index_key) {
+                            Some(value) => Ok(Value::String(value.clone())),
+                            None => Ok(Value::Empty),
+                        }
+                    }
+                    // 处理数组访问
+                    Expr::Variable(name) => {
+                        if let Some(Value::Array(arr)) = self.context.get_var(name).cloned() {
+                            if let Value::Number(i) = index_val {
+                                let i = i as usize;
+                                if i < arr.len() {
+                                    return Ok(arr[i].clone());
+                                }
+                            }
+                        }
+                        Err(RuntimeError::InvalidIndex)
+                    }
+                    // 处理对象/字典访问
+                    Expr::Variable(name) => {
+                        if let Some(Value::Object(obj)) = self.context.get_var(name).cloned() {
+                            if let Some(value) = obj.get(&index_key) {
+                                return Ok(value.clone());
+                            }
+                        }
+                        Err(RuntimeError::InvalidIndex)
+                    }
+                    _ => Err(RuntimeError::InvalidIndex),
+                }
+            }
             _ => Err(RuntimeError::Generic(format!(
                 "Unimplemented expr: {:?}",
                 expr
