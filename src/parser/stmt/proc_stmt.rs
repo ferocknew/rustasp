@@ -21,8 +21,9 @@ impl Parser {
             if self.is_at_end() || self.check_keyword(Keyword::End) {
                 break;
             }
-            if let Some(stmt) = self.parse_stmt()? {
-                body.push(stmt);
+            match self.parse_stmt()? {
+                Some(stmt) => body.push(stmt),
+                None => break,
             }
             self.skip_newlines();
         }
@@ -46,8 +47,9 @@ impl Parser {
             if self.is_at_end() || self.check_keyword(Keyword::End) {
                 break;
             }
-            if let Some(stmt) = self.parse_stmt()? {
-                body.push(stmt);
+            match self.parse_stmt()? {
+                Some(stmt) => body.push(stmt),
+                None => break,
             }
             self.skip_newlines();
         }

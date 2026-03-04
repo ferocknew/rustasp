@@ -64,8 +64,9 @@ impl Parser {
                 break;
             }
 
-            if let Some(stmt) = self.parse_stmt()? {
-                branches[0].body.push(stmt);
+            match self.parse_stmt()? {
+                Some(stmt) => branches[0].body.push(stmt),
+                None => break,  // 如果没有解析到语句，退出循环
             }
             self.skip_newlines();
         }
@@ -87,8 +88,9 @@ impl Parser {
                     {
                         break;
                     }
-                    if let Some(stmt) = self.parse_stmt()? {
-                        body.push(stmt);
+                    match self.parse_stmt()? {
+                        Some(stmt) => body.push(stmt),
+                        None => break,
                     }
                     self.skip_newlines();
                 }
@@ -100,8 +102,9 @@ impl Parser {
                     if self.is_at_end() || self.check_keyword(Keyword::End) {
                         break;
                     }
-                    if let Some(stmt) = self.parse_stmt()? {
-                        body.push(stmt);
+                    match self.parse_stmt()? {
+                        Some(stmt) => body.push(stmt),
+                        None => break,
                     }
                     self.skip_newlines();
                 }
