@@ -174,10 +174,18 @@ impl ExprParser {
                                     index: Box::new(args.into_iter().next().unwrap()),
                                 }
                             } else if args.is_empty() {
-                                // 空参数也作为索引（空括号）
-                                return Err(ParseError::ParserError(
-                                    "Empty index access is not supported".to_string(),
-                                ));
+                                // 空参数：如果是变量，当作无参函数调用
+                                // 否则返回空索引（保持原样）
+                                match lhs {
+                                    Expr::Variable(name) => Expr::Call {
+                                        name,
+                                        args: vec![],
+                                    },
+                                    _ => Expr::Index {
+                                        object: Box::new(lhs),
+                                        index: Box::new(Expr::Empty),
+                                    },
+                                }
                             } else {
                                 return Err(ParseError::ParserError(
                                     "Multiple indices not supported, use array".to_string(),
