@@ -56,9 +56,7 @@ impl Interpreter {
                 Ok(Value::Empty)
             }
             Expr::Property { object, property } => {
-                let _obj = self.eval_expr(object)?;
-                // TODO: 实现属性访问
-                Err(RuntimeError::PropertyNotFound(property.clone()))
+                self.eval_property(object, property)
             }
             Expr::Method { object, method, args } => {
                 self.eval_method(object, method, args)
@@ -198,6 +196,75 @@ impl Interpreter {
                 let _arg_values = arg_values?;
                 // TODO: 实现用户定义方法调用
                 Ok(Value::Empty)
+            }
+        }
+    }
+
+    /// 处理属性访问表达式
+    fn eval_property(&mut self, object: &Expr, property: &str) -> Result<Value, RuntimeError> {
+        // 获取对象名称（如果是变量）
+        let object_name = match object {
+            Expr::Variable(name) => Some(name.to_lowercase()),
+            _ => None,
+        };
+
+        let property_lower = property.to_lowercase();
+
+        // 处理内建对象的属性访问
+        match object_name.as_deref() {
+            Some("request") => {
+                match property_lower.as_str() {
+                    "form" => {
+                        // 返回表单数据集合
+                        let mut form_data = std::collections::HashMap::new();
+                        // 从 request_data 中提取所有表单数据
+                        for (key, value) in self.context.request_data.iter() {
+                            form_data.insert(key.clone(), Value::String(value.clone()));
+                        }
+                        Ok(Value::Object(form_data))
+                    }
+                    "querystring" => {
+                        // 返回查询字符串集合
+                        let mut query_data = std::collections::HashMap::new();
+                        for (key, value) in self.context.request_data.iter() {
+                            query_data.insert(key.clone(), Value::String(value.clone()));
+                        }
+                        Ok(Value::Object(query_data))
+                    }
+                    "cookies" | "servervariables" => {
+                        // 返回空对象（暂不支持）
+                        Ok(Value::Object(std::collections::HashMap::new()))
+                    }
+                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                }
+            }
+            Some("response") => {
+                match property_lower.as_str() {
+                    "status" | "contenttype" => Ok(Value::Empty),
+                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                }
+            }
+            Some("server") => {
+                match property_lower.as_str() {
+                    "scripttimeout" => Ok(Value::Number(90.0)),
+                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                }
+            }
+            _ => {
+                // 尝试从变量中获取对象属性
+                if let Expr::Variable(name) = object {
+                    if let Some(var_value) = self.context.get_var(name) {
+                        match var_value {
+                            Value::Object(obj) => {
+                                if let Some(v) = obj.get(&property_lower) {
+                                    return Ok(v.clone());
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Err(RuntimeError::PropertyNotFound(property.to_string()))
             }
         }
     }
