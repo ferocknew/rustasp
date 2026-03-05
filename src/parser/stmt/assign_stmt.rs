@@ -103,6 +103,9 @@ impl Parser {
 
         // 解析右侧（完整表达式）
         let value = self.parse_expr(0)?;
+
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::Assignment { target, value }))
@@ -171,6 +174,9 @@ impl Parser {
         let target = self.parse_lhs()?;
         self.expect(Token::Eq)?;
         let value = self.parse_expr(0)?;
+
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::Set { target, value }))

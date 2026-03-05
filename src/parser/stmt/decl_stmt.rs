@@ -28,13 +28,16 @@ impl Parser {
             self.expect(Token::RParen)?;
         }
 
-        // 检查初始化
-        let init = if self.match_token(&Token::Eq) {
+        // 检查初始化（冒号是语句分隔符，不是初始化的一部分）
+        let init = if self.check(&Token::Eq) && !self.check(&Token::Colon) {
+            self.advance();
             Some(self.parse_expr(0)?)
         } else {
             None
         };
 
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::Dim {
@@ -51,6 +54,9 @@ impl Parser {
         let name = self.expect_ident()?;
         self.expect(Token::Eq)?;
         let value = self.parse_expr(0)?;
+
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::Const { name, value }))
@@ -60,6 +66,9 @@ impl Parser {
     pub fn parse_option(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::Option)?;
         self.expect_keyword(Keyword::Explicit)?;
+
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::OptionExplicit))
@@ -83,6 +92,9 @@ impl Parser {
             }
         }
         self.expect(Token::RParen)?;
+
+        // 跳过冒号（语句分隔符）
+        self.match_token(&Token::Colon);
         self.skip_newlines();
 
         Ok(Some(Stmt::ReDim {
