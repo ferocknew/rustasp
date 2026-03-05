@@ -4,3 +4,6 @@ mod request;
 mod response;
 mod server;
 mod session;
+
+// 重导出 Response 对象
+pub use response::Response;

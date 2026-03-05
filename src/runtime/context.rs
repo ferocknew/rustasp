@@ -2,6 +2,7 @@
 
 use super::Scope;
 use super::Value;
+use crate::builtins::Response;
 use std::collections::HashMap;
 
 /// 函数定义
@@ -29,6 +30,8 @@ pub struct Context {
     pub should_exit: bool,
     /// 请求参数（用于 Request 对象，支持多值）
     pub request_data: HashMap<String, Vec<String>>,
+    /// Response 对象
+    response: Option<Response>,
 }
 
 /// 类定义
@@ -49,6 +52,7 @@ impl Context {
             output: String::new(),
             should_exit: false,
             request_data: HashMap::new(),
+            response: None,
         }
     }
 
@@ -160,6 +164,39 @@ impl Context {
     /// 获取请求参数的所有值
     pub fn get_request_param_all(&self, key: &str) -> Option<&Vec<String>> {
         self.request_data.get(&key.to_lowercase())
+    }
+
+    /// 设置 Response 对象
+    pub fn set_response(&mut self, response: Response) {
+        self.response = Some(response);
+    }
+
+    /// 获取 Response 对象的可变引用
+    pub fn response_mut(&mut self) -> &mut Response {
+        if self.response.is_none() {
+            self.response = Some(Response::new());
+        }
+        self.response.as_mut().unwrap()
+    }
+
+    /// 获取 Response 对象的引用
+    pub fn response(&self) -> &Response {
+        self.response.as_ref().unwrap()
+    }
+
+    /// 取出 Response 对象（转移所有权）
+    pub fn take_response(&mut self) -> Option<Response> {
+        self.response.take()
+    }
+
+    /// 设置退出标志
+    pub fn set_should_exit(&mut self) {
+        self.should_exit = true;
+    }
+
+    /// 检查是否应该退出
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
     }
 }
 

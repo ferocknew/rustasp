@@ -102,7 +102,7 @@ impl crate::runtime::BuiltinObject for Session {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
-                let key = args[0].to_string().to_lowercase();
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
                 self.get(&key)
                     .ok_or_else(|| RuntimeError::PropertyNotFound(key))
             }

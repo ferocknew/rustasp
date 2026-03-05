@@ -4,6 +4,7 @@ use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
 
 /// Response 对象
+#[derive(Debug)]
 pub struct Response {
     /// 输出缓冲区
     buffer: String,
@@ -95,15 +96,15 @@ impl crate::runtime::BuiltinObject for Response {
     fn set_property(&mut self, name: &str, value: Value) -> Result<(), RuntimeError> {
         match name.to_lowercase().as_str() {
             "buffer" => {
-                self.is_buffering = value.to_bool();
+                self.is_buffering = ValueConversion::to_bool(&value);
                 Ok(())
             }
             "contenttype" => {
-                self.content_type = value.to_string();
+                self.content_type = ValueConversion::to_string(&value);
                 Ok(())
             }
             "status" => {
-                self.status = value.to_number() as u16;
+                self.status = ValueConversion::to_number(&value) as u16;
                 Ok(())
             }
             _ => Err(RuntimeError::PropertyNotFound(name.to_string())),
@@ -116,21 +117,21 @@ impl crate::runtime::BuiltinObject for Response {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                self.write(&args[0].to_string());
+                self.write(&ValueConversion::to_string(&args[0]));
                 Ok(Value::Empty)
             }
             "writeln" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                self.write_ln(&args[0].to_string());
+                self.write_ln(&ValueConversion::to_string(&args[0]));
                 Ok(Value::Empty)
             }
             "redirect" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                self.redirect(&args[0].to_string());
+                self.redirect(&ValueConversion::to_string(&args[0]));
                 Ok(Value::Empty)
             }
             "clear" => {
@@ -145,7 +146,10 @@ impl crate::runtime::BuiltinObject for Response {
                 if args.len() != 2 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                self.add_header(&args[0].to_string(), &args[1].to_string());
+                self.add_header(
+                    &ValueConversion::to_string(&args[0]),
+                    &ValueConversion::to_string(&args[1])
+                );
                 Ok(Value::Empty)
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),

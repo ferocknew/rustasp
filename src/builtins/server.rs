@@ -68,21 +68,21 @@ impl crate::runtime::BuiltinObject for Server {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                let path = args[0].to_string();
+                let path = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.map_path(&path)))
             }
             "urlencode" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                let s = args[0].to_string();
+                let s = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.url_encode(&s)))
             }
             "htmlencode" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
-                let s = args[0].to_string();
+                let s = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.html_encode(&s)))
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),

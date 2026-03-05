@@ -3,7 +3,7 @@
 use axum::{
     body::Body,
     http::{Request, StatusCode, Uri},
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Response as AxumResponse},
 };
 use std::path::PathBuf;
 use tokio::fs;
@@ -66,7 +66,7 @@ pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) ->
     let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
-            return Response::builder()
+            return AxumResponse::builder()
                 .status(StatusCode::FORBIDDEN)
                 .body(Body::from(format!("Forbidden: {}", e)))
                 .unwrap();
@@ -82,7 +82,7 @@ pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) ->
         if state.config.directory_listing {
             return generate_directory_listing(&file_path, uri.path()).await;
         }
-        return Response::builder()
+        return AxumResponse::builder()
             .status(StatusCode::FORBIDDEN)
             .body(Body::from("Directory listing is disabled"))
             .unwrap();
@@ -106,7 +106,7 @@ pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) ->
             let mime = mime_guess::from_path(&file_path)
                 .first_or_octet_stream()
                 .to_string();
-            Response::builder()
+            AxumResponse::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", mime)
                 .body(Body::from(content))
@@ -130,7 +130,7 @@ async fn handle_directory(
     state: &AppState,
     request_ctx: &RequestContext,
     error_gen: &ErrorPageGenerator,
-) -> Response {
+) -> AxumResponse {
     // 尝试索引文件
     let index_path = dir_path.join(&state.config.index_file);
     if index_path.exists() {
@@ -159,7 +159,7 @@ async fn execute_asp_file(
     state: &AppState,
     request_ctx: &RequestContext,
     error_gen: &ErrorPageGenerator,
-) -> Response {
+) -> AxumResponse {
     let content = match fs::read_to_string(file_path).await {
         Ok(c) => c,
         Err(e) => {
@@ -194,7 +194,43 @@ async fn execute_asp_file(
         .with_request_context(request_ctx.clone());
 
     match engine.execute(&processed_content) {
-        Ok(output) => Html(output).into_response(),
+        Ok(result) => {
+            // 检查是否是重定向
+            if result.response.get_status() == 302 {
+                if let Some(location) = result.response.get_headers().get("Location") {
+                    return AxumResponse::builder()
+                        .status(StatusCode::FOUND)
+                        .header("Location", location.clone())
+                        .body(Body::empty())
+                        .unwrap();
+                }
+            }
+
+            // 构建响应
+            let mut builder = AxumResponse::builder();
+
+            // 设置状态码
+            let status = StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
+            builder = builder.status(status);
+
+            // 设置 Content-Type
+            let content_type = result.response.get_content_type();
+            builder = builder.header("Content-Type", content_type);
+
+            // 添加自定义响应头
+            for (name, value) in result.response.get_headers() {
+                if name != "Location" {  // Location 已在重定向中处理
+                    builder = builder.header(name, value);
+                }
+            }
+
+            // 返回响应体
+            let output = result.output;
+            match builder.body(Body::from(output.clone())) {
+                Ok(resp) => resp,
+                Err(_) => Html(output).into_response(),
+            }
+        }
         Err(e) => {
             let error_info = ErrorInfo::new(
                 "engine.rs",
@@ -211,7 +247,7 @@ async fn execute_asp_file(
 }
 
 /// 生成目录列表
-pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> Response {
+pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> AxumResponse {
     let mut entries = match fs::read_dir(dir).await {
         Ok(entries) => entries,
         Err(_) => return Html("<h1>Cannot read directory</h1>".to_string()).into_response(),

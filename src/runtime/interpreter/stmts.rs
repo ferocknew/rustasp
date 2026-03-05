@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 语句的执行逻辑
 
 use crate::ast::{BinaryOp, Expr, IfBranch, Param, Stmt};
-use crate::runtime::{Function, RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::runtime::{BuiltinObject, Function, RuntimeError, Value, ValueCompare, ValueConversion};
 use crate::utils::normalize_identifier;
 
 use super::Interpreter;
@@ -396,16 +396,17 @@ impl Interpreter {
     // ==================== 内建对象属性设置 ====================
 
     /// 设置 Response 对象的属性
-    fn builtin_response_set_property(&mut self, property: &str, _value: Value) -> Result<Value, RuntimeError> {
+    fn builtin_response_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+        let response = self.context.response_mut();
         match property.to_uppercase().as_str() {
             "BUFFER" => {
                 // Response.Buffer = True/False
-                // 暂时忽略，实际应该设置缓冲状态
+                response.set_property("buffer", value)?;
                 Ok(Value::Empty)
             }
             "CONTENTTYPE" => {
                 // Response.ContentType = "text/html"
-                // 暂时忽略
+                response.set_property("contenttype", value)?;
                 Ok(Value::Empty)
             }
             "CHARSET" => {
@@ -415,7 +416,7 @@ impl Interpreter {
             }
             "STATUS" => {
                 // Response.Status = "200 OK"
-                // 暂时忽略
+                // 暂时忽略（需要解析状态字符串）
                 Ok(Value::Empty)
             }
             "EXPIRES" | "EXPIRESABSOLUTE" => {

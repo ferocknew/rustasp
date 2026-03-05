@@ -259,18 +259,44 @@ impl Interpreter {
             (Some("response"), "write") => {
                 if !args.is_empty() {
                     let value = self.eval_expr(&args[0])?;
-                    self.context.write(&ValueConversion::to_string(&value));
+                    let text = ValueConversion::to_string(&value);
+                    // 同时写入 Context 的 output 和 Response 对象的 buffer
+                    self.context.write(&text);
+                    self.context.response_mut().write(&text);
                 }
                 Ok(Value::Empty)
             }
             // Response.End
             (Some("response"), "end") => {
-                // TODO: 实现响应结束
+                self.context.response_mut().end();
+                self.context.set_should_exit();
                 Ok(Value::Empty)
             }
             // Response.Redirect
             (Some("response"), "redirect") => {
-                // TODO: 实现重定向
+                if !args.is_empty() {
+                    let url = self.eval_expr(&args[0])?;
+                    let url_str = ValueConversion::to_string(&url);
+                    self.context.response_mut().redirect(&url_str);
+                    self.context.set_should_exit();
+                }
+                Ok(Value::Empty)
+            }
+            // Response.Clear
+            (Some("response"), "clear") => {
+                self.context.response_mut().clear();
+                self.context.clear_output();
+                Ok(Value::Empty)
+            }
+            // Response.AddHeader
+            (Some("response"), "addheader") => {
+                if args.len() >= 2 {
+                    let name = self.eval_expr(&args[0])?;
+                    let value = self.eval_expr(&args[1])?;
+                    let name_str = ValueConversion::to_string(&name);
+                    let value_str = ValueConversion::to_string(&value);
+                    self.context.response_mut().add_header(&name_str, &value_str);
+                }
                 Ok(Value::Empty)
             }
             // Request.QueryString / Request.Form

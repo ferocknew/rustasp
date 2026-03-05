@@ -8,8 +8,17 @@ use std::collections::HashMap;
 use vbscript::ast::Program;
 use vbscript::parser::tokenize;
 use vbscript::parser::Parser;
+use vbscript::Response;
 
 use crate::http::RequestContext;
+
+/// ASP 执行结果
+pub struct ExecutionResult {
+    /// 输出内容
+    pub output: String,
+    /// Response 对象（包含状态码、ContentType、Headers 等）
+    pub response: Response,
+}
 
 /// ASP 执行引擎
 pub struct Engine {
@@ -41,7 +50,7 @@ impl Engine {
     }
 
     /// 执行 ASP 文件
-    pub fn execute(&mut self, source: &str) -> Result<String, String> {
+    pub fn execute(&mut self, source: &str) -> Result<ExecutionResult, String> {
         // 1. 分割代码（带位置信息）
         let segments_with_pos = segment_with_pos(source)?;
 
@@ -64,8 +73,9 @@ impl Engine {
             error_msg
         })?;
 
-        // 5. 创建解释器
+        // 5. 创建解释器和 Response 对象
         let mut interpreter = vbscript::runtime::Interpreter::new();
+        // Response 对象将在 Context 中首次使用时自动创建
 
         // 6. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
@@ -110,8 +120,11 @@ impl Engine {
             error_msg
         })?;
 
-        // 8. 收集输出
-        Ok(interpreter.context().get_output().to_string())
+        // 8. 收集输出和 Response 对象
+        let output = interpreter.context().get_output().to_string();
+        let response = interpreter.context_mut().take_response().unwrap_or_default();
+
+        Ok(ExecutionResult { output, response })
     }
 
     /// 构建完整的 VBScript 程序

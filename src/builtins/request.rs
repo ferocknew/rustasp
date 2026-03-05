@@ -80,7 +80,7 @@ impl crate::runtime::BuiltinObject for Request {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
-                let key = args[0].to_string().to_lowercase();
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
                 Ok(self
                     .query_string
                     .get(&key)
@@ -91,7 +91,7 @@ impl crate::runtime::BuiltinObject for Request {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
-                let key = args[0].to_string().to_lowercase();
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
                 Ok(self
                     .form
                     .get(&key)
@@ -102,7 +102,7 @@ impl crate::runtime::BuiltinObject for Request {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
-                let key = args[0].to_string().to_lowercase();
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
                 Ok(self
                     .cookies
                     .get(&key)
@@ -113,7 +113,7 @@ impl crate::runtime::BuiltinObject for Request {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
-                let key = args[0].to_string().to_lowercase();
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
                 Ok(self
                     .server_variables
                     .get(&key)
