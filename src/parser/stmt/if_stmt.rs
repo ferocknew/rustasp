@@ -14,19 +14,15 @@ impl Parser {
         let cond = self.parse_expr(0)?;
         self.skip_newlines();
         self.expect_keyword(Keyword::Then)?;
-        self.skip_newlines();
 
         // 判断是单行 If 还是多行 If
         // 单行 If: if x = 1 then Response.Write("Yes")
         // 多行 If: if x = 1 then \n ... \n end if
+        let is_multiline = self.check(&Token::Newline);
 
-        // 检查下一个 token 是否是换行或终止符
-        let is_multiline = self.check(&Token::Newline)
-            || self.check_keyword(Keyword::End)
-            || self.check_keyword(Keyword::Else)
-            || self.check_keyword(Keyword::ElseIf);
+        self.skip_newlines();  // 跳过 Then 后的换行
 
-        if !is_multiline && !self.is_at_end() {
+        if !is_multiline && !self.is_at_end() && !self.check_keyword(Keyword::End) {
             // 单行 If - 只解析一条语句
             let stmt = self.parse_stmt()?;
             let body = stmt.map_or(vec![], |s| vec![s]);
@@ -56,6 +52,8 @@ impl Parser {
 
         // 解析第一个 If 分支的 body
         loop {
+            self.skip_newlines();  // 先跳过换行
+
             if self.is_at_end()
                 || self.check_keyword(Keyword::End)
                 || self.check_keyword(Keyword::Else)
@@ -68,7 +66,6 @@ impl Parser {
                 Some(stmt) => branches[0].body.push(stmt),
                 None => break,  // 如果没有解析到语句，退出循环
             }
-            self.skip_newlines();
         }
 
         // 解析 ElseIf 和 Else 分支
@@ -81,6 +78,8 @@ impl Parser {
 
                 let mut body = vec![];
                 loop {
+                    self.skip_newlines();
+
                     if self.is_at_end()
                         || self.check_keyword(Keyword::End)
                         || self.check_keyword(Keyword::Else)
@@ -92,13 +91,14 @@ impl Parser {
                         Some(stmt) => body.push(stmt),
                         None => break,
                     }
-                    self.skip_newlines();
                 }
                 branches.push(IfBranch { cond, body });
             } else if self.match_keyword(Keyword::Else) {
                 self.skip_newlines();
                 let mut body = vec![];
                 loop {
+                    self.skip_newlines();
+
                     if self.is_at_end() || self.check_keyword(Keyword::End) {
                         break;
                     }
@@ -106,7 +106,6 @@ impl Parser {
                         Some(stmt) => body.push(stmt),
                         None => break,
                     }
-                    self.skip_newlines();
                 }
                 else_block = Some(body);
             } else {
