@@ -11,7 +11,7 @@ use vbscript::parser::Parser;
 use vbscript::runtime::Value;
 use vbscript::Response;
 
-use crate::builtins::Session;
+use crate::builtins::{Session, SessionManager};
 use crate::http::RequestContext;
 
 /// ASP 执行结果
@@ -28,6 +28,8 @@ pub struct Engine {
     debug: bool,
     /// 请求上下文
     request_context: Option<RequestContext>,
+    /// Session 管理器
+    session_manager: Option<SessionManager>,
 }
 
 impl Engine {
@@ -36,7 +38,14 @@ impl Engine {
         Engine {
             debug: false,
             request_context: None,
+            session_manager: None,
         }
+    }
+
+    /// 设置 Session 管理器
+    pub fn with_session_manager(mut self, manager: SessionManager) -> Self {
+        self.session_manager = Some(manager);
+        self
     }
 
     /// 设置调试模式
@@ -79,11 +88,39 @@ impl Engine {
         let mut interpreter = vbscript::runtime::Interpreter::new();
         // Response 对象将在 Context 中首次使用时自动创建
 
-        // 5.1 初始化 Session 对象并注入到 Context
-        let session = Session::new(format!("session_{}", std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()));
+        // 5.1 初始化 Session
+        let session_id = self.session_manager.as_ref()
+            .map(|_| {
+                // 从 Cookie 或生成新的 Session ID
+                std::env::var("TEST_SESSION_ID")
+                    .unwrap_or_else(|_| SessionManager::generate_session_id())
+            })
+            .unwrap_or_else(|| SessionManager::generate_session_id());
+
+        // 尝试从 SessionManager 加载或创建新的 Session
+        let session = if let Some(ref mut manager) = self.session_manager {
+            match manager.load_session(&session_id) {
+                Ok(Some(s)) => s,
+                Ok(None) => {
+                    // 创建新的 Session
+                    match manager.create_session(session_id.clone(), 20) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            eprintln!("警告: 无法创建 Session: {}", e);
+                            Session::new(session_id)
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("警告: 无法加载 Session: {}", e);
+                    Session::new(session_id)
+                }
+            }
+        } else {
+            // 如果没有 SessionManager，使用内存中的 Session
+            Session::new(session_id)
+        };
+
         interpreter.context_mut().define_var(
             "Session".to_string(),
             Value::Object(Box::new(session)),
