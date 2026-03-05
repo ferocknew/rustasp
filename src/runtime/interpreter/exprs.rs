@@ -19,11 +19,11 @@ impl Interpreter {
             Expr::Nothing => Ok(Value::Nothing),
             Expr::Empty => Ok(Value::Empty),
             Expr::Null => Ok(Value::Null),
-            Expr::Variable(name) => self
+            Expr::Variable(name) => Ok(self
                 .context
                 .get_var(name)
                 .cloned()
-                .ok_or_else(|| RuntimeError::UndefinedVariable(name.clone())),
+                .unwrap_or(Value::Empty)),
             Expr::Binary { left, op, right } => {
                 let left_val = self.eval_expr(left)?;
                 let right_val = self.eval_expr(right)?;
@@ -48,12 +48,26 @@ impl Interpreter {
                     UnaryOp::Not => Ok(Value::Boolean(!val.is_truthy())),
                 }
             }
-            Expr::Call { name: _, args } => {
+            Expr::Call { name, args } => {
+                // 计算参数值
                 let arg_values: Result<Vec<Value>, _> =
                     args.iter().map(|e| self.eval_expr(e)).collect();
-                let _arg_values = arg_values?;
-                // TODO: 实现函数调用
-                Ok(Value::Empty)
+                let arg_values = arg_values?;
+
+                // 首先尝试作为内置函数调用
+                if let Some(result) = super::builtins::call_builtin_function_multi(name, &arg_values) {
+                    return result;
+                }
+
+                // 然后尝试作为用户定义函数调用
+                if let Some(func) = self.context.get_function(name) {
+                    // TODO: 实现用户定义函数调用
+                    // 需要创建新的作用域，执行函数体等
+                    return Ok(Value::Empty);
+                }
+
+                // 未找到函数
+                Err(RuntimeError::UndefinedVariable(format!("Function '{}'", name)))
             }
             Expr::Property { object, property } => {
                 self.eval_property(object, property)

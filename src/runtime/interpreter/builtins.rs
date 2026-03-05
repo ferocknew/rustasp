@@ -4,11 +4,78 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 
+/// 调用内置函数（多参数版本）
+pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
+    let name_lower = name.to_lowercase();
+
+    match name_lower.as_str() {
+        // 字符串函数 - 多参数
+        "left" => {
+            if args.len() >= 2 {
+                let s = ValueConversion::to_string(&args[0]);
+                let n = ValueConversion::to_number(&args[1]) as usize;
+                let result = s.chars().take(n).collect::<String>();
+                Some(Ok(Value::String(result)))
+            } else {
+                None
+            }
+        }
+        "right" => {
+            if args.len() >= 2 {
+                let s = ValueConversion::to_string(&args[0]);
+                let n = ValueConversion::to_number(&args[1]) as usize;
+                let result = s.chars().rev().take(n).collect::<String>()
+                    .chars().rev().collect::<String>();
+                Some(Ok(Value::String(result)))
+            } else {
+                None
+            }
+        }
+        "mid" => {
+            if args.len() >= 2 {
+                let s = ValueConversion::to_string(&args[0]);
+                let start = (ValueConversion::to_number(&args[1]) as usize).saturating_sub(1);
+                let length = if args.len() >= 3 {
+                    ValueConversion::to_number(&args[2]) as usize
+                } else {
+                    s.len()
+                };
+                let result = s.chars().skip(start).take(length).collect::<String>();
+                Some(Ok(Value::String(result)))
+            } else {
+                None
+            }
+        }
+        "round" => {
+            if args.len() >= 1 {
+                let n = ValueConversion::to_number(&args[0]);
+                let decimals = if args.len() >= 2 {
+                    ValueConversion::to_number(&args[1]) as i32
+                } else {
+                    0
+                };
+                let multiplier = 10_f64.powi(decimals);
+                Some(Ok(Value::Number((n * multiplier).round() / multiplier)))
+            } else {
+                None
+            }
+        }
+        // 单参数函数 - 委托给旧版本
+        _ => {
+            if args.len() == 1 {
+                call_builtin_function(name, &args[0])
+            } else {
+                None
+            }
+        }
+    }
+}
+
 /// 调用内置函数
 ///
 /// 处理类似 CInt(x) 的单参数内置函数调用
 pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, RuntimeError>> {
-    match name {
+    match name.to_lowercase().as_str() {
         // 类型转换函数
         "cint" | "cbyte" | "cbool" => {
             Some(Ok(Value::Number(ValueConversion::to_number(arg) as i32 as f64)))

@@ -107,6 +107,16 @@ impl Context {
         }
     }
 
+    /// 获取函数定义
+    pub fn get_function(&self, name: &str) -> Option<&Function> {
+        self.functions.get(&name.to_lowercase())
+    }
+
+    /// 定义函数
+    pub fn define_function(&mut self, name: String, func: Function) {
+        self.functions.insert(name.to_lowercase(), func);
+    }
+
     /// 压入新作用域
     pub fn push_scope(&mut self) {
         let parent = self

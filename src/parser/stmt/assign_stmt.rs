@@ -117,55 +117,66 @@ impl Parser {
         let name = self.expect_ident()?;
         let mut expr = Expr::Variable(name);
 
-        // 解析后缀（索引访问或属性访问）
-        loop {
-            match self.peek() {
-                // 索引访问: arr(index)
-                Token::LParen => {
-                    self.advance();
-                    let mut args = vec![];
-                    if !self.check(&Token::RParen) {
-                        args.push(self.parse_expr(0)?);
-                        while self.match_token(&Token::Comma) {
-                            args.push(self.parse_expr(0)?);
-                        }
-                    }
-                    self.expect(Token::RParen)?;
-                    expr = if args.len() == 1 {
-                        Expr::Index {
-                            object: Box::new(expr),
-                            index: Box::new(args.into_iter().next().unwrap()),
-                        }
-                    } else {
-                        return Err(ParseError::ParserError(
-                            "Invalid index in assignment target".to_string(),
-                        ));
-                    };
-                }
-
-                // 属性访问: obj.property
-                Token::Dot => {
-                    self.advance();
-                    let prop = self.expect_ident()?;
-                    expr = Expr::Property {
-                        object: Box::new(expr),
-                        property: prop,
-                    };
-                }
-
-                // 不是后缀，结束
-                _ => break,
-            }
-        }
+        // 解析后缀（索引访问或属性访问或函数调用）
+        // 使用 parse_postfix 来正确处理所有后缀形式
+        expr = self.parse_postfix(expr)?;
 
         Ok(expr)
     }
 
     /// 解析表达式语句
+    ///
+    /// 支持 VBScript 风格的方法调用：Response.Write "Hello"
+    /// 不需要括号，直接在属性名后跟参数
     pub fn parse_expr_stmt(&mut self) -> Result<Option<Stmt>, ParseError> {
         let expr = self.parse_expr(0)?;
+
+        // 检查是否是 obj.property 形式，后面是否有参数
+        // VBScript 支持 Response.Write "Hello" 这种无括号调用
+        let stmt = if let Expr::Property { object, property } = expr {
+            // 检查下一个 token 是否可能是参数
+            // 如果是字符串、数字、标识符等，则收集参数
+            if self.is_argument_start() {
+                let mut args = vec![];
+                // 收集所有参数（用空格分隔）
+                while self.is_argument_start() {
+                    args.push(self.parse_expr(0)?);
+                    // VBScript 中参数用空格分隔，不是逗号
+                    // 但我们也兼容逗号
+                    if !self.match_token(&Token::Comma) {
+                        // 检查是否还有更多参数
+                        if !self.is_argument_start() {
+                            break;
+                        }
+                    }
+                }
+                // 转换为方法调用
+                Stmt::Expr(Expr::Method {
+                    object,
+                    method: property,
+                    args,
+                })
+            } else {
+                // 不是方法调用，保持原样
+                Stmt::Expr(Expr::Property { object, property })
+            }
+        } else {
+            Stmt::Expr(expr)
+        };
+
         self.skip_newlines();
-        Ok(Some(Stmt::Expr(expr)))
+        Ok(Some(stmt))
+    }
+
+    /// 检查是否是参数的开始
+    fn is_argument_start(&self) -> bool {
+        match self.peek() {
+            Token::String(_) => true,
+            Token::Number(_) => true,
+            Token::Ident(_) => true,
+            Token::LParen => true,
+            _ => false,
+        }
     }
 
     /// 解析 Set 语句
