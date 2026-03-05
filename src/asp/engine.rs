@@ -233,7 +233,7 @@ fn format_error_with_context(
     let source_lines: Vec<&str> = source.lines().collect();
     
     // 获取代码段行
-    let code_lines: Vec<&str> = code.lines().collect();
+    let _code_lines: Vec<&str> = code.lines().collect();
 
     // 确定错误发生的行（从消息中提取相对于代码段的行号）
     let relative_line = extract_error_line(message).unwrap_or(1);

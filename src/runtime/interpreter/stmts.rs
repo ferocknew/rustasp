@@ -313,7 +313,7 @@ impl Interpreter {
     // ==================== 内建对象属性设置 ====================
 
     /// 设置 Response 对象的属性
-    fn builtin_response_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+    fn builtin_response_set_property(&mut self, property: &str, _value: Value) -> Result<Value, RuntimeError> {
         match property.to_uppercase().as_str() {
             "BUFFER" => {
                 // Response.Buffer = True/False
@@ -346,7 +346,7 @@ impl Interpreter {
     }
 
     /// 设置 Server 对象的属性
-    fn builtin_server_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+    fn builtin_server_set_property(&mut self, property: &str, _value: Value) -> Result<Value, RuntimeError> {
         match property.to_uppercase().as_str() {
             "SCRIPTTIMEOUT" => {
                 // Server.ScriptTimeout = 300
@@ -360,7 +360,7 @@ impl Interpreter {
     }
 
     /// 设置 Session 对象的属性
-    fn builtin_session_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+    fn builtin_session_set_property(&mut self, property: &str, _value: Value) -> Result<Value, RuntimeError> {
         // Session 对象的属性实际上是通过索引访问的
         // Session("key") = value
         // 这里处理的是 Session.Property = value 的情况
