@@ -31,11 +31,13 @@ impl Interpreter {
                 body,
             } => self.eval_for(var, start, end, step.as_ref(), body),
             Stmt::While { cond, body } => self.eval_while(cond, body),
+            Stmt::ForEach { var, collection, body } => self.eval_for_each(var, collection, body),
             Stmt::Select {
                 expr,
                 cases,
                 else_block,
             } => self.eval_select(expr, cases, else_block),
+            Stmt::ReDim { name, sizes, preserve } => self.eval_redim(name, sizes, *preserve),
             Stmt::Sub { name, params, body } => self.eval_sub(name, params, body),
             Stmt::Function { name, params, body } => self.eval_function(name, params, body),
             Stmt::Call { name, args } => self.eval_call(name, args),
@@ -465,5 +467,82 @@ impl Interpreter {
                 Err(RuntimeError::PropertyNotFound(format!("Session.{}", property)))
             }
         }
+    }
+
+    /// 执行 ReDim 语句
+    fn eval_redim(&mut self, name: &str, sizes: &[Expr], preserve: bool) -> Result<Value, RuntimeError> {
+        // 计算新数组大小
+        let mut new_size = 1;
+        for dim_expr in sizes {
+            let dim_val = self.eval_expr(dim_expr)?;
+            let dim = match dim_val {
+                Value::Number(n) => n as usize,
+                _ => return Err(RuntimeError::Generic(format!(
+                    "Array size must be a number, got {:?}",
+                    dim_val
+                ))),
+            };
+            new_size *= dim.max(0);
+        }
+
+        // 获取旧数组（如果需要 preserve）
+        let old_arr = if preserve {
+            self.context.get_var(name).cloned()
+        } else {
+            None
+        };
+
+        // 创建新数组
+        let mut new_arr = vec![Value::Empty; new_size];
+
+        // 如果需要 preserve，复制旧数据
+        if let Some(Value::Array(old)) = old_arr {
+            let copy_len = old.len().min(new_arr.len());
+            for i in 0..copy_len {
+                new_arr[i] = old[i].clone();
+            }
+        }
+
+        // 设置新数组
+        self.context.set_var(name.to_string(), Value::Array(new_arr));
+        Ok(Value::Empty)
+    }
+
+    /// 执行 For Each 循环
+    fn eval_for_each(&mut self, var: &str, collection: &Expr, body: &[Stmt]) -> Result<Value, RuntimeError> {
+        // 计算集合表达式
+        let collection_val = self.eval_expr(collection)?;
+
+        // 获取集合中的元素
+        let elements = match collection_val {
+            Value::Array(arr) => arr,
+            Value::Object(obj) => {
+                // 对于对象，遍历值
+                obj.values().cloned().collect::<Vec<_>>()
+            }
+            Value::String(s) => {
+                // 对于字符串，遍历每个字符
+                s.chars().map(|c| Value::String(c.to_string())).collect()
+            }
+            _ => {
+                return Err(RuntimeError::Generic(format!(
+                    "For Each requires an array, object, or string, got {:?}",
+                    collection_val
+                )))
+            }
+        };
+
+        // 遍历每个元素
+        for element in elements {
+            // 设置循环变量
+            self.context.define_var(var.to_string(), element);
+
+            // 执行循环体
+            for stmt in body {
+                self.eval_stmt(stmt)?;
+            }
+        }
+
+        Ok(Value::Empty)
     }
 }

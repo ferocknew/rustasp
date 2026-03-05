@@ -265,6 +265,7 @@ impl Lexer {
         let ident_lower = normalize_identifier(ident);
         match ident_lower.as_str() {
             "dim" => Some(Keyword::Dim),
+            "redim" => Some(Keyword::ReDim),
             "const" => Some(Keyword::Const),
             "if" => Some(Keyword::If),
             "then" => Some(Keyword::Then),
@@ -303,6 +304,7 @@ impl Lexer {
             "is" => Some(Keyword::Is),
             "option" => Some(Keyword::Option),
             "explicit" => Some(Keyword::Explicit),
+            "preserve" => Some(Keyword::Preserve),
             "on" => Some(Keyword::On),
             "error" => Some(Keyword::Error),
             "resume" => Some(Keyword::Resume),

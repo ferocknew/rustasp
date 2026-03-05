@@ -1,4 +1,4 @@
-//! 循环语句解析 - For / While / Do
+//! 循环语句解析 - For / For Each / While / Do
 
 use crate::ast::Expr;
 use crate::ast::Stmt;
@@ -8,9 +8,16 @@ use crate::parser::ParseError;
 use crate::parser::Parser;
 
 impl Parser {
-    /// 解析 For 循环
+    /// 解析 For 循环（可能是 For 或 For Each）
     pub fn parse_for(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::For)?;
+
+        // 检查是否是 For Each
+        if self.match_keyword(Keyword::Each) {
+            return self.parse_for_each();
+        }
+
+        // 普通 For 循环
         let var = self.expect_ident()?;
         self.expect(Token::Eq)?;
         let start = self.parse_expr(0)?;
@@ -42,6 +49,33 @@ impl Parser {
             start,
             end,
             step,
+            body,
+        }))
+    }
+
+    /// 解析 For Each 循环
+    fn parse_for_each(&mut self) -> Result<Option<Stmt>, ParseError> {
+        let var = self.expect_ident()?;
+        self.expect_keyword(Keyword::In)?;
+        let collection = self.parse_expr(0)?;
+        self.skip_newlines();
+
+        let mut body = vec![];
+        loop {
+            if self.is_at_end() || self.check_keyword(Keyword::Next) {
+                break;
+            }
+            match self.parse_stmt()? {
+                Some(stmt) => body.push(stmt),
+                None => break,
+            }
+            self.skip_newlines();
+        }
+        self.expect_keyword(Keyword::Next)?;
+
+        Ok(Some(Stmt::ForEach {
+            var,
+            collection,
             body,
         }))
     }
