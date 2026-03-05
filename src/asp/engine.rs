@@ -1,6 +1,7 @@
 //! ASP 完整引擎
 //!
 //! 使用 Parser + Runtime 执行 ASP 代码
+//! 支持跨代码块的语句（如 If...Else...End If 分散在多个代码块中）
 
 use super::segmenter::{segment_with_pos, Segment};
 use std::collections::HashMap;
@@ -44,10 +45,29 @@ impl Engine {
         // 1. 分割代码（带位置信息）
         let segments_with_pos = segment_with_pos(source)?;
 
-        // 2. 创建解释器
+        // 2. 构建完整的 VBScript 程序
+        let full_program = self.build_full_program(&segments_with_pos)?;
+        eprintln!("DEBUG: Full program:\n{}", full_program);
+
+        // 3. 词法分析
+        let tokens = tokenize(&full_program).map_err(|e| {
+            let error_msg = format!("Lexer error: {}", e);
+            eprintln!("❌ ASP Error: {}\n", error_msg);
+            error_msg
+        })?;
+
+        // 4. 语法分析
+        let mut parser = Parser::new(tokens);
+        let stmts = parser.parse_program().map_err(|e| {
+            let error_msg = format!("Parser error: {}", e);
+            eprintln!("❌ ASP Error: {}\n", error_msg);
+            error_msg
+        })?;
+
+        // 5. 创建解释器
         let mut interpreter = vbscript::runtime::Interpreter::new();
 
-        // 3. 注入内建对象（在执行前）
+        // 6. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
 
@@ -82,126 +102,45 @@ impl Engine {
             context.set_request_data(request_data);
         }
 
-        // 4. 执行每个代码段
-        let mut output = String::new();
+        // 7. 执行完整的程序
+        let program = Program { statements: stmts };
+        interpreter.execute(&program).map_err(|e| {
+            let error_msg = format!("Runtime error: {}", e);
+            eprintln!("❌ ASP Error: {}\n", error_msg);
+            error_msg
+        })?;
 
-        for seg in &segments_with_pos {
-            eprintln!("DEBUG: Segment at line {}: {:?}", seg.start_line, seg.segment);
+        // 8. 收集输出
+        Ok(interpreter.context().get_output().to_string())
+    }
+
+    /// 构建完整的 VBScript 程序
+    /// 将所有段（HTML、代码、表达式）合并成一个完整的 VBScript 程序
+    fn build_full_program(&self, segments: &[super::segmenter::SegmentWithPos]) -> Result<String, String> {
+        let mut program = String::new();
+
+        for seg in segments {
             match &seg.segment {
                 Segment::Html(html) => {
-                    output.push_str(html);
+                    // HTML 段转换为 Response.Write 语句
+                    // 转义双引号
+                    let escaped_html = html.replace('\\', "\\\\").replace('"', "\"\"");
+                    // 处理多行 HTML
+                    for (i, line) in escaped_html.lines().enumerate() {
+                        if i > 0 {
+                            program.push_str("Response.Write vbNewLine\n");
+                        }
+                        program.push_str(&format!("Response.Write \"{}\"\n", line));
+                    }
                 }
                 Segment::Code(code) => {
-                    eprintln!("DEBUG ASP: 开始解析代码段: '{}'", code);
-                    // 词法分析
-                    let tokens = tokenize(code).map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Lexer error",
-                            &e.to_string(),
-                            code,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    // 语法分析
-                    let mut parser = Parser::new(tokens);
-                    let stmts = parser.parse_program().map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Parser error",
-                            &e.to_string(),
-                            code,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    // 执行
-                    let program = Program { statements: stmts };
-                    interpreter.execute(&program).map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Runtime error",
-                            &e.to_string(),
-                            code,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    // 收集输出
-                    {
-                        let context = interpreter.context();
-                        output.push_str(context.get_output());
-                    }
-                    interpreter.context_mut().clear_output();
+                    // 代码段直接添加
+                    program.push_str(code);
+                    program.push('\n');
                 }
                 Segment::Expr(expr) => {
-                    // 解析并执行表达式
-                    let tokens = tokenize(expr).map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Lexer error",
-                            &e.to_string(),
-                            expr,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    let mut parser = Parser::new(tokens);
-                    let ast = parser.parse_expr(0).map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Parser error",
-                            &e.to_string(),
-                            expr,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    // 求值
-                    let value = interpreter.eval_expr(&ast).map_err(|e| {
-                        let error_msg = format_error_with_context(
-                            "Runtime error",
-                            &e.to_string(),
-                            expr,
-                            source,
-                            seg.start_line,
-                        );
-                        eprintln!("❌ ASP Error in {}:\n{}\n", 
-                            self.request_context.as_ref().map(|ctx| ctx.path.as_str()).unwrap_or("unknown"),
-                            error_msg
-                        );
-                        error_msg
-                    })?;
-
-                    // 输出
-                    use vbscript::runtime::ValueConversion;
-                    output.push_str(&ValueConversion::to_string(&value));
+                    // 表达式段转换为 Response.Write 语句
+                    program.push_str(&format!("Response.Write {}\n", expr));
                 }
                 Segment::Directive(_) => {
                     // 指令暂不处理，直接跳过
@@ -209,7 +148,7 @@ impl Engine {
             }
         }
 
-        Ok(output)
+        Ok(program)
     }
 }
 
