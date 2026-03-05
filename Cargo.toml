@@ -12,10 +12,6 @@ path = "src/lib.rs"
 name = "vbscript"
 path = "src/main.rs"
 
-[[bin]]
-name = "test_parser"
-path = "src/bin/test_parser.rs"
-
 [dependencies]
 # 异步运行时
 tokio = { version = "1", features = ["full"] }

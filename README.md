@@ -222,7 +222,7 @@ interpreter.execute(&program)?;
 
 ```env
 # 是否显示目录列表 (true/false)
-DIRECTORY_LISTING=true
+DIRECTORY_LISTING=false
 
 # Web 根目录路径
 HOME_DIR=./www
@@ -233,11 +233,17 @@ INDEX_FILE=index.asp
 # 服务端口号
 PORT=8080
 
-# 是否启用调试模式
+# 是否支持父路径访问 (../) (true/false)
+ALLOW_PARENT_PATH=false
+
+# 是否启用调试模式 (true/false)
 DEBUG=false
 
-# 是否显示详细错误信息
+# 是否显示详细错误信息 (true/false)
 DETAILED_ERROR=false
+
+# 自定义错误页面（相对于 home_dir）
+# ERROR_PAGE=error.html
 
 # ASP 文件扩展名（逗号分隔）
 ASP_EXT=asp,asa
