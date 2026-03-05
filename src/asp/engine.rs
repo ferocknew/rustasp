@@ -8,8 +8,10 @@ use std::collections::HashMap;
 use vbscript::ast::Program;
 use vbscript::parser::tokenize;
 use vbscript::parser::Parser;
+use vbscript::runtime::Value;
 use vbscript::Response;
 
+use crate::builtins::Session;
 use crate::http::RequestContext;
 
 /// ASP 执行结果
@@ -76,6 +78,16 @@ impl Engine {
         // 5. 创建解释器和 Response 对象
         let mut interpreter = vbscript::runtime::Interpreter::new();
         // Response 对象将在 Context 中首次使用时自动创建
+
+        // 5.1 初始化 Session 对象并注入到 Context
+        let session = Session::new(format!("session_{}", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()));
+        interpreter.context_mut().define_var(
+            "Session".to_string(),
+            Value::Object(Box::new(session)),
+        );
 
         // 6. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
