@@ -13,7 +13,9 @@ impl Interpreter {
     /// 执行语句（调度）
     pub fn eval_stmt(&mut self, stmt: &Stmt) -> Result<Value, RuntimeError> {
         match stmt {
-            Stmt::Dim { name, init, .. } => self.eval_dim(name, init.as_ref()),
+            Stmt::Dim { name, init, is_array, sizes } => {
+                self.eval_dim(name, init.as_ref(), *is_array, &sizes)
+            }
             Stmt::Const { name, value } => self.eval_const(name, value),
             Stmt::Assignment { target, value } => self.eval_assignment(target, value),
             Stmt::Set { target, value } => self.eval_set(target, value),
@@ -51,12 +53,45 @@ impl Interpreter {
     }
 
     /// 执行 Dim 语句
-    fn eval_dim(&mut self, name: &str, init: Option<&Expr>) -> Result<Value, RuntimeError> {
-        let value = if let Some(expr) = init {
+    fn eval_dim(
+        &mut self,
+        name: &str,
+        init: Option<&Expr>,
+        is_array: bool,
+        sizes: &[Expr],
+    ) -> Result<Value, RuntimeError> {
+        let value = if is_array {
+            // 创建数组
+            let mut size = 1;
+            for dim_expr in sizes {
+                let dim_val = self.eval_expr(dim_expr)?;
+                let dim = match dim_val {
+                    Value::Number(n) => n as usize,
+                    _ => return Err(RuntimeError::Generic(format!(
+                        "Array size must be a number, got {:?}",
+                        dim_val
+                    ))),
+                };
+                size *= dim.max(0); // 确保大小非负
+            }
+
+            // 创建指定大小的空数组
+            let mut arr = vec![Value::Empty; size];
+            // 如果有初始化值，填充第一个元素
+            if let Some(init_expr) = init {
+                let init_val = self.eval_expr(init_expr)?;
+                if !arr.is_empty() {
+                    arr[0] = init_val;
+                }
+            }
+
+            Value::Array(arr)
+        } else if let Some(expr) = init {
             self.eval_expr(expr)?
         } else {
             Value::Empty
         };
+
         self.context.define_var(name.to_string(), value);
         Ok(Value::Empty)
     }
@@ -80,18 +115,41 @@ impl Interpreter {
                 let idx = self.eval_expr(index)?;
                 match object.as_ref() {
                     Expr::Variable(name) => {
-                        if let Some(Value::Array(arr)) = self.context.get_var(name).cloned() {
-                            let mut arr = arr;
-                            if let Value::Number(i) = idx {
-                                let i = i as usize;
-                                if i < arr.len() {
+                        // 检查索引是否是数字
+                        if let Value::Number(i) = idx {
+                            let i = i as usize;
+                            match self.context.get_var(name).cloned() {
+                                Some(Value::Array(mut arr)) => {
+                                    // 自动扩展数组
+                                    if i >= arr.len() {
+                                        arr.resize(i + 1, Value::Empty);
+                                    }
                                     arr[i] = val;
                                     self.context.set_var(name.clone(), Value::Array(arr));
                                     return Ok(Value::Empty);
                                 }
+                                Some(Value::Empty) => {
+                                    // 变量是 Empty，初始化为数组
+                                    let mut arr = vec![Value::Empty; i + 1];
+                                    arr[i] = val;
+                                    self.context.set_var(name.clone(), Value::Array(arr));
+                                    return Ok(Value::Empty);
+                                }
+                                _ => {
+                                    // 变量不是数组类型，重新创建为数组
+                                }
                             }
+
+                            // 如果变量不存在或类型不匹配，创建新数组
+                            let mut arr = vec![Value::Empty; i + 1];
+                            arr[i] = val;
+                            self.context.set_var(name.clone(), Value::Array(arr));
+                            Ok(Value::Empty)
+                        } else {
+                            Err(RuntimeError::Generic(format!(
+                                "Array index must be a number, got {:?}", idx
+                            )))
                         }
-                        Err(RuntimeError::InvalidAssignment)
                     }
                     _ => Err(RuntimeError::InvalidAssignment),
                 }
@@ -279,14 +337,37 @@ impl Interpreter {
 
     /// 执行 Call 语句
     fn eval_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
-        let _args: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
-        // 简化：直接调用函数
+        // 计算参数值
+        let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+        let arg_values = arg_values?;
+
         let name_lower = normalize_identifier(name);
         if let Some(func) = self.context.functions.get(&name_lower).cloned() {
+            // 创建新的作用域
             self.context.push_scope();
-            for stmt in &func.body {
-                self.eval_stmt(stmt)?;
+
+            // 绑定参数到函数作用域
+            for (i, param_name) in func.params.iter().enumerate() {
+                let value = if i < arg_values.len() {
+                    arg_values[i].clone()
+                } else {
+                    Value::Empty
+                };
+                self.context.define_var(param_name.clone(), value);
             }
+
+            // 执行函数体
+            for stmt in &func.body {
+                match self.eval_stmt(stmt) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        self.context.pop_scope();
+                        return Err(e);
+                    }
+                }
+            }
+
+            // 弹出作用域
             self.context.pop_scope();
         }
         Ok(Value::Empty)

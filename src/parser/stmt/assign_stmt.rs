@@ -37,13 +37,17 @@ impl Parser {
 
         // Lookahead 寻找赋值符号
         let mut pos = 1;
+        eprintln!("DEBUG is_assignment_start: ident={:?}", self.peek());
         loop {
-            match self.peek_ahead(pos) {
+            let tok = self.peek_ahead(pos);
+            eprintln!("DEBUG is_assignment_start: pos={}, tok={:?}", pos, tok);
+            match tok {
                 // 直接赋值: x = ...
                 Token::Eq => {
                     // 检查 = 后面是否是新的一行或语句结束
                     // 如果是，则是比较表达式；否则是赋值
                     // 在 VBScript 中，单独一行的 x = 1 总是赋值
+                    eprintln!("DEBUG is_assignment_start: found Eq, returning true");
                     return true;
                 }
 
@@ -80,7 +84,10 @@ impl Parser {
                 }
 
                 // 其他情况不是赋值
-                _ => return false,
+                _ => {
+                    eprintln!("DEBUG is_assignment_start: other token, returning false");
+                    return false;
+                }
             }
         }
     }
@@ -117,9 +124,48 @@ impl Parser {
         let name = self.expect_ident()?;
         let mut expr = Expr::Variable(name);
 
-        // 解析后缀（索引访问或属性访问或函数调用）
-        // 使用 parse_postfix 来正确处理所有后缀形式
-        expr = self.parse_postfix(expr)?;
+        // 解析后缀（索引访问、属性访问）
+        loop {
+            match self.peek() {
+                // 索引访问: arr(index) - 这是赋值目标，不是函数调用
+                Token::LParen => {
+                    self.advance();
+                    let mut args = vec![];
+                    if !self.check(&Token::RParen) {
+                        args.push(self.parse_expr(0)?);
+                        while self.match_token(&Token::Comma) {
+                            args.push(self.parse_expr(0)?);
+                        }
+                    }
+                    self.expect(Token::RParen)?;
+
+                    // 在赋值左侧，括号总是表示索引访问
+                    if args.len() == 1 {
+                        expr = Expr::Index {
+                            object: Box::new(expr),
+                            index: Box::new(args.into_iter().next().unwrap()),
+                        };
+                    } else {
+                        return Err(ParseError::ParserError(
+                            "Invalid index in assignment target".to_string(),
+                        ));
+                    }
+                }
+
+                // 属性访问: obj.property
+                Token::Dot => {
+                    self.advance();
+                    let prop = self.expect_ident()?;
+                    expr = Expr::Property {
+                        object: Box::new(expr),
+                        property: prop,
+                    };
+                }
+
+                // 不是后缀，结束
+                _ => break,
+            }
+        }
 
         Ok(expr)
     }

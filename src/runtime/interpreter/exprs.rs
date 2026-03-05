@@ -54,20 +54,84 @@ impl Interpreter {
                     args.iter().map(|e| self.eval_expr(e)).collect();
                 let arg_values = arg_values?;
 
+                eprintln!("DEBUG: Call {} with {:?} args", name, arg_values.len());
+
                 // 首先尝试作为内置函数调用
                 if let Some(result) = super::builtins::call_builtin_function_multi(name, &arg_values) {
                     return result;
                 }
 
-                // 然后尝试作为用户定义函数调用
-                if let Some(func) = self.context.get_function(name) {
-                    // TODO: 实现用户定义函数调用
-                    // 需要创建新的作用域，执行函数体等
-                    return Ok(Value::Empty);
+                // 单参数内置函数回退
+                if arg_values.len() == 1 {
+                    if let Some(result) =
+                        super::builtins::call_builtin_function(&name.to_lowercase(), &arg_values[0])
+                    {
+                        return result;
+                    }
                 }
 
-                // 未找到函数
-                Err(RuntimeError::UndefinedVariable(format!("Function '{}'", name)))
+                // 尝试作为用户定义函数调用
+                if let Some(func) = self.context.get_function(name).cloned() {
+                    eprintln!("DEBUG: Found user function {}", name);
+
+                    // 创建新的作用域
+                    self.context.push_scope();
+
+                    // 绑定参数到函数作用域
+                    for (i, param_name) in func.params.iter().enumerate() {
+                        let value = if i < arg_values.len() {
+                            arg_values[i].clone()
+                        } else {
+                            Value::Empty
+                        };
+                        self.context.define_var(param_name.clone(), value);
+                    }
+
+                    // 执行函数体
+                    for stmt in &func.body {
+                        match self.eval_stmt(stmt) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                self.context.pop_scope();
+                                return Err(e);
+                            }
+                        }
+                    }
+
+                    // 获取函数返回值（在 VBScript 中，函数名作为返回值变量）
+                    let func_name_lower = crate::utils::normalize_identifier(&func.name);
+                    let result = self.context.get_var(&func.name)
+                        .or_else(|| self.context.get_var(&func_name_lower))
+                        .cloned()
+                        .unwrap_or(Value::Empty);
+
+                    // 弹出作用域
+                    self.context.pop_scope();
+
+                    return Ok(result);
+                }
+
+                // 未找到函数，尝试作为数组索引访问
+                // 支持 fruits(i) 这样的数组访问语法
+                if arg_values.len() == 1 {
+                    eprintln!("DEBUG: Checking if {} is an array variable", name);
+                    if let Some(var_val) = self.context.get_var(name) {
+                        eprintln!("DEBUG: Found variable {} with value {:?}", name, var_val);
+                    }
+                    if let Some(Value::Array(arr)) = self.context.get_var(name) {
+                        eprintln!("DEBUG: Found array {} with length {}", name, arr.len());
+                        let idx = &arg_values[0];
+                        if let Value::Number(i) = idx {
+                            let i = *i as usize;
+                            if i < arr.len() {
+                                return Ok(arr[i].clone());
+                            }
+                        }
+                    }
+                }
+
+                // 未找到函数或索引
+                Err(RuntimeError::UndefinedVariable(format!("Function '{}' or array index", name)))
             }
             Expr::Property { object, property } => {
                 self.eval_property(object, property)
