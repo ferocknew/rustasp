@@ -23,6 +23,8 @@ pub struct Config {
     pub error_page: Option<String>,
     /// ASP 文件扩展名（逗号分隔）
     pub asp_ext: Vec<String>,
+    /// Runtime 目录路径（用于 Session、缓存等硬盘存储）
+    pub runtime_dir: PathBuf,
 }
 
 impl Default for Config {
@@ -37,6 +39,7 @@ impl Default for Config {
             detailed_error: false,
             error_page: None,
             asp_ext: vec!["asp".to_string(), "asa".to_string()],
+            runtime_dir: PathBuf::from("./runtime"),
         }
     }
 }
@@ -78,6 +81,9 @@ impl Config {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect(),
+            runtime_dir: PathBuf::from(
+                std::env::var("RUNTIME_DIR").unwrap_or_else(|_| "./runtime".to_string()),
+            ),
         }
     }
 }
