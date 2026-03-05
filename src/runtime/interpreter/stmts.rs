@@ -96,6 +96,36 @@ impl Interpreter {
                     _ => Err(RuntimeError::InvalidAssignment),
                 }
             }
+            Expr::Property { object, property } => {
+                // 处理属性赋值，如 Response.Buffer = True
+                match object.as_ref() {
+                    Expr::Variable(obj_name) => {
+                        match obj_name.to_lowercase().as_str() {
+                            "response" => {
+                                return self.builtin_response_set_property(property, val);
+                            }
+                            "request" => {
+                                // Request 对象是只读的，不支持属性设置
+                                return Err(RuntimeError::PropertyNotFound(format!("Request.{}", property)));
+                            }
+                            "server" => {
+                                return self.builtin_server_set_property(property, val);
+                            }
+                            "session" => {
+                                return self.builtin_session_set_property(property, val);
+                            }
+                            _ => {
+                                // 其他对象暂不支持属性设置
+                                return Err(RuntimeError::PropertyNotFound(format!("{}.{}", obj_name, property)));
+                            }
+                        }
+                    }
+                    _ => {
+                        // 其他类型的属性赋值暂不支持
+                    }
+                }
+                Err(RuntimeError::InvalidAssignment)
+            }
             _ => Err(RuntimeError::InvalidAssignment),
         }
     }
@@ -278,5 +308,81 @@ impl Interpreter {
     fn eval_exit_sub(&mut self) -> Result<Value, RuntimeError> {
         self.context.should_exit = true;
         Ok(Value::Empty)
+    }
+
+    // ==================== 内建对象属性设置 ====================
+
+    /// 设置 Response 对象的属性
+    fn builtin_response_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+        match property.to_uppercase().as_str() {
+            "BUFFER" => {
+                // Response.Buffer = True/False
+                // 暂时忽略，实际应该设置缓冲状态
+                Ok(Value::Empty)
+            }
+            "CONTENTTYPE" => {
+                // Response.ContentType = "text/html"
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            "CHARSET" => {
+                // Response.Charset = "UTF-8"
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            "STATUS" => {
+                // Response.Status = "200 OK"
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            "EXPIRES" | "EXPIRESABSOLUTE" => {
+                // 缓存控制，暂时忽略
+                Ok(Value::Empty)
+            }
+            _ => {
+                Err(RuntimeError::PropertyNotFound(format!("Response.{}", property)))
+            }
+        }
+    }
+
+    /// 设置 Server 对象的属性
+    fn builtin_server_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+        match property.to_uppercase().as_str() {
+            "SCRIPTTIMEOUT" => {
+                // Server.ScriptTimeout = 300
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            _ => {
+                Err(RuntimeError::PropertyNotFound(format!("Server.{}", property)))
+            }
+        }
+    }
+
+    /// 设置 Session 对象的属性
+    fn builtin_session_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
+        // Session 对象的属性实际上是通过索引访问的
+        // Session("key") = value
+        // 这里处理的是 Session.Property = value 的情况
+        match property.to_uppercase().as_str() {
+            "TIMEOUT" => {
+                // Session.Timeout = 20
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            "CODEPAGE" => {
+                // Session.CodePage = 65001
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            "LCID" => {
+                // Session.LCID = 2052
+                // 暂时忽略
+                Ok(Value::Empty)
+            }
+            _ => {
+                Err(RuntimeError::PropertyNotFound(format!("Session.{}", property)))
+            }
+        }
     }
 }
