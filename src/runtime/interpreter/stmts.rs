@@ -472,11 +472,20 @@ impl Interpreter {
             _ => {
                 // 处理 Session("key") = value 的情况
                 // 从 context 中获取 Session 对象（它是一个 HashMap）
+                eprintln!("DEBUG: builtin_session_set_property: setting {} = {:?}", property, value);
+                if let Some(Value::Object(map)) = self.context.get_var("Session") {
+                    eprintln!("DEBUG:   current session_map has {} keys", map.len());
+                    for (k, v) in map.iter() {
+                        eprintln!("DEBUG:     {} = {:?}", k, v);
+                    }
+                }
+
                 if let Some(Value::Object(mut map)) = self.context.get_var("Session").cloned() {
                     // 设置 Session 变量
                     map.insert(property.to_lowercase(), value);
                     // 更新 context 中的 Session 对象
                     self.context.set_var("Session".to_string(), Value::Object(map));
+                    eprintln!("DEBUG:   updated Session in context");
                     Ok(Value::Empty)
                 } else {
                     Err(RuntimeError::Generic("Session object not found".to_string()))
