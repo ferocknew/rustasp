@@ -200,6 +200,20 @@ impl Engine {
 
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
         if let Some(Value::Object(session_map)) = interpreter.context().get_var("Session") {
+            eprintln!("DEBUG: 保存 Session，session_map 包含 {} 个键", session_map.len());
+            for (k, v) in session_map.iter() {
+                eprintln!("DEBUG:   {} = {:?}", k, v);
+            }
+
+            // 先将 context 中的 session_map 数据复制到 Session 对象（以便后续使用）
+            for (key, value) in session_map {
+                // 跳过特殊属性
+                if key.starts_with("__") || key == "sessionid" || key == "timeout" {
+                    continue;
+                }
+                session.set(key.clone(), value.clone());
+            }
+
             // 从 context 中的 session_map 创建新的 SessionData 并保存
             let now = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
