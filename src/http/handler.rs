@@ -12,7 +12,7 @@ use super::error_page::{ErrorInfo, ErrorKind, ErrorPageGenerator};
 use super::path_resolver::PathResolver;
 use super::request_context::RequestContext;
 use super::state::AppState;
-use crate::builtins::SessionManager;
+use vbscript::builtins::SessionManager;
 
 /// 处理 ASP 请求
 pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
@@ -370,7 +370,7 @@ pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> AxumRe
     };
 
     let mut items = Vec::new();
-    while let Some(Ok(entry)) = entries.next_entry().await {
+    while let Ok(Some(entry)) = entries.next_entry().await {
         if let Ok(name) = entry.file_name().into_string() {
             let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
             items.push((name, is_dir));

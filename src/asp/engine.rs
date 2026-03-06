@@ -11,7 +11,7 @@ use vbscript::parser::Parser;
 use vbscript::runtime::Value;
 use vbscript::Response;
 
-use crate::builtins::{Session, SessionManager};
+use vbscript::builtins::{Session, SessionManager};
 use crate::http::RequestContext;
 
 /// ASP 执行结果
@@ -20,6 +20,15 @@ pub struct ExecutionResult {
     pub output: String,
     /// Response 对象（包含状态码、ContentType、Headers 等）
     pub response: Response,
+}
+
+/// 将 Session 转换为 HashMap
+fn session_to_map(session: &Session) -> HashMap<String, Value> {
+    let mut map = HashMap::new();
+    // 存储 Session ID
+    map.insert("sessionid".to_string(), Value::String(session.session_id().to_string()));
+    map.insert("timeout".to_string(), Value::Number(session.timeout() as f64));
+    map
 }
 
 /// ASP 执行引擎
@@ -98,6 +107,7 @@ impl Engine {
             .unwrap_or_else(|| SessionManager::generate_session_id());
 
         // 尝试从 SessionManager 加载或创建新的 Session
+        let session_id_for_session = session_id.clone();
         let session = if let Some(ref mut manager) = self.session_manager {
             match manager.load_session(&session_id) {
                 Ok(Some(s)) => s,
@@ -107,23 +117,28 @@ impl Engine {
                         Ok(s) => s,
                         Err(e) => {
                             eprintln!("警告: 无法创建 Session: {}", e);
-                            Session::new(session_id)
+                            Session::new(session_id_for_session)
                         }
                     }
                 }
                 Err(e) => {
                     eprintln!("警告: 无法加载 Session: {}", e);
-                    Session::new(session_id)
+                    Session::new(session_id_for_session)
                 }
             }
         } else {
             // 如果没有 SessionManager，使用内存中的 Session
-            Session::new(session_id)
+            Session::new(session_id_for_session)
         };
+
+        // 创建 Session 存储对象 - 使用 HashMap 包装
+        let mut session_map: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+        // 将 Session ID 作为特殊属性存储
+        session_map.insert("__session_id".to_string(), Value::String(session_id));
 
         interpreter.context_mut().define_var(
             "Session".to_string(),
-            Value::Object(Box::new(session)),
+            Value::Object(session_map),
         );
 
         // 6. 注入内建对象（在执行前）
