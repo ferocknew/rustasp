@@ -281,6 +281,87 @@ async fn execute_asp_file(
     }
 }
 
+/// 执行 ASP 文件（无 Session 支持，用于 SessionManager 初始化失败时）
+async fn execute_asp_file_without_session(
+    file_path: &PathBuf,
+    uri_str: &str,
+    state: &AppState,
+    request_ctx: &RequestContext,
+    error_gen: &ErrorPageGenerator,
+) -> AxumResponse {
+    let content = match fs::read_to_string(file_path).await {
+        Ok(c) => c,
+        Err(e) => {
+            return error_gen.generate(&ErrorInfo::new(
+                "handler.rs",
+                0,
+                uri_str,
+                file_path.display().to_string(),
+                ErrorKind::FileRead,
+                e.to_string(),
+            ));
+        }
+    };
+
+    // 预处理 include 指令
+    let processed_content = match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
+        Ok(c) => c,
+        Err(e) => {
+            return error_gen.generate(&ErrorInfo::new(
+                "handler.rs",
+                0,
+                uri_str,
+                file_path.display().to_string(),
+                ErrorKind::AspExecution,
+                format!("Include error: {}", e),
+            ));
+        }
+    };
+
+    let mut engine = crate::asp::Engine::new()
+        .with_debug(state.config.debug)
+        .with_request_context(request_ctx.clone());
+
+    match engine.execute(&processed_content) {
+        Ok(result) => {
+            // 构建响应
+            let mut builder = AxumResponse::builder();
+
+            // 设置状态码
+            let status = StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
+            builder = builder.status(status);
+
+            // 设置 Content-Type
+            let content_type = result.response.get_content_type();
+            builder = builder.header("Content-Type", content_type);
+
+            // 添加自定义响应头
+            for (name, value) in result.response.get_headers() {
+                builder = builder.header(name, value);
+            }
+
+            // 返回响应体
+            let output = result.output;
+            match builder.body(Body::from(output.clone())) {
+                Ok(resp) => resp,
+                Err(_) => Html(output).into_response(),
+            }
+        }
+        Err(e) => {
+            let error_info = ErrorInfo::new(
+                "engine.rs",
+                0,
+                uri_str,
+                file_path.display().to_string(),
+                ErrorKind::AspExecution,
+                e.to_string(),
+            )
+            .with_source_code(&processed_content);
+            error_gen.generate(&error_info)
+        }
+    }
+}
+
 /// 生成目录列表
 pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> AxumResponse {
     let mut entries = match fs::read_dir(dir).await {

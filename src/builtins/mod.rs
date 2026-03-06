@@ -8,5 +8,7 @@ mod session_manager;
 
 // 重导出 Response 对象
 pub use response::Response;
+// 重导出 Session 对象
+pub use session::Session;
 // 重导出 SessionManager
 pub use session_manager::SessionManager;
