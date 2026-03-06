@@ -146,7 +146,7 @@ impl Engine {
         }
 
         // 将 Session ID 和 Timeout 作为特殊属性存储
-        session_map.insert("__session_id".to_string(), Value::String(session_id));
+        session_map.insert("__session_id".to_string(), Value::String(session_id.clone()));
         session_map.insert("sessionid".to_string(), Value::String(session.session_id().to_string()));
         session_map.insert("timeout".to_string(), Value::Number(session.timeout() as f64));
 
@@ -266,7 +266,7 @@ impl Engine {
             if cookie_id != Some(&session_id) {
                 response.add_header(
                     "Set-Cookie",
-                    &format!("ASPSESSIONID={}; Path=/; HttpOnly", session_id)
+                    &format!("ASPSESSIONID={}; Path=/; HttpOnly", &session_id)
                 );
             }
         }
