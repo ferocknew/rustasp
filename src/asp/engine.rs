@@ -98,17 +98,23 @@ impl Engine {
         // Response 对象将在 Context 中首次使用时自动创建
 
         // 5.1 初始化 Session
-        let session_id = self.session_manager.as_ref()
-            .map(|_| {
-                // 从 Cookie 或生成新的 Session ID
-                std::env::var("TEST_SESSION_ID")
-                    .unwrap_or_else(|_| SessionManager::generate_session_id())
-            })
-            .unwrap_or_else(|| SessionManager::generate_session_id());
+        let session_id = if let Some(ref ctx) = self.request_context {
+            // 从 Cookie 中读取 Session ID
+            if let Some(existing_id) = ctx.cookie("ASPSESSIONID") {
+                existing_id.to_string()
+            } else {
+                // 生成新的 Session ID
+                SessionManager::generate_session_id()
+            }
+        } else {
+            // 测试模式：从环境变量读取或生成新的
+            std::env::var("TEST_SESSION_ID")
+                .unwrap_or_else(|_| SessionManager::generate_session_id())
+        };
 
         // 尝试从 SessionManager 加载或创建新的 Session
         let session_id_for_session = session_id.clone();
-        let session = if let Some(ref mut manager) = self.session_manager {
+        let mut session = if let Some(ref mut manager) = self.session_manager {
             match manager.load_session(&session_id) {
                 Ok(Some(s)) => s,
                 Ok(None) => {
@@ -194,18 +200,47 @@ impl Engine {
 
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
         if let Some(Value::Object(session_map)) = interpreter.context().get_var("Session") {
-            // 将 HashMap 中的数据保存回 Session 对象
+            // 从 context 中的 session_map 创建新的 SessionData 并保存
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+
+            // 将 HashMap<String, Value> 转换为 HashMap<String, serde_json::Value>
+            let mut data = std::collections::HashMap::new();
             for (key, value) in session_map {
                 // 跳过特殊属性
                 if key.starts_with("__") || key == "sessionid" || key == "timeout" {
                     continue;
                 }
-                session.set(key.clone(), value);
+                // 简化处理：只支持基本类型
+                let json_value = match value {
+                    Value::String(s) => serde_json::Value::String(s.clone()),
+                    Value::Number(n) => {
+                        if n.fract() == 0.0 && *n >= i64::MIN as f64 && *n <= i64::MAX as f64 {
+                            serde_json::Value::Number(serde_json::Number::from(*n as i64))
+                        } else {
+                            serde_json::Value::String(n.to_string())
+                        }
+                    }
+                    Value::Boolean(b) => serde_json::Value::Bool(*b),
+                    _ => serde_json::Value::Null,
+                };
+                data.insert(key.clone(), json_value);
             }
+
+            // 创建 SessionData
+            let session_data = vbscript::builtins::session_manager::SessionData {
+                session_id: session.session_id().to_string(),
+                timeout: session.timeout(),
+                created_at: now - 100, // 假设创建于 100 秒前
+                last_accessed: now,
+                data,
+            };
 
             // 保存到 SessionManager
             if let Some(ref mut manager) = self.session_manager {
-                if let Err(e) = manager.save_session(&session) {
+                if let Err(e) = manager.save_session_data(&session_data) {
                     eprintln!("警告: 无法保存 Session: {}", e);
                 }
             }

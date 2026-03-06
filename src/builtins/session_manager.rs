@@ -109,15 +109,29 @@ impl SessionManager {
             .as_secs();
         self.save_session_data(&updated_data)?;
 
-        // 创建 Session 对象
-        let session = Session::new(session_id.to_string());
+        // 从 SessionData 创建 Session 对象（恢复数据）
+        let session = Session::from_session_data(updated_data);
         self.cache.insert(session_id.to_string(), session.clone());
 
         Ok(Some(session))
     }
 
+    /// 保存 Session
+    pub fn save_session(&mut self, session: &Session) -> Result<(), String> {
+        // 转换为 SessionData
+        let session_data = session.to_session_data()?;
+
+        // 保存到文件
+        self.save_session_data(&session_data)?;
+
+        // 更新缓存
+        self.cache.insert(session.session_id().to_string(), session.clone());
+
+        Ok(())
+    }
+
     /// 保存 Session 数据到文件
-    fn save_session_data(&self, session_data: &SessionData) -> Result<(), String> {
+    pub fn save_session_data(&self, session_data: &SessionData) -> Result<(), String> {
         let file_path = self.session_dir.join(format!("{}.json", session_data.session_id));
 
         let json = serde_json::to_string_pretty(session_data)

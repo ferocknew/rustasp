@@ -60,6 +60,38 @@ impl Session {
         }
     }
 
+    /// 从 SessionData 创建 Session（用于恢复）
+    pub fn from_session_data(session_data: super::session_manager::SessionData) -> Self {
+        use crate::runtime::ValueConversion;
+
+        // 将 serde_json::Value 转换回 Value
+        let mut data = HashMap::new();
+        for (key, json_value) in session_data.data {
+            let value = match json_value {
+                serde_json::Value::String(s) => Value::String(s),
+                serde_json::Value::Number(n) => {
+                    if n.is_i64() {
+                        Value::Number(n.as_i64().unwrap_or(0) as f64)
+                    } else if n.is_u64() {
+                        Value::Number(n.as_u64().unwrap_or(0) as f64)
+                    } else {
+                        Value::Number(n.as_f64().unwrap_or(0.0))
+                    }
+                }
+                serde_json::Value::Bool(b) => Value::Boolean(b),
+                serde_json::Value::Null => Value::Null,
+                _ => Value::Empty, // 不支持的类型
+            };
+            data.insert(key, value);
+        }
+
+        Session {
+            session_id: session_data.session_id,
+            timeout: session_data.timeout,
+            data: Arc::new(Mutex::new(data)),
+        }
+    }
+
     /// 获取 Session ID
     pub fn session_id(&self) -> &str {
         &self.session_id
