@@ -4,7 +4,39 @@ use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-/// Session 存储
+/// Session 数据（用于序列化/持久化）
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SessionData {
+    pub session_id: String,
+    pub timeout: u32,
+    pub created_at: u64,
+    pub last_accessed: u64,
+    pub data: HashMap<String, Value>,
+}
+
+impl SessionData {
+    pub fn new(session_id: String, timeout: u32) -> Self {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        SessionData {
+            session_id,
+            timeout,
+            created_at: now,
+            last_accessed: now,
+            data: HashMap::new(),
+        }
+    }
+
+    pub fn is_expired(&self, now: u64) -> bool {
+        let timeout_seconds = self.timeout as u64 * 60;
+        now > self.last_accessed + timeout_seconds
+    }
+}
+
+/// Session 存储（内存版本）
 pub type SessionStore = Arc<Mutex<HashMap<String, Value>>>;
 
 /// Session 对象
