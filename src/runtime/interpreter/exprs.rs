@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 表达式的求值逻辑
 
 use crate::ast::{BinaryOp, Expr, UnaryOp};
-use crate::runtime::{RuntimeError, Value, ValueCompare, ValueConversion, ValueOps};
+use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps};
 use crate::utils::identifier_matches;
 
 use super::Interpreter;
@@ -278,49 +278,19 @@ impl Interpreter {
 
         // 处理内建对象的方法
         match (object_name.as_deref(), method_lower.as_str()) {
-            // Response.Write
-            (Some("response"), "write") => {
-                if !args.is_empty() {
-                    let value = self.eval_expr(&args[0])?;
-                    let text = ValueConversion::to_string(&value);
-                    // 同时写入 Context 的 output 和 Response 对象的 buffer
-                    self.context.write(&text);
-                    self.context.response_mut().write(&text);
+            // Response 方法 - 统一通过 BuiltinObject trait 调用
+            (Some("response"), method_name) => {
+                // 计算参数
+                let arg_values: Result<Vec<Value>, _> =
+                    args.iter().map(|e| self.eval_expr(e)).collect();
+                let arg_values = arg_values?;
+
+                // 调用 Response 对象的方法
+                if let Some(response) = self.context.response_mut() {
+                    response.call_method(method_name, arg_values)
+                } else {
+                    Err(RuntimeError::Generic("Response object not available".to_string()))
                 }
-                Ok(Value::Empty)
-            }
-            // Response.End
-            (Some("response"), "end") => {
-                self.context.response_mut().end();
-                self.context.set_should_exit();
-                Ok(Value::Empty)
-            }
-            // Response.Redirect
-            (Some("response"), "redirect") => {
-                if !args.is_empty() {
-                    let url = self.eval_expr(&args[0])?;
-                    let url_str = ValueConversion::to_string(&url);
-                    self.context.response_mut().redirect(&url_str);
-                    self.context.set_should_exit();
-                }
-                Ok(Value::Empty)
-            }
-            // Response.Clear
-            (Some("response"), "clear") => {
-                self.context.response_mut().clear();
-                self.context.clear_output();
-                Ok(Value::Empty)
-            }
-            // Response.AddHeader
-            (Some("response"), "addheader") => {
-                if args.len() >= 2 {
-                    let name = self.eval_expr(&args[0])?;
-                    let value = self.eval_expr(&args[1])?;
-                    let name_str = ValueConversion::to_string(&name);
-                    let value_str = ValueConversion::to_string(&value);
-                    self.context.response_mut().add_header(&name_str, &value_str);
-                }
-                Ok(Value::Empty)
             }
             // Request.QueryString / Request.Form
             (Some("request"), "querystring") => {
@@ -401,7 +371,7 @@ impl Interpreter {
                                         if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
                                             let mut new_session = session_obj.clone();
                                             let keys_to_remove: Vec<String> = new_session.keys()
-                                                .filter(|k| !k.starts_with("__") && k != "sessionid" && k != "timeout")
+                                                .filter(|k| !k.starts_with("__") && k.as_str() != "sessionid" && k.as_str() != "timeout")
                                                 .cloned()
                                                 .collect();
                                             for key in keys_to_remove {
@@ -488,8 +458,15 @@ impl Interpreter {
                 }
             }
             Some("response") => {
+                // 从 response 对象获取属性
+                if let Some(response) = self.context.response() {
+                    let response_ref = response.clone();
+                    return response_ref.get_property(property);
+                }
+                // 如果无法获取 response，返回空值
                 match property_lower.as_str() {
-                    "status" | "contenttype" => Ok(Value::Empty),
+                    "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
+                    | "expires" | "expiresabsolute" | "pics" | "isclientconnected" => Ok(Value::Empty),
                     _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
                 }
             }

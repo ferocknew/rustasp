@@ -426,8 +426,10 @@ impl Interpreter {
                 // 暂时忽略（需要解析状态字符串）
                 Ok(Value::Empty)
             }
-            "EXPIRES" | "EXPIRESABSOLUTE" => {
-                // 缓存控制，暂时忽略
+            "CHARSET" | "CACHECONTROL" | "EXPIRES" | "EXPIRESABSOLUTE" | "PICS" | "ISCLIENTCONNECTED" => {
+                // 这些属性现在通过 BuiltinObject trait 处理
+                let prop_lower = property.to_lowercase();
+                response.set_property(&prop_lower, value)?;
                 Ok(Value::Empty)
             }
             _ => {
