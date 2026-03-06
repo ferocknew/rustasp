@@ -109,15 +109,7 @@ impl SessionManager {
         self.save_session_data(&updated_data)?;
 
         // 从 SessionData 创建 Session 对象（恢复数据）
-        let session = Session::from_session_data(updated_data.clone());
-        eprintln!("DEBUG: load_session: 从文件加载了 {} 个数据项", updated_data.data.len());
-        for (k, v) in updated_data.data.iter() {
-            eprintln!("DEBUG:    文件中的数据: {} = {:?}", k, v);
-        }
-        eprintln!("DEBUG: load_session: Session 对象创建完成，内部包含 {} 个数据项", session.get_all_data().len());
-        for (k, v) in session.get_all_data().iter() {
-            eprintln!("DEBUG:    Session 内部数据: {} = {:?}", k, v);
-        }
+        let session = Session::from_session_data(updated_data);
         self.cache.insert(session_id.to_string(), session.clone());
 
         Ok(Some(session))
