@@ -11,7 +11,7 @@ pub struct SessionData {
     pub timeout: u32,
     pub created_at: u64,
     pub last_accessed: u64,
-    pub data: HashMap<String, Value>,
+    pub data: HashMap<String, serde_json::Value>,
 }
 
 impl SessionData {
