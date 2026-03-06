@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 pub type SessionStore = Arc<Mutex<HashMap<String, Value>>>;
 
 /// Session 对象
+#[derive(Clone)]
 pub struct Session {
     /// Session ID
     session_id: String,

@@ -12,6 +12,7 @@ use super::error_page::{ErrorInfo, ErrorKind, ErrorPageGenerator};
 use super::path_resolver::PathResolver;
 use super::request_context::RequestContext;
 use super::state::AppState;
+use crate::builtins::SessionManager;
 
 /// 处理 ASP 请求
 pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
@@ -189,20 +190,47 @@ async fn execute_asp_file(
         }
     };
 
+    // 创建 SessionManager
+    let session_manager = match SessionManager::new(&state.config.runtime_dir) {
+        Ok(sm) => sm,
+        Err(e) => {
+            eprintln!("警告: 无法创建 SessionManager: {}", e);
+            // 没有 SessionManager 也能继续，只是没有 Session 持久化
+            return execute_asp_file_without_session(file_path, uri_str, state, request_ctx, error_gen).await;
+        }
+    };
+
+    // 获取或创建 Session ID
+    let session_id = if let Some(existing_id) = request_ctx.cookie("ASPSESSIONID") {
+        existing_id.to_string()
+    } else {
+        // 生成新的 Session ID
+        SessionManager::generate_session_id()
+    };
+
     let mut engine = crate::asp::Engine::new()
         .with_debug(state.config.debug)
-        .with_request_context(request_ctx.clone());
+        .with_request_context(request_ctx.clone())
+        .with_session_manager(session_manager);
 
     match engine.execute(&processed_content) {
         Ok(result) => {
             // 检查是否是重定向
             if result.response.get_status() == 302 {
                 if let Some(location) = result.response.get_headers().get("Location") {
-                    return AxumResponse::builder()
+                    // 在重定向响应中设置 Session Cookie
+                    let mut builder = AxumResponse::builder()
                         .status(StatusCode::FOUND)
-                        .header("Location", location.clone())
-                        .body(Body::empty())
-                        .unwrap();
+                        .header("Location", location.clone());
+
+                    // 设置 Session Cookie
+                    let cookie_value = format!(
+                        "ASPSESSIONID={}; Path=/; HttpOnly; SameSite=Lax",
+                        session_id
+                    );
+                    builder = builder.header("Set-Cookie", cookie_value);
+
+                    return builder.body(Body::empty()).unwrap();
                 }
             }
 
@@ -216,6 +244,13 @@ async fn execute_asp_file(
             // 设置 Content-Type
             let content_type = result.response.get_content_type();
             builder = builder.header("Content-Type", content_type);
+
+            // 设置 Session Cookie
+            let cookie_value = format!(
+                "ASPSESSIONID={}; Path=/; HttpOnly; SameSite=Lax",
+                session_id
+            );
+            builder = builder.header("Set-Cookie", cookie_value);
 
             // 添加自定义响应头
             for (name, value) in result.response.get_headers() {
@@ -254,7 +289,7 @@ pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> AxumRe
     };
 
     let mut items = Vec::new();
-    while let Ok(Some(entry)) = entries.next_entry().await {
+    while let Some(Ok(entry)) = entries.next_entry().await {
         if let Ok(name) = entry.file_name().into_string() {
             let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
             items.push((name, is_dir));

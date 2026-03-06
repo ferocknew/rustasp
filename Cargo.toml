@@ -23,6 +23,7 @@ tower-http = { version = "0.5", features = ["fs"] }
 
 # 序列化
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # 配置
 dotenv = "0.15"
@@ -50,11 +51,8 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # 时间处理
 chrono = { version = "0.4", features = ["serde"] }
 
+# Cookie 处理
+cookie = "0.18"
+
 # 测试临时目录
 tempfile = "3"
-
-# UUID 生成
-uuid = { version = "1", features = ["v4", "serde"] }
-
-# 时间处理
-chrono = { version = "0.4", features = ["serde"] }
