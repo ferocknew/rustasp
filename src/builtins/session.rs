@@ -106,6 +106,47 @@ impl Session {
             HashMap::new()
         }
     }
+
+    /// 转换为 SessionData（用于序列化）
+    pub fn to_session_data(&self) -> Result<super::session_manager::SessionData, String> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+
+        // 将 HashMap<String, Value> 转换为 HashMap<String, serde_json::Value>
+        let mut data = HashMap::new();
+        if let Ok(session_data) = self.data.lock() {
+            for (key, value) in session_data.iter() {
+                // 简化处理：只支持基本类型
+                let json_value = match value {
+                    Value::String(s) => serde_json::Value::String(s.clone()),
+                    Value::Number(n) => {
+                        // 检查是否是整数
+                        if n.fract() == 0.0 && *n >= i64::MIN as f64 && *n <= i64::MAX as f64 {
+                            serde_json::Value::Number(serde_json::Number::from(*n as i64))
+                        } else {
+                            // 浮点数作为字符串存储
+                            serde_json::Value::String(n.to_string())
+                        }
+                    }
+                    Value::Boolean(b) => serde_json::Value::Bool(*b),
+                    Value::Empty => serde_json::Value::Null,
+                    Value::Null => serde_json::Value::Null,
+                    _ => serde_json::Value::Null, // 数组和对象暂不支持
+                };
+                data.insert(key.clone(), json_value);
+            }
+        }
+
+        Ok(super::session_manager::SessionData {
+            session_id: self.session_id.clone(),
+            timeout: self.timeout,
+            created_at: now - 100, // 假设创建于 100 秒前
+            last_accessed: now,
+            data,
+        })
+    }
 }
 
 impl crate::runtime::BuiltinObject for Session {
