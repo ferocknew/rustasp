@@ -97,6 +97,15 @@ impl Session {
             data.insert(key.to_lowercase(), value);
         }
     }
+
+    /// 获取所有数据
+    pub fn get_all_data(&self) -> HashMap<String, Value> {
+        if let Ok(data) = self.data.lock() {
+            data.clone()
+        } else {
+            HashMap::new()
+        }
+    }
 }
 
 impl crate::runtime::BuiltinObject for Session {

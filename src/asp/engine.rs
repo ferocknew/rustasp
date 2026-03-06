@@ -133,8 +133,16 @@ impl Engine {
 
         // 创建 Session 存储对象 - 使用 HashMap 包装
         let mut session_map: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
-        // 将 Session ID 作为特殊属性存储
+
+        // 从 Session 对象中复制已有数据
+        for (key, value) in session.get_all_data() {
+            session_map.insert(key, value);
+        }
+
+        // 将 Session ID 和 Timeout 作为特殊属性存储
         session_map.insert("__session_id".to_string(), Value::String(session_id));
+        session_map.insert("sessionid".to_string(), Value::String(session.session_id().to_string()));
+        session_map.insert("timeout".to_string(), Value::Number(session.timeout() as f64));
 
         interpreter.context_mut().define_var(
             "Session".to_string(),
@@ -183,6 +191,25 @@ impl Engine {
             eprintln!("❌ ASP Error: {}\n", error_msg);
             error_msg
         })?;
+
+        // 7.5 保存 Session 数据（如果在执行过程中被修改）
+        if let Some(Value::Object(session_map)) = interpreter.context().get_var("Session") {
+            // 将 HashMap 中的数据保存回 Session 对象
+            for (key, value) in session_map {
+                // 跳过特殊属性
+                if key.starts_with("__") || key == "sessionid" || key == "timeout" {
+                    continue;
+                }
+                session.set(key.clone(), value);
+            }
+
+            // 保存到 SessionManager
+            if let Some(ref mut manager) = self.session_manager {
+                if let Err(e) = manager.save_session(&session) {
+                    eprintln!("警告: 无法保存 Session: {}", e);
+                }
+            }
+        }
 
         // 8. 收集输出和 Response 对象
         let output = interpreter.context().get_output().to_string();
