@@ -114,12 +114,21 @@ impl Interpreter {
                 // 未找到函数，尝试作为数组索引访问
                 // 支持 fruits(i) 这样的数组访问语法
                 if arg_values.len() == 1 {
-                    eprintln!("DEBUG: Checking if {} is an array variable", name);
-                    if let Some(var_val) = self.context.get_var(name) {
-                        eprintln!("DEBUG: Found variable {} with value {:?}", name, var_val);
+                    // 特殊处理 Session 对象：Session("key") 语法
+                    if identifier_matches(name, "session") {
+                        if let Value::String(key) = &arg_values[0] {
+                            let key_lower = key.to_lowercase();
+                            if let Some(Value::Object(obj)) = self.context.get_var("Session").cloned() {
+                                if let Some(v) = obj.get(&key_lower) {
+                                    return Ok(v.clone());
+                                }
+                            }
+                            return Ok(Value::Empty);
+                        }
                     }
+
+                    // 处理普通数组索引
                     if let Some(Value::Array(arr)) = self.context.get_var(name) {
-                        eprintln!("DEBUG: Found array {} with length {}", name, arr.len());
                         let idx = &arg_values[0];
                         if let Value::Number(i) = idx {
                             let i = *i as usize;
