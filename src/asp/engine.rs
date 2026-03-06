@@ -257,7 +257,19 @@ impl Engine {
 
         // 8. 收集输出和 Response 对象
         let output = interpreter.context().get_output().to_string();
-        let response = interpreter.context_mut().take_response().unwrap_or_default();
+        let mut response = interpreter.context_mut().take_response().unwrap_or_default();
+
+        // 8.1 设置 Session Cookie（如果 Session ID 存在且与请求中的不同）
+        if let Some(ref ctx) = self.request_context {
+            let cookie_id = ctx.cookie("ASPSESSIONID");
+            // 如果请求中没有 Cookie，或者 Cookie ID 与当前 Session ID 不一致，则设置新的 Cookie
+            if cookie_id != Some(&session_id) {
+                response.add_header(
+                    "Set-Cookie",
+                    &format!("ASPSESSIONID={}; Path=/; HttpOnly", session_id)
+                );
+            }
+        }
 
         Ok(ExecutionResult { output, response })
     }
