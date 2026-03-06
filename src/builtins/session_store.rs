@@ -203,10 +203,6 @@ impl SessionStore for RedisStore {
 /// 根据配置创建存储后端
 pub fn create_store(storage_type: &str, runtime_dir: &std::path::Path) -> Box<dyn SessionStore> {
     match storage_type {
-        "memory" => {
-            eprintln!("[Session] 使用内存 Session 存储");
-            Box::new(MemoryStore::new())
-        }
         "json" => {
             let path = runtime_dir.join("sessions");
             eprintln!("[Session] 使用 JSON 文件 Session 存储: {:?}", path);
@@ -217,7 +213,10 @@ pub fn create_store(storage_type: &str, runtime_dir: &std::path::Path) -> Box<dy
             Box::new(MemoryStore::new())
         }
         _ => {
-            eprintln!("[Session] 未知的存储类型: {}，使用内存存储", storage_type);
+            // 默认使用内存存储
+            if storage_type != "memory" {
+                eprintln!("[Session] 未知的存储类型: {}，使用内存存储", storage_type);
+            }
             Box::new(MemoryStore::new())
         }
     }

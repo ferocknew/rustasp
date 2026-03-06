@@ -375,7 +375,65 @@ impl Interpreter {
                 // 尝试调用用户定义的方法
                 let arg_values: Result<Vec<Value>, _> =
                     args.iter().map(|e| self.eval_expr(e)).collect();
-                let _arg_values = arg_values?;
+                let arg_values = arg_values?;
+
+                // 特殊处理 Session.Contents 的方法调用
+                // 当调用 Session.Contents.Remove(key) 时
+                if let Expr::Property { object, property: contents_prop } = object {
+                    if contents_prop.to_lowercase() == "contents" {
+                        if let Expr::Variable(session_name) = object.as_ref() {
+                            if session_name.to_lowercase() == "session" {
+                                // 这是 Session.Contents 的方法调用
+                                match method_lower.as_str() {
+                                    "remove" => {
+                                        if let Some(arg) = arg_values.first() {
+                                            let key = ValueConversion::to_string(arg);
+                                            // 从 Session 中删除变量
+                                            if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
+                                                let mut new_session = session_obj.clone();
+                                                new_session.remove(&key.to_lowercase());
+                                                                                                }
+                                        }
+                                        return Ok(Value::Empty);
+                                    }
+                                    "removeall" => {
+                                        // 清空 Session 中所有非特殊变量
+                                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
+                                            let mut new_session = session_obj.clone();
+                                            let keys_to_remove: Vec<String> = new_session.keys()
+                                                .filter(|k| !k.starts_with("__") && k != "sessionid" && k != "timeout")
+                                                .cloned()
+                                                .collect();
+                                            for key in keys_to_remove {
+                                                new_session.remove(&key);
+                                            }
+                                                                                    }
+                                        return Ok(Value::Empty);
+                                    }
+                                    "key" => {
+                                        if let Some(arg) = arg_values.first() {
+                                            let index = arg.to_number() as i32;
+                                            if index >= 1 {
+                                                if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
+                                                    let keys: Vec<String> = session_obj.keys()
+                                                        .filter(|k| !k.starts_with("__") && k != "sessionid" && k != "timeout")
+                                                        .cloned()
+                                                        .collect();
+                                                    if let Some(key) = keys.get((index - 1) as usize) {
+                                                        return Ok(Value::String(key.clone()));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        return Ok(Value::Empty);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // TODO: 实现用户定义方法调用
                 Ok(Value::Empty)
             }
@@ -439,6 +497,52 @@ impl Interpreter {
                 match property_lower.as_str() {
                     "scripttimeout" => Ok(Value::Number(90.0)),
                     _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                }
+            }
+            Some("session") => {
+                // 处理 Session 对象的属性访问
+                eprintln!("DEBUG: Accessing Session property: {}", property);
+                match property_lower.as_str() {
+                    "sessionid" => {
+                        // 直接从 Session 对象获取 sessionid
+                        eprintln!("DEBUG: Getting SessionID from Session object");
+                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
+                            eprintln!("DEBUG: Session object found, keys: {:?}", session_obj.keys().collect::<Vec<_>>());
+                            if let Some(Value::String(session_id)) = session_obj.get("sessionid") {
+                                eprintln!("DEBUG: SessionID found: {}", session_id);
+                                return Ok(Value::String(session_id.clone()));
+                            }
+                        }
+                        eprintln!("DEBUG: SessionID not found");
+                        Err(RuntimeError::PropertyNotFound(property.to_string()))
+                    }
+                    "timeout" => {
+                        // 直接从 Session 对象获取 timeout
+                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
+                            if let Some(Value::Number(timeout)) = session_obj.get("timeout") {
+                                return Ok(Value::Number(*timeout));
+                            }
+                        }
+                        Err(RuntimeError::PropertyNotFound(property.to_string()))
+                    }
+                    "contents" => {
+                        // 返回特殊的 SessionContents 标记对象
+                        // 使用一个特殊的键来标记这是 Session.Contents 对象
+                        let mut contents_obj = std::collections::HashMap::new();
+                        contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
+                        // 添加 Count 属性的缓存值（实际值在访问时动态计算）
+                        contents_obj.insert("count".to_string(), Value::Number(-1.0));
+                        return Ok(Value::Object(contents_obj));
+                    }
+                    _ => {
+                        // 处理其他 Session 属性（如 SessionID, Timeout）
+                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
+                            if let Some(value) = session_obj.get(&property_lower) {
+                                return Ok(value.clone());
+                            }
+                        }
+                        Err(RuntimeError::PropertyNotFound(property.to_string()))
+                    }
                 }
             }
             _ => {

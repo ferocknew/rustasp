@@ -186,6 +186,7 @@ impl crate::runtime::BuiltinObject for Session {
         match name.to_lowercase().as_str() {
             "sessionid" => Ok(Value::String(self.session_id.clone())),
             "timeout" => Ok(Value::Number(self.timeout as f64)),
+            // Note: Contents 属性的特殊处理在 eval_property 中实现
             _ => {
                 // 尝试获取 Session 值
                 self.get(name)
