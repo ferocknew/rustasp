@@ -200,11 +200,6 @@ impl Engine {
 
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
         if let Some(Value::Object(session_map)) = interpreter.context().get_var("Session") {
-            eprintln!("DEBUG: 保存 Session，session_map 包含 {} 个键", session_map.len());
-            for (k, v) in session_map.iter() {
-                eprintln!("DEBUG:   {} = {:?}", k, v);
-            }
-
             // 先将 context 中的 session_map 数据复制到 Session 对象（以便后续使用）
             for (key, value) in session_map {
                 // 跳过特殊属性
@@ -240,11 +235,8 @@ impl Engine {
                     Value::Boolean(b) => serde_json::Value::Bool(*b),
                     _ => serde_json::Value::Null,
                 };
-                eprintln!("DEBUG: 转换数据: {} -> {:?}", key, json_value);
                 data.insert(key.clone(), json_value);
             }
-
-            eprintln!("DEBUG: 转换后的 data 包含 {} 个键", data.len());
 
             // 创建 SessionData
             let session_data = vbscript::builtins::session_manager::SessionData {
@@ -257,11 +249,8 @@ impl Engine {
 
             // 保存到 SessionManager
             if let Some(ref mut manager) = self.session_manager {
-                eprintln!("DEBUG: 准备保存 SessionData: {} 个数据项", session_data.data.len());
                 if let Err(e) = manager.save_session_data(&session_data) {
                     eprintln!("警告: 无法保存 Session: {}", e);
-                } else {
-                    eprintln!("DEBUG: Session 保存成功");
                 }
             }
         }
