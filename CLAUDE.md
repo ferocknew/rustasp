@@ -52,7 +52,7 @@ ASP 引擎层 (segmenter + engine + include)
     ↓
 VBScript Runtime (interpreter + value)
     ↓
-Parser / AST (手写 Lexer + Pratt ExprParser + StmtParser)
+Parser / AST (手写 Lexer + Pratt 表达式解析器 + 递归下降语句解析器)
 ```
 
 ## 目录结构
@@ -63,25 +63,32 @@ src/
 ├── lib.rs                  # 库入口
 │
 ├── ast/                    # 抽象语法树（纯数据结构）
-│   ├── mod.rs
-│   ├── op.rs               # 运算符定义
 │   ├── expr.rs             # 表达式
-│   ├── stmt.rs             # 语句
-│   └── program.rs          # 程序
+│   ├── op.rs               # 运算符定义
+│   ├── program.rs          # 程序
+│   └── stmt.rs             # 语句
 │
 ├── parser/                 # 语法解析层
-│   ├── mod.rs
-│   ├── keyword.rs          # 关键字定义
 │   ├── lexer.rs            # 词法分析器（手写）
-│   ├── expr_parser.rs      # 表达式解析器（Pratt 算法）
+│   ├── keyword.rs          # 关键字定义
 │   ├── error.rs            # 解析错误
-│   └── stmt_parser/        # 语句解析器（递归下降）
+│   ├── parser.rs           # 解析器入口
+│   ├── program.rs          # 程序解析
+│   ├── expr/               # 表达式解析（Pratt 算法）
+│   │   ├── mod.rs
+│   │   ├── pratt.rs        # Pratt 解析器核心
+│   │   ├── prefix.rs       # 前缀表达式
+│   │   ├── infix.rs        # 中缀表达式
+│   │   └── postfix.rs      # 后缀表达式
+│   └── stmt/               # 语句解析（递归下降）
 │       ├── mod.rs
 │       ├── core.rs         # 核心解析逻辑
-│       ├── control.rs      # 控制流语句
-│       ├── declarations.rs # 声明语句
-│       ├── procedures.rs   # 函数/过程
-│       └── helpers.rs      # 辅助函数
+│       ├── assign_stmt.rs  # 赋值语句
+│       ├── decl_stmt.rs    # 声明语句（Dim/Const/ReDim）
+│       ├── if_stmt.rs      # If 条件语句
+│       ├── loop_stmt.rs    # 循环语句（For/While/Do）
+│       ├── proc_stmt.rs    # 函数/过程
+│       └── select_stmt.rs  # Select Case 语句
 │
 ├── runtime/                # 解释执行层
 │   ├── mod.rs
@@ -96,11 +103,12 @@ src/
 │   ├── response.rs         # Response 对象
 │   ├── request.rs          # Request 对象
 │   ├── server.rs           # Server 对象
-│   └── session.rs          # Session 对象
+│   └── session.rs          # Session 对象（支持 memory/json/redis）
 │
 ├── asp/                    # ASP 引擎层
 │   ├── mod.rs
 │   ├── engine.rs           # ASP 执行引擎
+│   ├── engine/             # 引擎子模块
 │   ├── segmenter.rs        # 代码分段器
 │   └── include.rs          # Include 指令处理
 │
@@ -120,8 +128,8 @@ src/
 |------|------|------|
 | `src/ast/` | 抽象语法树定义，纯数据结构 | ✅ 完成 |
 | `src/parser/lexer.rs` | 词法分析，Token 流生成 | ✅ 完成 |
-| `src/parser/expr_parser.rs` | 表达式解析（Pratt 算法）| ✅ 完成 |
-| `src/parser/stmt_parser/` | 语句解析（递归下降）| ✅ 完成 |
+| `src/parser/expr/` | 表达式解析（Pratt 算法）| ✅ 完成 |
+| `src/parser/stmt/` | 语句解析（递归下降）| ✅ 完成 |
 | `src/runtime/` | 解释执行 AST，变量作用域 | ✅ 完成 |
 | `src/runtime/value/` | Value 类型系统 | ✅ 完成 |
 | `src/builtins/` | ASP 内建对象 | ⚠️ 部分完成 |
@@ -143,7 +151,7 @@ asp/segmenter.rs（分割 HTML 与代码块）
     ↓
 parser/lexer.rs（源代码 → Token 流）
     ↓
-parser/stmt_parser/（Token → AST）
+parser/stmt/（Token → AST）
     ↓
 runtime/interpreter.rs（执行 AST）
     ↓
@@ -161,7 +169,8 @@ HTML 输出 → HTTP 响应
 - **单文件不超过 500 行**
 - match 分支过多必须拆文件
 - Value 相关逻辑集中在 `runtime/value/` 目录
-- 语句解析器拆分为多个文件：`stmt_parser/`
+- 语句解析器拆分为多个文件：`parser/stmt/`
+- 表达式解析器拆分为多个文件：`parser/expr/`
 
 ### 子集策略
 支持：Dim, If, For, While, Function, Sub, Select Case, 基本表达式, Response.Write
@@ -217,12 +226,22 @@ ALLOW_PARENT_PATH=false
 
 ### 语句解析器架构
 
-`stmt_parser/` 目录采用递归下降解析器，按功能拆分：
+`parser/stmt/` 目录采用递归下降解析器，按功能拆分：
 - `core.rs` - 核心解析逻辑和入口
-- `control.rs` - 控制流语句（If, For, While, Do Loop, Select Case）
-- `declarations.rs` - 声明语句（Dim, Const, ReDim）
-- `procedures.rs` - 函数和过程（Function, Sub）
-- `helpers.rs` - 辅助函数
+- `assign_stmt.rs` - 赋值语句
+- `decl_stmt.rs` - 声明语句（Dim, Const, ReDim）
+- `if_stmt.rs` - If 条件语句
+- `loop_stmt.rs` - 循环语句（For, While, Do Loop）
+- `proc_stmt.rs` - 函数和过程（Function, Sub）
+- `select_stmt.rs` - Select Case 语句
+
+### 表达式解析器架构
+
+`parser/expr/` 目录采用 Pratt 算法：
+- `pratt.rs` - Pratt 解析器核心
+- `prefix.rs` - 前缀表达式（字面量、一元运算、函数调用）
+- `infix.rs` - 中缀表达式（二元运算）
+- `postfix.rs` - 后缀表达式（成员访问、数组索引）
 
 ### ASP 执行流程
 
