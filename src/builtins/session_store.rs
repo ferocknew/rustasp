@@ -201,32 +201,23 @@ impl SessionStore for RedisStore {
 }
 
 /// 根据配置创建存储后端
-pub fn create_store(storage_type: &str, config: &crate::config::Config) -> Box<dyn SessionStore> {
+pub fn create_store(storage_type: &str, runtime_dir: &std::path::Path) -> Box<dyn SessionStore> {
     match storage_type {
         "memory" => {
-            log::info!("使用内存 Session 存储");
+            eprintln!("[Session] 使用内存 Session 存储");
             Box::new(MemoryStore::new())
         }
         "json" => {
-            let path = std::path::PathBuf::from(&config.runtime_dir).join("sessions");
-            log::info!("使用 JSON 文件 Session 存储: {:?}", path);
+            let path = runtime_dir.join("sessions");
+            eprintln!("[Session] 使用 JSON 文件 Session 存储: {:?}", path);
             Box::new(JsonFileStore::new(path))
         }
-        #[cfg(feature = "redis")]
         "redis" => {
-            let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-            let prefix = std::env::var("REDIS_KEY_PREFIX").unwrap_or_else(|_| "vbscript:session:".to_string());
-            log::info!("使用 Redis Session 存储: {}", redis_url);
-            match RedisStore::new(&redis_url, &prefix) {
-                Ok(store) => Box::new(store),
-                Err(e) => {
-                    log::error!("Redis 连接失败，回退到内存存储: {}", e);
-                    Box::new(MemoryStore::new())
-                }
-            }
+            eprintln!("[Session] Redis 存储尚未实现，回退到内存存储");
+            Box::new(MemoryStore::new())
         }
         _ => {
-            log::warn!("未知的 Session 存储类型: {}，使用内存存储", storage_type);
+            eprintln!("[Session] 未知的存储类型: {}，使用内存存储", storage_type);
             Box::new(MemoryStore::new())
         }
     }
