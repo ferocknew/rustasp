@@ -218,17 +218,17 @@ async fn execute_asp_file(
             // 检查是否是重定向
             if result.response.get_status() == 302 {
                 if let Some(location) = result.response.get_headers().get("Location") {
-                    // 在重定向响应中设置 Session Cookie
+                    // 在重定向响应中构建响应（Cookie 已在 engine.rs 中设置）
                     let mut builder = AxumResponse::builder()
                         .status(StatusCode::FOUND)
                         .header("Location", location.clone());
 
-                    // 设置 Session Cookie
-                    let cookie_value = format!(
-                        "ASPSESSIONID={}; Path=/; HttpOnly; SameSite=Lax",
-                        session_id
-                    );
-                    builder = builder.header("Set-Cookie", cookie_value);
+                    // 添加自定义响应头（包括 Cookie）
+                    for (name, value) in result.response.get_headers() {
+                        if name != "Location" {
+                            builder = builder.header(name, value);
+                        }
+                    }
 
                     return builder.body(Body::empty()).unwrap();
                 }
@@ -245,14 +245,7 @@ async fn execute_asp_file(
             let content_type = result.response.get_content_type();
             builder = builder.header("Content-Type", content_type);
 
-            // 设置 Session Cookie
-            let cookie_value = format!(
-                "ASPSESSIONID={}; Path=/; HttpOnly; SameSite=Lax",
-                session_id
-            );
-            builder = builder.header("Set-Cookie", cookie_value);
-
-            // 添加自定义响应头
+            // 添加自定义响应头（包括 Session Cookie）
             for (name, value) in result.response.get_headers() {
                 if name != "Location" {  // Location 已在重定向中处理
                     builder = builder.header(name, value);
