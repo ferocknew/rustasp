@@ -100,9 +100,15 @@ impl Engine {
         // 5.1 初始化 Session
         let session_id = if let Some(ref ctx) = self.request_context {
             // 从 Cookie 中读取 Session ID
-            if let Some(existing_id) = ctx.cookie("ASPSESSIONID") {
+            eprintln!("DEBUG: 尝试从 Cookie 读取 Session ID");
+            eprintln!("DEBUG:   RequestContext 中的 cookies: {:?}", ctx.cookies);
+            let cookie_result = ctx.cookie("ASPSESSIONID");
+            eprintln!("DEBUG:   Cookie 查找结果: {:?}", cookie_result);
+            if let Some(existing_id) = cookie_result {
+                eprintln!("DEBUG:   找到 Cookie 中的 Session ID: {}", existing_id);
                 existing_id.to_string()
             } else {
+                eprintln!("DEBUG:   Cookie 中没有 Session ID，生成新的");
                 // 生成新的 Session ID
                 SessionManager::generate_session_id()
             }
@@ -114,10 +120,16 @@ impl Engine {
 
         // 尝试从 SessionManager 加载或创建新的 Session
         let session_id_for_session = session_id.clone();
+        eprintln!("DEBUG: 初始化 Session，ID: {}", session_id);
         let mut session = if let Some(ref mut manager) = self.session_manager {
+            eprintln!("DEBUG: SessionManager 存在，尝试加载 Session");
             match manager.load_session(&session_id) {
-                Ok(Some(s)) => s,
+                Ok(Some(s)) => {
+                    eprintln!("DEBUG: Session 加载成功，包含 {} 个数据项", s.get_all_data().len());
+                    s
+                }
                 Ok(None) => {
+                    eprintln!("DEBUG: Session 不存在，创建新的 Session");
                     // 创建新的 Session
                     match manager.create_session(session_id.clone(), 20) {
                         Ok(s) => s,
