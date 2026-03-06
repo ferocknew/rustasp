@@ -15,11 +15,11 @@
 ```
 HTTP 层 (axum)
     ↓
-ASP 引擎层 (segmenter + engine)
+ASP 引擎层 (segmenter + engine + include)
     ↓
 VBScript Runtime (interpreter + value)
     ↓
-Parser / AST (手写 Lexer + Pratt Parser)
+Parser / AST (手写 Lexer + Pratt 表达式解析器 + 递归下降语句解析器)
 ```
 
 ## 目录结构
@@ -30,51 +30,57 @@ src/
 ├── lib.rs                  # 库入口
 │
 ├── ast/                    # 抽象语法树（纯数据结构）
-│   ├── mod.rs
-│   ├── op.rs               # 运算符定义
 │   ├── expr.rs             # 表达式
-│   ├── stmt.rs             # 语句
-│   └── program.rs          # 程序
+│   ├── op.rs               # 运算符定义
+│   ├── program.rs          # 程序
+│   └── stmt.rs             # 语句
 │
 ├── parser/                 # 语法解析层
-│   ├── mod.rs
-│   ├── keyword.rs          # 关键字定义
 │   ├── lexer.rs            # 词法分析器（手写）
-│   ├── expr_parser.rs      # 表达式解析器（Pratt 算法）
-│   └── error.rs            # 解析错误
+│   ├── keyword.rs          # 关键字定义
+│   ├── error.rs            # 解析错误
+│   ├── parser.rs           # 解析器入口
+│   ├── program.rs          # 程序解析
+│   ├── expr/               # 表达式解析（Pratt 算法）
+│   │   ├── pratt.rs        # Pratt 解析器核心
+│   │   ├── prefix.rs       # 前缀表达式
+│   │   ├── infix.rs        # 中缀表达式
+│   │   └── postfix.rs      # 后缀表达式
+│   └── stmt/               # 语句解析（递归下降）
+│       ├── core.rs         # 核心解析逻辑
+│       ├── assign_stmt.rs  # 赋值语句
+│       ├── decl_stmt.rs    # 声明语句（Dim/Const/ReDim）
+│       ├── if_stmt.rs      # If 条件语句
+│       ├── loop_stmt.rs    # 循环语句（For/While/Do）
+│       ├── proc_stmt.rs    # 函数/过程
+│       └── select_stmt.rs  # Select Case 语句
 │
 ├── runtime/                # 解释执行层
-│   ├── mod.rs
 │   ├── interpreter.rs      # 解释器调度
 │   ├── context.rs          # 执行上下文
 │   ├── scope.rs            # 变量作用域
 │   ├── error.rs            # 运行时错误
 │   └── value/              # 值类型系统
-│       ├── mod.rs
-│       ├── value.rs        # Value 定义
-│       ├── conversion.rs   # 类型转换
-│       ├── operators.rs    # 运算操作
-│       ├── compare.rs      # 比较操作
-│       └── display.rs      # 显示格式
 │
 ├── builtins/               # ASP 内建对象
-│   ├── mod.rs
 │   ├── response.rs         # Response 对象
 │   ├── request.rs          # Request 对象
 │   ├── server.rs           # Server 对象
-│   └── session.rs          # Session 对象
+│   └── session.rs          # Session 对象（memory/json/redis）
 │
 ├── asp/                    # ASP 引擎层
-│   ├── mod.rs
-│   └── simple_engine.rs    # 简化引擎（当前使用）
+│   ├── engine.rs           # ASP 执行引擎
+│   ├── engine/             # 引擎子模块
+│   ├── segmenter.rs        # 代码分段器
+│   └── include.rs          # Include 指令处理
 │
 └── http/                   # HTTP 服务层
-    ├── mod.rs
     ├── router.rs           # 路由配置
     ├── handler.rs          # 请求处理
     ├── state.rs            # 应用状态
     ├── path_resolver.rs    # 路径解析（安全防护）
-    └── request_context.rs  # HTTP 请求上下文
+    ├── request_context.rs  # HTTP 请求上下文
+    └── error_page.rs       # 错误页面
 ```
 
 ## 模块职责
@@ -86,8 +92,8 @@ src/
 
 ### parser/ - 语法解析层
 - **lexer.rs**: 手写词法分析器，将源代码转为 Token 流
-- **expr_parser.rs**: Pratt 算法表达式解析器
-- ⚠️ **缺失**: 语句解析器（Statement Parser）
+- **expr/**: Pratt 算法表达式解析器（prefix/infix/postfix）
+- **stmt/**: 递归下降语句解析器，支持所有 VBScript 语句类型
 
 ### runtime/ - 解释执行层
 - 执行 AST 语句
@@ -101,9 +107,10 @@ src/
 - 不支持 COM/ActiveX
 
 ### asp/ - ASP 引擎层
-- 分割 HTML 与 `<% %>`
-- 当前使用简化引擎（simple_engine.rs）
-- 执行脚本片段，拼接输出
+- **segmenter.rs**: 分割 HTML 与 `<% %>` 代码块
+- **engine.rs**: ASP 执行引擎，集成 Lexer → Parser → Interpreter
+- **include.rs**: 支持 file/virtual 两种路径的 Include 指令
+- 支持三种代码块：`<% %>` (代码), `<%= %>` (表达式), `<%@ %>` (指令)
 
 ### http/ - Web 服务层
 - 路由和文件加载
@@ -119,84 +126,56 @@ src/
 |------|------|------|
 | Lexer | 词法分析 | 手写实现，支持关键字、标识符、字符串、数字、运算符 |
 | ExprParser | 表达式解析 | Pratt 算法，支持算术、逻辑、比较运算 |
-| **StmtParser** | 语句解析 | **递归下降解析器**，支持 Dim/If/For/While/Function/Sub |
+| StmtParser | 语句解析 | 递归下降解析器，支持 Dim/If/For/While/Function/Sub/Select Case |
 | AST | 语法树定义 | 完整的语句和表达式定义 |
-| Runtime | 解释执行 | 支持变量、If、For、While、Function 等 |
+| Runtime | 解释执行 | 支持变量、If、For、While、Function、Sub 等 |
 | Value | 类型系统 | 弱类型系统，类型转换，运算操作 |
+| ASP Engine | ASP 引擎 | 完整集成 Lexer → Parser → Interpreter |
 | HTTP Server | Web 服务 | 支持 GET/POST，静态文件，ASP 执行 |
-| RequestContext | 请求处理 | 解析 QueryString、Form 数据 |
+| Session | 会话管理 | 支持 memory/json/redis 三种存储模式 |
+| Include | Include 指令 | 支持 file/virtual 路径，自动检测循环引用 |
 
-### ⚠️ 进行中
+### ⚠️ 部分完成
 
-| 模块 | 问题 | 说明 |
+| 模块 | 功能 | 说明 |
 |------|------|------|
-| SimpleEngine | 功能受限 | 仅支持简单的 Response.Write 和变量赋值 |
-| 完整引擎集成 | 待完成 | 需要 StmtParser + Runtime 与 ASP 引擎集成 |
+| Response | HTTP 响应 | 基础功能完成，Buffer、ContentType、Redirect 待完善 |
+| Request | HTTP 请求 | QueryString、Form 数据解析完成 |
+| Server | 服务端方法 | CreateMap、Execute 等部分方法实现 |
 
 ### ❌ 待实现
 
 | 模块 | 说明 |
 |------|------|
-| Response 对象 | 完整实现（Buffer、ContentType、Redirect 等） |
-| Session 管理 | 会话状态管理 |
-| SQLite 支持 | Access 数据库迁移 |
+| 数据库支持 | SQLite/Access 数据库访问 |
+| 完整错误处理 | 详细的错误信息和调试支持 |
+| 容器化部署 | Docker 镜像和部署文档 |
 
-## 历史背景
+## 执行流程
 
-### 为什么有 SimpleEngine？
-
-早期尝试实现完整的语句解析器（StatementParser），但由于：
-- chumsky 解析器组合子编译时间过长（58分钟）
-- 编译器内存占用巨大
-
-因此采用**渐进式策略**：
-1. 保留完整的 Lexer（快速编译）
-2. 保留完整的 AST 定义
-3. 保留完整的 Runtime
-4. 使用 SimpleEngine 作为过渡方案
-5. **渐进式接入语句解析**：一次只实现少量语句类型，确保每次都能快速编译
-
-### 渐进式接入策略
-
-```rust
-// 第一步：实现 Dim 语句解析
-// 第二步：实现 If 语句解析
-// 第三步：实现 For 循环解析
-// ...逐步扩展
-```
-
-每次只增加 1-2 种语句的解析，保证编译时间在可接受范围内。
-
-## 使用流程
-
-当前使用简化引擎的流程：
+完整的 ASP 请求处理流程：
 
 ```rust
 // 1. HTTP 请求到达 handler.rs
-// 2. 构建 RequestContext（包含 QueryString、Form 数据）
-let request_ctx = RequestContext::from_request(request).await;
+// 2. 加载 ASP 文件，处理 include 指令
+let asp_content = include_processor.resolve_includes(file_path)?;
 
-// 3. 创建 SimpleEngine 并执行 ASP 文件
-let mut engine = Engine::new()
-    .with_debug(true)
-    .with_request_context(request_ctx);
-let output = engine.execute(&asp_content)?;
+// 3. 分段器将 ASP 文件分割为 HTML 段和代码段
+let segments = segmenter.segment(&asp_content);
 
-// 4. 返回 HTML 响应
-```
+// 4. 对每个代码段执行：Lexer → Parser → Interpreter
+for segment in segments {
+    match segment {
+        Segment::Html(html) => output.push_str(html),
+        Segment::Code(code) => {
+            let tokens = lexer.tokenize(&code)?;
+            let program = parser.parse_program(tokens)?;
+            interpreter.execute(&program)?;
+        }
+    }
+}
 
-完整引擎的使用流程（待实现语句解析器后）：
-
-```rust
-// 1. Lexer: 源代码 -> Token 流
-let tokens = tokenize(source)?;
-
-// 2. StatementParser: Token 流 -> AST (Program)  ← 缺失
-let program = parse_program(tokens)?;
-
-// 3. Interpreter: AST -> 执行
-let mut interpreter = Interpreter::new();
-interpreter.execute(&program)?;
+// 5. 返回 HTML 响应
 ```
 
 ## 设计原则
@@ -205,12 +184,14 @@ interpreter.execute(&program)?;
 每个目录代表一个系统维度：语法、执行、内建对象、模板引擎、HTTP
 
 ### 控制文件大小
-- 单文件不超过 500 行
+- **单文件不超过 500 行**
 - match 分支过多必须拆文件
-- Value 相关逻辑集中在 value/ 目录
+- Value 相关逻辑集中在 `runtime/value/` 目录
+- 语句解析器拆分为多个文件：`parser/stmt/`
+- 表达式解析器拆分为多个文件：`parser/expr/`
 
 ### 子集策略
-支持：Dim, If, Function, 基本表达式, Response.Write
+支持：Dim, If, For, While, Do Loop, Function, Sub, Select Case, 基本表达式, Response.Write, Session 管理
 
 不支持：COM, ActiveX, Windows-only DLL
 
@@ -280,31 +261,34 @@ DEBUG=true cargo run
 - thiserror / anyhow (错误处理)
 - urlencoding (URL 编解码)
 - mime_guess (MIME 类型检测)
+- html-escape (HTML 转义)
 
 ## 开发路线
 
 ### 第一阶段 ✅
 - [x] AST 定义
 - [x] Lexer 词法分析器
-- [x] ExprParser 表达式解析器
+- [x] ExprParser 表达式解析器（Pratt 算法）
+- [x] StmtParser 语句解析器（递归下降）
 - [x] Runtime 解释器框架
 - [x] HTTP 服务器
 - [x] RequestContext 请求上下文
 - [x] 支持 GET/POST 请求
 
-### 第二阶段 🚧
-- [ ] StatementParser 语句解析器
-- [ ] 完整的 ASP 引擎（替换 SimpleEngine）
-- [ ] Response 对象完整实现
-- [ ] Request 对象完整实现
-- [ ] Server 对象
+### 第二阶段 ✅
+- [x] 完整的 ASP 引擎（Lexer → Parser → Interpreter 集成）
+- [x] 代码分段器（HTML/代码分离）
+- [x] Include 指令处理（file/virtual 路径）
+- [x] Session 管理（memory/json/redis）
+- [x] 核心内建对象（Response/Request/Server/Session）
 
-### 第三阶段
-- [ ] Session 管理
-- [ ] SQLite 支持
-- [ ] 完整错误处理
+### 第三阶段 🚧
+- [ ] Response 对象完整功能（Buffer、ContentType、Redirect、End 等）
+- [ ] 数据库支持（SQLite/Access 迁移）
+- [ ] 完整错误处理和调试信息
+- [ ] 性能优化和缓存
 - [ ] 容器化部署
-- [ ] 生产环境优化
+- [ ] 生产环境测试和优化
 
 ## 总体定位
 
