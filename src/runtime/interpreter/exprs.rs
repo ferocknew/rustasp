@@ -172,9 +172,11 @@ impl Interpreter {
             // 特殊处理 Session 对象
             Expr::Variable(name) if identifier_matches(name, "session") => {
                 // 从 context 中获取 Session 对象的值 (使用 "Session" 作为变量名)
+                // Session 变量名存储为小写，所以需要转换
+                let key_lower = index_key.to_lowercase();
                 if let Some(value) = self.context.get_var("Session").cloned() {
                     if let Value::Object(obj) = value {
-                        if let Some(v) = obj.get(&index_key) {
+                        if let Some(v) = obj.get(&key_lower) {
                             return Ok(v.clone());
                         }
                     }

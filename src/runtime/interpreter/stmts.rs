@@ -117,6 +117,13 @@ impl Interpreter {
                 let idx = self.eval_expr(index)?;
                 match object.as_ref() {
                     Expr::Variable(name) => {
+                        // 检查是否是 Session 对象的字符串索引（如 Session("key") = value）
+                        if name.to_lowercase() == "session" {
+                            if let Value::String(key) = idx {
+                                return self.builtin_session_set_property(&key, val);
+                            }
+                        }
+
                         // 检查索引是否是数字
                         if let Value::Number(i) = idx {
                             let i = i as usize;
@@ -444,28 +451,36 @@ impl Interpreter {
     }
 
     /// 设置 Session 对象的属性
-    fn builtin_session_set_property(&mut self, property: &str, _value: Value) -> Result<Value, RuntimeError> {
+    fn builtin_session_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
         // Session 对象的属性实际上是通过索引访问的
         // Session("key") = value
         // 这里处理的是 Session.Property = value 的情况
         match property.to_uppercase().as_str() {
             "TIMEOUT" => {
                 // Session.Timeout = 20
-                // 暂时忽略
+                // TODO: 实现 Timeout 设置
                 Ok(Value::Empty)
             }
             "CODEPAGE" => {
                 // Session.CodePage = 65001
-                // 暂时忽略
                 Ok(Value::Empty)
             }
             "LCID" => {
                 // Session.LCID = 2052
-                // 暂时忽略
                 Ok(Value::Empty)
             }
             _ => {
-                Err(RuntimeError::PropertyNotFound(format!("Session.{}", property)))
+                // 处理 Session("key") = value 的情况
+                // 从 context 中获取 Session 对象（它是一个 HashMap）
+                if let Some(Value::Object(mut map)) = self.context.get_var("Session").cloned() {
+                    // 设置 Session 变量
+                    map.insert(property.to_lowercase(), value);
+                    // 更新 context 中的 Session 对象
+                    self.context.set_var("Session".to_string(), Value::Object(map));
+                    Ok(Value::Empty)
+                } else {
+                    Err(RuntimeError::Generic("Session object not found".to_string()))
+                }
             }
         }
     }
