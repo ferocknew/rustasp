@@ -72,11 +72,17 @@ impl Engine {
             error_msg
         })?;
 
-        // 5. 创建解释器和 Response 对象
+        // 5. 创建解释器
         let mut interpreter = vbscript::runtime::Interpreter::new();
-        // Response 对象将在 Context 中首次使用时自动创建
 
-        // 5.1 初始化 Session
+        // 5.1 创建 Response 对象并放入变量表（与 Request、Session 保持一致）
+        let response = vbscript::runtime::objects::Response::new();
+        interpreter.context_mut().define_var(
+            "Response".to_string(),
+            Value::Object(Box::new(response)),
+        );
+
+        // 5.2 初始化 Session
         let session_id = if let Some(ref ctx) = self.request_context {
             // 从 Cookie 中读取 Session ID
             if let Some(existing_id) = ctx.cookie("ASPSESSIONID") {
@@ -205,7 +211,18 @@ impl Engine {
         }
 
         // 8. 收集输出和 Response 对象
-        let mut response = interpreter.context_mut().take_response().unwrap_or_default();
+        // 从变量表中获取 Response 对象
+        let mut response = if let Some(Value::Object(response_obj)) = interpreter.context().get_var("Response") {
+            // 从 BuiltinObject 中获取 Response
+            use vbscript::runtime::BuiltinObject;
+            if let Some(resp) = response_obj.as_any().downcast_ref::<vbscript::runtime::objects::Response>() {
+                resp.clone()
+            } else {
+                vbscript::runtime::objects::Response::new()
+            }
+        } else {
+            vbscript::runtime::objects::Response::new()
+        };
 
         // 8.1 将 Response.buffer 合并到输出中
         let response_buffer = response.get_output().to_string();
