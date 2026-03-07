@@ -91,22 +91,23 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             if args.len() < 1 {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
-            let weekday = ValueConversion::to_number(&args[0]) as usize % 7;
+            let weekday = ValueConversion::to_number(&args[0]) as usize;
             let abbreviate = if args.len() >= 2 {
                 ValueConversion::to_bool(&args[1])
             } else {
                 false
             };
 
-            // VBScript: 0=Sunday(default) or 1=Monday as first day
-            // WeekdayName expects 1=Sunday, 2=Monday, ..., 7=Saturday
+            // VBScript: 1=Sunday, 2=Monday, ..., 7=Saturday
+            // 返回中文星期名称（中文 Windows 系统默认）
             let names = if abbreviate {
-                ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                ["日", "一", "二", "三", "四", "五", "六"]
             } else {
-                ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
             };
 
-            let index = if weekday == 0 { 6 } else { weekday - 1 };
+            // weekday 应该是 1-7，对应 Sunday-Saturday
+            let index = if weekday == 0 { 6 } else { (weekday - 1) % 7 };
             let name = names.get(index).unwrap_or(&"");
             Value::String(name.to_string())
         }
@@ -115,21 +116,25 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             if args.len() < 1 {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
-            let month = (ValueConversion::to_number(&args[0]) as usize - 1) % 12;
+            let month = ValueConversion::to_number(&args[0]) as usize;
             let abbreviate = if args.len() >= 2 {
                 ValueConversion::to_bool(&args[1])
             } else {
                 false
             };
 
+            // 返回中文月份名称（中文 Windows 系统默认）
             let names = if abbreviate {
-                ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                ["一月", "二月", "三月", "四月", "五月", "六月",
+                 "七月", "八月", "九月", "十月", "十一月", "十二月"]
             } else {
-                ["January", "February", "March", "April", "May", "June",
-                 "July", "August", "September", "October", "November", "December"]
+                ["一月", "二月", "三月", "四月", "五月", "六月",
+                 "七月", "八月", "九月", "十月", "十一月", "十二月"]
             };
 
-            let name = names.get(month).unwrap_or(&"");
+            // month 应该是 1-12
+            let index = if month == 0 { 11 } else { (month - 1) % 12 };
+            let name = names.get(index).unwrap_or(&"");
             Value::String(name.to_string())
         }
         BuiltinToken::DateAdd => {

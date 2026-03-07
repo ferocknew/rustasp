@@ -143,6 +143,9 @@ impl Engine {
             Value::Object(Box::new(session)),
         );
 
+        // 5.2 定义 VBScript 内置常量
+        Self::define_vbscript_constants(&mut interpreter);
+
         // 6. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
@@ -250,6 +253,120 @@ impl Engine {
         }
 
         Ok(ExecutionResult { output, response })
+    }
+
+    /// 定义 VBScript 内置常量
+    fn define_vbscript_constants(interpreter: &mut vbscript::runtime::Interpreter) {
+        let context = interpreter.context_mut();
+
+        // ===== MsgBox 返回值常量 =====
+        context.define_var("vbOK".to_string(), Value::Number(1.0));
+        context.define_var("vbCancel".to_string(), Value::Number(2.0));
+        context.define_var("vbAbort".to_string(), Value::Number(3.0));
+        context.define_var("vbRetry".to_string(), Value::Number(4.0));
+        context.define_var("vbIgnore".to_string(), Value::Number(5.0));
+        context.define_var("vbYes".to_string(), Value::Number(6.0));
+        context.define_var("vbNo".to_string(), Value::Number(7.0));
+
+        // ===== MsgBox 按钮常量 =====
+        context.define_var("vbOKOnly".to_string(), Value::Number(0.0));
+        context.define_var("vbOKCancel".to_string(), Value::Number(1.0));
+        context.define_var("vbAbortRetryIgnore".to_string(), Value::Number(2.0));
+        context.define_var("vbYesNoCancel".to_string(), Value::Number(3.0));
+        context.define_var("vbYesNo".to_string(), Value::Number(4.0));
+        context.define_var("vbRetryCancel".to_string(), Value::Number(5.0));
+
+        // ===== MsgBox 图标常量 =====
+        context.define_var("vbCritical".to_string(), Value::Number(16.0));
+        context.define_var("vbQuestion".to_string(), Value::Number(32.0));
+        context.define_var("vbExclamation".to_string(), Value::Number(48.0));
+        context.define_var("vbInformation".to_string(), Value::Number(64.0));
+
+        // ===== MsgBox 默认按钮常量 =====
+        context.define_var("vbDefaultButton1".to_string(), Value::Number(0.0));
+        context.define_var("vbDefaultButton2".to_string(), Value::Number(256.0));
+        context.define_var("vbDefaultButton3".to_string(), Value::Number(512.0));
+        context.define_var("vbDefaultButton4".to_string(), Value::Number(768.0));
+
+        // ===== MsgBox 模式常量 =====
+        context.define_var("vbApplicationModal".to_string(), Value::Number(0.0));
+        context.define_var("vbSystemModal".to_string(), Value::Number(4096.0));
+
+        // ===== VarType 常量 =====
+        context.define_var("vbEmpty".to_string(), Value::Number(0.0));
+        context.define_var("vbNull".to_string(), Value::Number(1.0));
+        context.define_var("vbInteger".to_string(), Value::Number(2.0));
+        context.define_var("vbLong".to_string(), Value::Number(3.0));
+        context.define_var("vbSingle".to_string(), Value::Number(4.0));
+        context.define_var("vbDouble".to_string(), Value::Number(5.0));
+        context.define_var("vbCurrency".to_string(), Value::Number(6.0));
+        context.define_var("vbDate".to_string(), Value::Number(7.0));
+        context.define_var("vbString".to_string(), Value::Number(8.0));
+        context.define_var("vbObject".to_string(), Value::Number(9.0));
+        context.define_var("vbError".to_string(), Value::Number(10.0));
+        context.define_var("vbBoolean".to_string(), Value::Number(11.0));
+        context.define_var("vbVariant".to_string(), Value::Number(12.0));
+        context.define_var("vbDataObject".to_string(), Value::Number(13.0));
+        context.define_var("vbDecimal".to_string(), Value::Number(14.0));
+        context.define_var("vbByte".to_string(), Value::Number(17.0));
+        context.define_var("vbArray".to_string(), Value::Number(8192.0));
+
+        // ===== 三态常量 =====
+        context.define_var("vbUseDefault".to_string(), Value::Number(-2.0));
+        context.define_var("vbTrue".to_string(), Value::Boolean(true));
+        context.define_var("vbFalse".to_string(), Value::Boolean(false));
+
+        // ===== 比较常量 =====
+        context.define_var("vbBinaryCompare".to_string(), Value::Number(0.0));
+        context.define_var("vbTextCompare".to_string(), Value::Number(1.0));
+        context.define_var("vbDatabaseCompare".to_string(), Value::Number(2.0));
+
+        // ===== 日期格式常量 =====
+        context.define_var("vbGeneralDate".to_string(), Value::Number(0.0));
+        context.define_var("vbLongDate".to_string(), Value::Number(1.0));
+        context.define_var("vbShortDate".to_string(), Value::Number(2.0));
+        context.define_var("vbLongTime".to_string(), Value::Number(3.0));
+        context.define_var("vbShortTime".to_string(), Value::Number(4.0));
+
+        // ===== 星期常量 =====
+        context.define_var("vbUseSystemDayOfWeek".to_string(), Value::Number(0.0));
+        context.define_var("vbSunday".to_string(), Value::Number(1.0));
+        context.define_var("vbMonday".to_string(), Value::Number(2.0));
+        context.define_var("vbTuesday".to_string(), Value::Number(3.0));
+        context.define_var("vbWednesday".to_string(), Value::Number(4.0));
+        context.define_var("vbThursday".to_string(), Value::Number(5.0));
+        context.define_var("vbFriday".to_string(), Value::Number(6.0));
+        context.define_var("vbSaturday".to_string(), Value::Number(7.0));
+
+        // ===== 年周常量 =====
+        context.define_var("vbFirstJan1".to_string(), Value::Number(1.0));
+        context.define_var("vbFirstFourDays".to_string(), Value::Number(2.0));
+        context.define_var("vbFirstFullWeek".to_string(), Value::Number(3.0));
+
+        // ===== 颜色常量 =====
+        context.define_var("vbBlack".to_string(), Value::Number(0.0));
+        context.define_var("vbBlue".to_string(), Value::Number(16711680.0));      // 0xFF0000
+        context.define_var("vbCyan".to_string(), Value::Number(16776960.0));      // 0xFFFF00
+        context.define_var("vbGreen".to_string(), Value::Number(65280.0));        // 0x00FF00
+        context.define_var("vbMagenta".to_string(), Value::Number(16711935.0));   // 0xFF00FF
+        context.define_var("vbRed".to_string(), Value::Number(255.0));            // 0x0000FF
+        context.define_var("vbWhite".to_string(), Value::Number(16777215.0));     // 0xFFFFFF
+        context.define_var("vbYellow".to_string(), Value::Number(65535.0));       // 0x00FFFF
+
+        // ===== 字符串常量 =====
+        context.define_var("vbCr".to_string(), Value::String("\r".to_string()));
+        context.define_var("vbCrLf".to_string(), Value::String("\r\n".to_string()));
+        context.define_var("vbNewLine".to_string(), Value::String("\r\n".to_string()));
+        context.define_var("vbFormFeed".to_string(), Value::String("\x0C".to_string()));
+        context.define_var("vbLf".to_string(), Value::String("\n".to_string()));
+        context.define_var("vbNullChar".to_string(), Value::String("\x00".to_string()));
+        context.define_var("vbNullString".to_string(), Value::String(String::new()));
+        context.define_var("vbTab".to_string(), Value::String("\t".to_string()));
+        context.define_var("vbVerticalTab".to_string(), Value::String("\x0B".to_string()));
+
+        // ===== 其他常量 =====
+        context.define_var("vbUseSystem".to_string(), Value::Number(0.0));
+        context.define_var("vbObjectError".to_string(), Value::Number(-2147221504.0));
     }
 
     /// 构建完整的 VBScript 程序
