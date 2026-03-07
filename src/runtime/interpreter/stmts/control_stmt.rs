@@ -2,8 +2,8 @@
 //!
 //! 处理 If、For、While、ForEach、Select Case 等控制流语句
 
-use crate::ast::{BinaryOp, CaseClause, Expr, IfBranch};
-use crate::runtime::{RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::ast::{BinaryOp, CaseClause, Expr, IfBranch, Stmt};
+use crate::runtime::{ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion};
 
 use super::Interpreter;
 
@@ -52,7 +52,11 @@ impl Interpreter {
 
         while condition(i, end_val) {
             self.context.define_var(var.to_string(), Value::Number(i));
-            self.exec_block(body)?;
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitFor)) => break,
+                Err(e) => return Err(e),
+            }
             i += step_val;
         }
 
@@ -66,7 +70,81 @@ impl Interpreter {
         body: &[crate::ast::Stmt],
     ) -> Result<Value, RuntimeError> {
         while self.eval_expr(cond)?.is_truthy() {
-            self.exec_block(body)?;
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(Value::Empty)
+    }
+
+    /// 执行 Do While 循环
+    pub fn eval_do_while(
+        &mut self,
+        cond: &Expr,
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
+        while self.eval_expr(cond)?.is_truthy() {
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(Value::Empty)
+    }
+
+    /// 执行 Do Until 循环
+    pub fn eval_do_until(
+        &mut self,
+        cond: &Expr,
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
+        while !self.eval_expr(cond)?.is_truthy() {
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(Value::Empty)
+    }
+
+    /// 执行 Do...Loop While
+    pub fn eval_do_loop_while(
+        &mut self,
+        body: &[Stmt],
+        cond: &Expr,
+    ) -> Result<Value, RuntimeError> {
+        loop {
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+            if !self.eval_expr(cond)?.is_truthy() {
+                break;
+            }
+        }
+        Ok(Value::Empty)
+    }
+
+    /// 执行 Do...Loop Until
+    pub fn eval_do_loop_until(
+        &mut self,
+        body: &[Stmt],
+        cond: &Expr,
+    ) -> Result<Value, RuntimeError> {
+        loop {
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+            if self.eval_expr(cond)?.is_truthy() {
+                break;
+            }
         }
         Ok(Value::Empty)
     }
@@ -110,7 +188,11 @@ impl Interpreter {
 
         for element in elements {
             self.context.define_var(var.to_string(), element);
-            self.exec_block(body)?;
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitFor)) => break,
+                Err(e) => return Err(e),
+            }
         }
 
         Ok(Value::Empty)
@@ -176,13 +258,21 @@ impl Interpreter {
 
     /// Exit For
     pub fn eval_exit_for(&mut self) -> Result<Value, RuntimeError> {
-        // TODO: 实现循环退出
-        Ok(Value::Empty)
+        Err(RuntimeError::ControlFlow(ControlFlow::ExitFor))
     }
 
-    /// Exit Function/Sub
-    pub fn eval_exit(&mut self) -> Result<Value, RuntimeError> {
-        self.context.should_exit = true;
-        Ok(Value::Empty)
+    /// Exit Function
+    pub fn eval_exit_function(&mut self) -> Result<Value, RuntimeError> {
+        Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction))
+    }
+
+    /// Exit Sub
+    pub fn eval_exit_sub(&mut self) -> Result<Value, RuntimeError> {
+        Err(RuntimeError::ControlFlow(ControlFlow::ExitSub))
+    }
+
+    /// Exit Property
+    pub fn eval_exit_property(&mut self) -> Result<Value, RuntimeError> {
+        Err(RuntimeError::ControlFlow(ControlFlow::ExitProperty))
     }
 }

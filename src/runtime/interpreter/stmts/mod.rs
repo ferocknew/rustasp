@@ -7,7 +7,7 @@ mod assign_stmt;
 mod control_stmt;
 
 use crate::ast::{Param, Stmt};
-use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass};
+use crate::runtime::{ClassDef, ControlFlow, Function, RuntimeError, Value, VbsClass};
 
 use super::Interpreter;
 
@@ -47,6 +47,12 @@ impl Interpreter {
                 else_block,
             } => self.eval_select(expr, cases, else_block),
 
+            // Do 循环
+            Stmt::DoWhile { cond, body } => self.eval_do_while(cond, body),
+            Stmt::DoUntil { cond, body } => self.eval_do_until(cond, body),
+            Stmt::DoLoopWhile { body, cond } => self.eval_do_loop_while(body, cond),
+            Stmt::DoLoopUntil { body, cond } => self.eval_do_loop_until(body, cond),
+
             // 函数相关
             Stmt::Sub { name, params, body } | Stmt::Function { name, params, body } => {
                 self.register_function(name, params, body)
@@ -57,7 +63,9 @@ impl Interpreter {
 
             Stmt::Call { name, args } => self.eval_call(name, args),
             Stmt::ExitFor => self.eval_exit_for(),
-            Stmt::ExitFunction | Stmt::ExitSub => self.eval_exit(),
+            Stmt::ExitFunction => self.eval_exit_function(),
+            Stmt::ExitSub => self.eval_exit_sub(),
+            Stmt::ExitProperty => self.eval_exit_property(),
 
             // 其他语句
             Stmt::OptionExplicit => {

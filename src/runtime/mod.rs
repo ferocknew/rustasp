@@ -14,7 +14,7 @@ pub mod objects;
 
 pub use class::{VbsClass, VbsInstance};
 pub use context::{ClassDef, Context, Function};
-pub use error::RuntimeError;
+pub use error::{ControlFlow, RuntimeError};
 pub use interpreter::Interpreter;
 pub use scope::Scope;
 pub use value::{Value, ValueCompare, ValueConversion, ValueOps};

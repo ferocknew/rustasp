@@ -2,6 +2,21 @@
 
 use thiserror::Error;
 
+/// 控制流信号（用于 Exit 语句）
+#[derive(Debug, Clone, PartialEq)]
+pub enum ControlFlow {
+    /// Exit For
+    ExitFor,
+    /// Exit Do
+    ExitDo,
+    /// Exit Function
+    ExitFunction,
+    /// Exit Sub
+    ExitSub,
+    /// Exit Property
+    ExitProperty,
+}
+
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("Undefined variable: {0}")]
@@ -42,4 +57,8 @@ pub enum RuntimeError {
 
     #[error("Runtime error: {0}")]
     Generic(String),
+
+    /// 控制流信号（不是真正的错误）
+    #[error("Control flow: {0:?}")]
+    ControlFlow(ControlFlow),
 }
