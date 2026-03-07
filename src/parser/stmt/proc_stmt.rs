@@ -67,8 +67,13 @@ impl Parser {
         if self.match_token(&Token::LParen) {
             if !self.check(&Token::RParen) {
                 loop {
-                    let is_byref = self.match_keyword(Keyword::ByRef);
-                    let _ = self.match_keyword(Keyword::ByVal); // ByVal 是默认的
+                    // VBScript 默认是 ByRef，只有显式指定 ByVal 才是按值传递
+                    let is_byref = if self.match_keyword(Keyword::ByVal) {
+                        false
+                    } else {
+                        self.match_keyword(Keyword::ByRef); // ByRef 是默认的
+                        true
+                    };
 
                     let name = self.expect_ident()?;
 
