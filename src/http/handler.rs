@@ -226,7 +226,7 @@ async fn execute_asp_file(
     };
 
     // 获取或创建 Session ID
-    let session_id = if let Some(existing_id) = request_ctx.cookie("ASPSESSIONID") {
+    let _session_id = if let Some(existing_id) = request_ctx.cookie("ASPSESSIONID") {
         existing_id.to_string()
     } else {
         // 生成新的 Session ID

@@ -88,11 +88,13 @@ impl Config {
     }
 
     /// 获取 Session 存储类型
+    #[allow(dead_code)]
     pub fn session_storage_type(&self) -> String {
         std::env::var("SESSION_STORAGE").unwrap_or_else(|_| "memory".to_string())
     }
 
     /// 获取 Session 超时时间（分钟）
+    #[allow(dead_code)]
     pub fn session_timeout(&self) -> u32 {
         std::env::var("SESSION_TIMEOUT")
             .unwrap_or_else(|_| "20".to_string())

@@ -4,5 +4,5 @@ mod engine;
 mod include;
 mod segmenter;
 
-pub use engine::{Engine, ExecutionResult};
+pub use engine::Engine;
 pub use include::preprocess;
