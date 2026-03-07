@@ -83,9 +83,6 @@ impl Interpreter {
                 self.eval_new(class_name)
             }
             Expr::Index { object, index } => self.eval_index(object, index),
-            // 这个分支理论上不可达，因为所有 Expr 变体都已处理
-            // 保留它以防止将来添加新变体时忘记处理
-            _ => Ok(Value::Empty),
         }
     }
 

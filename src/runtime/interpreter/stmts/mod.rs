@@ -7,7 +7,7 @@ mod assign_stmt;
 mod control_stmt;
 
 use crate::ast::{Param, Stmt};
-use crate::runtime::{ClassDef, ControlFlow, Function, RuntimeError, Value, VbsClass};
+use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass};
 
 use super::Interpreter;
 

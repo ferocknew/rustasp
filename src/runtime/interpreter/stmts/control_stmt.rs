@@ -3,7 +3,7 @@
 //! 处理 If、For、While、ForEach、Select Case 等控制流语句
 
 use crate::ast::{BinaryOp, CaseClause, Expr, IfBranch, Stmt};
-use crate::runtime::{ControlFlow, Function, RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::runtime::{ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion};
 
 use super::Interpreter;
 
