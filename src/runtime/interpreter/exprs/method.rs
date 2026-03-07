@@ -1,7 +1,7 @@
 //! 方法调用表达式求值
 
 use crate::ast::Expr;
-use crate::runtime::{BuiltinObject, RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value};
 use crate::runtime::objects::Response;
 
 use super::super::Interpreter;
@@ -28,8 +28,8 @@ impl Interpreter {
             let result = obj.call_method(&method_lower, arg_values);
 
             // 特殊处理：Response.End 需要设置退出标志
-            if let Some(response) = obj.as_any().downcast_ref::<Response>() {
-                if response.is_ended() {
+            if obj.as_any().downcast_ref::<Response>().is_some() {
+                if obj.as_any().downcast_ref::<Response>().unwrap().is_ended() {
                     self.context.should_exit = true;
                 }
             }

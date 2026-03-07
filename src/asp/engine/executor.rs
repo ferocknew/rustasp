@@ -214,6 +214,7 @@ impl Engine {
         // 从变量表中获取 Response 对象
         let mut response = if let Some(Value::Object(response_obj)) = interpreter.context().get_var("Response") {
             // 从 BuiltinObject 中获取 Response
+            #[allow(unused_imports)]
             use vbscript::runtime::BuiltinObject;
             if let Some(resp) = response_obj.as_any().downcast_ref::<vbscript::runtime::objects::Response>() {
                 resp.clone()
