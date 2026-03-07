@@ -1,6 +1,6 @@
 //! 检验函数执行器
 
-use crate::runtime::{RuntimeError, Value, ValueConversion};
+use crate::runtime::{RuntimeError, Value};
 use super::super::token::BuiltinToken;
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
