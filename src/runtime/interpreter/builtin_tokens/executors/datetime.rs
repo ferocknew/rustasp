@@ -2,8 +2,112 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
-use chrono::Datelike;
-use chrono::Timelike;
+use chrono::{Datelike, Timelike, NaiveDate, NaiveDateTime};
+
+/// 解析 VBScript 日期字符串
+/// 支持格式: #2024-01-01#, "2024-01-01", "2024/01/01", "01/01/2024" 等
+fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
+    let trimmed = date_str.trim();
+
+    // 移除 # 包围（VBScript 日期字面量 #2024-01-01#）
+    let clean_str = if trimmed.starts_with('#') && trimmed.ends_with('#') {
+        &trimmed[1..trimmed.len()-1]
+    } else {
+        trimmed
+    };
+
+    let clean_str = clean_str.trim();
+
+    // 尝试各种日期格式
+    let formats = [
+        // ISO 格式
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        // 美式格式
+        "%m/%d/%Y",
+        "%m-%d-%Y",
+        // 短年份格式
+        "%y-%m-%d",
+        "%y/%m/%d",
+        // 带时间的格式
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ];
+
+    for format in &formats {
+        if let Ok(date) = NaiveDate::parse_from_str(clean_str, format) {
+            return Some(date.and_hms_opt(0, 0, 0).unwrap_or_else(|| {
+                NaiveDateTime::new(date, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+            }));
+        }
+    }
+
+    // 尝试解析日期时间格式（包含时间部分）
+    for format in &[
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ] {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(clean_str, format) {
+            return Some(dt);
+        }
+    }
+
+    None
+}
+
+/// 计算两个日期之间的差值
+fn calculate_date_diff(interval: &str, date1: NaiveDateTime, date2: NaiveDateTime) -> i64 {
+    let duration = date2.signed_duration_since(date1);
+
+    match interval {
+        "yyyy" => {
+            // 年份差：比较年份数字
+            let years = date2.year() - date1.year();
+            // 如果月份和日期还没到，减去1年
+            if date2.month() < date1.month() ||
+               (date2.month() == date1.month() && date2.day() < date1.day()) {
+                years as i64 - 1
+            } else {
+                years as i64
+            }
+        }
+        "q" => {
+            // 季度差：先计算总月份差，再除以3
+            let months = calculate_date_diff("m", date1, date2);
+            months / 3
+        }
+        "m" => {
+            // 月份差
+            let months = (date2.year() - date1.year()) as i64 * 12
+                + (date2.month() as i64 - date1.month() as i64);
+            // 如果日期还没到，减去1个月
+            if date2.day() < date1.day() {
+                months - 1
+            } else {
+                months
+            }
+        }
+        "y" | "d" => duration.num_days(),
+        "w" => {
+            // 周数差（以7天为单位）
+            duration.num_days() / 7
+        }
+        "ww" => {
+            // 日历周数差：按星期日计算
+            let days = duration.num_days();
+            // 计算 date1 到下一个星期日的天数
+            let weekday1 = date1.weekday().num_days_from_sunday() as i64;
+            // 计算从 date1 的星期日到 date2 的星期日之间的周数
+            (days + weekday1) / 7
+        }
+        "h" => duration.num_hours(),
+        "n" => duration.num_minutes(),
+        "s" => duration.num_seconds(),
+        _ => 0,
+    }
+}
 
 /// 获取语言配置
 /// 支持 zh-cn（中文）和 en（英文），默认 zh-cn
@@ -190,23 +294,23 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             Value::String(date.format(&now_format).to_string())
         }
         BuiltinToken::DateDiff => {
-            // DateDiff(interval, date1, date2)
-            // 简化实现：返回两个日期之间的差值
+            // DateDiff(interval, date1, date2 [, firstdayofweek [, firstweekofyear]])
+            // 完整实现：计算两个日期之间的差值
             if args.len() < 3 {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             let interval = ValueConversion::to_string(&args[0]).to_lowercase();
-            let date1 = chrono::Local::now();
-            let date2 = chrono::Local::now();
+            let date1_str = ValueConversion::to_string(&args[1]);
+            let date2_str = ValueConversion::to_string(&args[2]);
 
-            let diff = match interval.as_str() {
-                "d" | "y" => (date2 - date1).num_days(),
-                "h" => (date2 - date1).num_hours(),
-                "n" => (date2 - date1).num_minutes(),
-                "s" => (date2 - date1).num_seconds(),
-                _ => 0,
-            };
+            // 解析日期
+            let date1 = parse_vbscript_date(&date1_str)
+                .unwrap_or_else(|| chrono::Local::now().naive_local());
+            let date2 = parse_vbscript_date(&date2_str)
+                .unwrap_or_else(|| chrono::Local::now().naive_local());
 
+            // 计算差值
+            let diff = calculate_date_diff(&interval, date1, date2);
             Value::Number(diff as f64)
         }
         BuiltinToken::DatePart => {
