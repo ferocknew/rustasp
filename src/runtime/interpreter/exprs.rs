@@ -86,12 +86,10 @@ impl Interpreter {
         }
     }
 
-    /// 尝试调用内置函数
+    /// 尝试调用内置函数（使用缓存的 registry）
     fn try_call_builtin(&mut self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
-        use crate::runtime::builtins::{TokenRegistry, BuiltinExecutor};
-
-        let registry = TokenRegistry::new();
-        registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
+        use crate::runtime::builtins::BuiltinExecutor;
+        self.builtin_registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
     }
 
     fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
