@@ -30,6 +30,8 @@ pub enum BuiltinToken {
     CDate = 57,
     CByte = 58,
     CCur = 59,
+    Hex = 60,
+    Oct = 61,
 
     // ========== 字符串函数 (101-150) ==========
     Len = 101,
@@ -141,6 +143,8 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("cdate", BuiltinToken::CDate),
     ("cbyte", BuiltinToken::CByte),
     ("ccur", BuiltinToken::CCur),
+    ("hex", BuiltinToken::Hex),
+    ("oct", BuiltinToken::Oct),
     // 字符串函数
     ("len", BuiltinToken::Len),
     ("trim", BuiltinToken::Trim),
