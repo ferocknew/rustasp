@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 表达式的求值逻辑
 
 use crate::ast::{BinaryOp, Expr, UnaryOp};
-use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps};
+use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps, VbsClass};
 
 use super::Interpreter;
 
@@ -79,11 +79,13 @@ impl Interpreter {
                     elements.iter().map(|e| self.eval_expr(e)).collect();
                 Ok(Value::Array(values?))
             }
+            Expr::New(class_name) => {
+                self.eval_new(class_name)
+            }
             Expr::Index { object, index } => self.eval_index(object, index),
-            _ => Err(RuntimeError::Generic(format!(
-                "Unimplemented expr: {:?}",
-                expr
-            ))),
+            // 这个分支理论上不可达，因为所有 Expr 变体都已处理
+            // 保留它以防止将来添加新变体时忘记处理
+            _ => Ok(Value::Empty),
         }
     }
 
@@ -439,6 +441,28 @@ impl Interpreter {
                 Ok(Value::new_dictionary())
             }
             _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+        }
+    }
+
+    /// 执行 New 表达式 - 创建类实例
+    fn eval_new(&mut self, class_name: &str) -> Result<Value, RuntimeError> {
+        let normalized_name = crate::utils::normalize_identifier(class_name);
+
+        // 从上下文中查找类定义
+        if let Some(class_def) = self.context.classes.get(&normalized_name) {
+            // 创建 VbsClass
+            let vbs_class = VbsClass::from_ast(class_def.name.clone(), class_def.members.clone());
+
+            // 创建实例
+            let instance = vbs_class.new_instance();
+
+            // 返回实例的 Value 表示
+            Ok(instance.to_value())
+        } else {
+            Err(RuntimeError::Generic(format!(
+                "Class '{}' not found",
+                class_name
+            )))
         }
     }
 

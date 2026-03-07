@@ -7,7 +7,7 @@ mod assign_stmt;
 mod control_stmt;
 
 use crate::ast::{Param, Stmt};
-use crate::runtime::{Function, RuntimeError, Value};
+use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass};
 
 use super::Interpreter;
 
@@ -51,6 +51,10 @@ impl Interpreter {
             Stmt::Sub { name, params, body } | Stmt::Function { name, params, body } => {
                 self.register_function(name, params, body)
             }
+
+            // 类定义
+            Stmt::Class { name, members } => self.register_class(name, members),
+
             Stmt::Call { name, args } => self.eval_call(name, args),
             Stmt::ExitFor => self.eval_exit_for(),
             Stmt::ExitFunction | Stmt::ExitSub => self.eval_exit(),
@@ -84,6 +88,22 @@ impl Interpreter {
                 body: body.to_vec(),
             },
         );
+        Ok(Value::Empty)
+    }
+
+    /// 注册类定义
+    fn register_class(&mut self, name: &str, members: &[crate::ast::ClassMember]) -> Result<Value, RuntimeError> {
+        // 创建 VbsClass 并存储到 context 中
+        let _vbs_class = VbsClass::from_ast(name.to_string(), members.to_vec());
+
+        self.context.classes.insert(
+            crate::utils::normalize_identifier(name),
+            ClassDef {
+                name: name.to_string(),
+                members: members.to_vec(),
+            },
+        );
+
         Ok(Value::Empty)
     }
 }
