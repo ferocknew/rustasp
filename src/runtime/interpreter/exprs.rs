@@ -93,11 +93,14 @@ impl Interpreter {
     }
 
     fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
-        // 尝试调用内置函数（先计算值）
-        let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
-        let arg_values = arg_values?;
-        if let Some(result) = self.try_call_builtin(name, &arg_values) {
-            return result;
+        // 优化：先检查是否是内置函数，避免不必要的参数 eval
+        if self.builtin_registry.lookup(name).is_some() {
+            // 内置函数：先 eval 参数再调用
+            let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+            let arg_values = arg_values?;
+            if let Some(result) = self.try_call_builtin(name, &arg_values) {
+                return result;
+            }
         }
 
         // 用户函数调用，传递原始表达式以支持 ByRef
@@ -105,20 +108,22 @@ impl Interpreter {
     }
 
     fn eval_user_function_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
-        if let Some(func) = self.context.get_function(name).cloned() {
-            // 记录 ByRef 参数映射: (参数名 -> 原始变量名)
-            let mut byref_mapping: Vec<(String, String)> = Vec::new();
+        // 检查是否是用户函数
+        let func = self.context.get_function(name).cloned();
+        
+        if let Some(func) = func {
+            // 记录 ByRef 参数映射: (参数索引, 原始变量名) - 优化：使用索引而非参数名
+            let mut byref_indices: Vec<(usize, String)> = Vec::new();
             
-            // 计算参数值
+            // 计算参数值（优化：只 eval 一次）
             let mut arg_values = Vec::new();
             for (i, arg) in args.iter().enumerate() {
                 // 检查是否是 ByRef 参数且参数为变量
                 let is_byref_param = i < func.params.len() && func.params[i].is_byref;
                 if is_byref_param {
                     if let Expr::Variable(var_name) = arg {
-                        // ByRef 参数，记录映射
-                        let param_name = func.params[i].name.clone();
-                        byref_mapping.push((param_name, var_name.clone()));
+                        // ByRef 参数，记录索引和变量名
+                        byref_indices.push((i, var_name.clone()));
                         // 使用当前变量值
                         let value = self.context.get_var(var_name)
                             .cloned()
@@ -172,37 +177,35 @@ impl Interpreter {
                 .cloned()
                 .unwrap_or(Value::Empty);
 
-            // 在 pop_scope 之前保存 ByRef 参数的值
-            let byref_values: Vec<(String, Value)> = byref_mapping.iter()
-                .filter_map(|(param_name, _)| {
-                    self.context.get_var(param_name).cloned()
-                        .map(|v| (param_name.clone(), v))
+            // 在 pop_scope 之前保存 ByRef 参数的值（优化：使用索引直接访问）
+            let byref_values: Vec<Value> = byref_indices.iter()
+                .map(|(idx, _)| {
+                    let param_name = &func.params[*idx].name;
+                    self.context.get_var(param_name).cloned().unwrap_or(Value::Empty)
                 })
                 .collect();
 
             self.context.pop_scope();
 
-            // 在 pop_scope 之后，将 ByRef 参数的值写回外部变量
-            for (param_name, original_var_name) in &byref_mapping {
-                if let Some((_, value)) = byref_values.iter().find(|(pn, _)| pn == param_name) {
-                    self.context.set_var(original_var_name.clone(), value.clone());
-                }
+            // 在 pop_scope 之后，将 ByRef 参数的值写回外部变量（优化：O(1) 索引访问）
+            for (i, (_, original_var_name)) in byref_indices.iter().enumerate() {
+                self.context.set_var(original_var_name.clone(), byref_values[i].clone());
             }
 
             return Ok(result);
         }
 
-        // 回退到数组索引访问
-        let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
-        let arg_values = arg_values?;
-        
-        if arg_values.len() == 1 {
+        // 回退到数组索引访问（需要 eval args）
+        if args.len() == 1 {
+            let index = self.eval_expr(&args[0])?;
             // 处理数组索引访问：arr(0)
-            if let Some(Value::Array(arr)) = self.context.get_var(name) {
-                if let Value::Number(i) = &arg_values[0] {
-                    let i = *i as usize;
-                    if i < arr.len() {
-                        return Ok(arr[i].clone());
+            if let Some(value) = self.context.get_var(name).cloned() {
+                if let Value::Array(arr) = value {
+                    if let Value::Number(i) = &index {
+                        let i = *i as usize;
+                        if i >= 1 && i <= arr.len() {
+                            return Ok(arr[i - 1].clone());
+                        }
                     }
                 }
             }
@@ -495,19 +498,14 @@ impl Interpreter {
         }
     }
 
-    /// 执行 New 表达式 - 创建类实例
+    /// 执行 New 表达式 - 创建类实例（使用缓存的 VbsClass）
     fn eval_new(&mut self, class_name: &str) -> Result<Value, RuntimeError> {
         let normalized_name = crate::utils::normalize_identifier(class_name);
 
-        // 从上下文中查找类定义
-        if let Some(class_def) = self.context.classes.get(&normalized_name) {
-            // 创建 VbsClass
-            let vbs_class = VbsClass::from_ast(class_def.name.clone(), class_def.members.clone());
-
-            // 创建实例
+        // 从缓存中获取预编译的 VbsClass
+        if let Some(vbs_class) = self.context.classes.get(&normalized_name) {
+            // 直接使用缓存的类创建实例（避免重复构建）
             let instance = vbs_class.new_instance();
-
-            // 返回实例的 Value 表示
             Ok(instance.to_value())
         } else {
             Err(RuntimeError::Generic(format!(
