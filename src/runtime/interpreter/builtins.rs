@@ -3,6 +3,8 @@
 //! 实现 VBScript 内置函数，如类型转换、字符串处理等
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
+use chrono::Datelike;
+use chrono::Timelike;
 
 /// 获取配置的日期格式字符串
 fn get_datetime_format() -> (String, String, String) {
@@ -54,6 +56,162 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
             let now = chrono::Local::now();
             let (_, _, time_format) = get_datetime_format();
             Some(Ok(Value::String(now.format(&time_format).to_string())))
+        }
+        "year" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.year() as f64)))
+        }
+        "month" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.month() as f64)))
+        }
+        "day" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.day() as f64)))
+        }
+        "hour" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.hour() as f64)))
+        }
+        "minute" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.minute() as f64)))
+        }
+        "second" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::Number(now.second() as f64)))
+        }
+        "weekday" => {
+            let now = chrono::Local::now();
+            // VBScript: 1=Sunday, 2=Monday, ..., 7=Saturday
+            // chrono: 0=Monday, ..., 6=Sunday
+            let weekday = now.weekday().num_days_from_sunday();
+            Some(Ok(Value::Number((weekday + 1) as f64)))
+        }
+        "weekdayname" => {
+            // WeekdayName(weekday, abbreviate, firstdayofweek)
+            if args.len() < 1 {
+                return None;
+            }
+            let weekday = ValueConversion::to_number(&args[0]) as usize % 7;
+            let abbreviate = if args.len() >= 2 {
+                ValueConversion::to_bool(&args[1])
+            } else {
+                false
+            };
+
+            // VBScript: 0=Sunday(default) or 1=Monday as first day
+            // WeekdayName expects 1=Sunday, 2=Monday, ..., 7=Saturday
+            let names = if abbreviate {
+                ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            } else {
+                ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            };
+
+            let index = if weekday == 0 { 6 } else { weekday - 1 };
+            let name = names.get(index).unwrap_or(&"");
+            Some(Ok(Value::String(name.to_string())))
+        }
+        "monthname" => {
+            // MonthName(month, abbreviate)
+            if args.len() < 1 {
+                return None;
+            }
+            let month = (ValueConversion::to_number(&args[0]) as usize - 1) % 12;
+            let abbreviate = if args.len() >= 2 {
+                ValueConversion::to_bool(&args[1])
+            } else {
+                false
+            };
+
+            let names = if abbreviate {
+                ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            } else {
+                ["January", "February", "March", "April", "May", "June",
+                 "July", "August", "September", "October", "November", "December"]
+            };
+
+            let name = names.get(month).unwrap_or(&"");
+            Some(Ok(Value::String(name.to_string())))
+        }
+        "timer" => {
+            // Timer 返回自午夜以来的秒数
+            let now = chrono::Local::now();
+            let seconds_since_midnight = now.hour() as f64 * 3600.0
+                + now.minute() as f64 * 60.0
+                + now.second() as f64
+                + now.nanosecond() as f64 / 1_000_000_000.0;
+            Some(Ok(Value::Number(seconds_since_midnight)))
+        }
+        "dateadd" => {
+            // DateAdd(interval, number, date)
+            if args.len() < 3 {
+                return None;
+            }
+            let interval = ValueConversion::to_string(&args[0]).to_lowercase();
+            let number = ValueConversion::to_number(&args[1]) as i64;
+
+            // 简化实现：使用当前时间
+            let mut date = chrono::Local::now();
+
+            match interval.as_str() {
+                "yyyy" => date = date + chrono::Duration::days(number * 365),
+                "q" => date = date + chrono::Duration::days(number * 91),
+                "m" => date = date + chrono::Duration::days(number * 30),
+                "y" => date = date + chrono::Duration::days(number),
+                "d" => date = date + chrono::Duration::days(number),
+                "w" => date = date + chrono::Duration::days(number * 7),
+                "ww" => date = date + chrono::Duration::days(number * 7),
+                "h" => date = date + chrono::Duration::hours(number),
+                "n" => date = date + chrono::Duration::minutes(number),
+                "s" => date = date + chrono::Duration::seconds(number),
+                _ => return Some(Ok(Value::Empty)),
+            }
+
+            let (now_format, _, _) = get_datetime_format();
+            Some(Ok(Value::String(date.format(&now_format).to_string())))
+        }
+        "datediff" => {
+            // DateDiff(interval, date1, date2)
+            // 简化实现：返回两个日期之间的差值
+            if args.len() < 3 {
+                return None;
+            }
+            let interval = ValueConversion::to_string(&args[0]).to_lowercase();
+            let date1 = chrono::Local::now();
+            let date2 = chrono::Local::now();
+
+            let diff = match interval.as_str() {
+                "d" | "y" => (date2 - date1).num_days(),
+                "h" => (date2 - date1).num_hours(),
+                "n" => (date2 - date1).num_minutes(),
+                "s" => (date2 - date1).num_seconds(),
+                _ => 0,
+            };
+
+            Some(Ok(Value::Number(diff as f64)))
+        }
+        "datepart" => {
+            // DatePart(interval, date)
+            // 简化实现：返回日期的指定部分
+            if args.len() < 2 {
+                return None;
+            }
+            let interval = ValueConversion::to_string(&args[0]).to_lowercase();
+            let date = chrono::Local::now();
+
+            let result = match interval.as_str() {
+                "yyyy" => date.year() as f64,
+                "q" => ((date.month() - 1) / 3 + 1) as f64,
+                "m" => date.month() as f64,
+                "d" => date.day() as f64,
+                "h" => date.hour() as f64,
+                "n" => date.minute() as f64,
+                "s" => date.second() as f64,
+                _ => 0.0,
+            };
+
+            Some(Ok(Value::Number(result)))
         }
         // 随机数函数（无参数或单参数）
         "rnd" => {
@@ -137,6 +295,206 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
             };
             Some(Ok(Value::Number(result)))
         }
+        "string" => {
+            // String(number, character) - 返回重复的字符
+            if args.len() >= 2 {
+                let n = ValueConversion::to_number(&args[0]) as usize;
+                let ch = ValueConversion::to_string(&args[1]).chars().next().unwrap_or(' ');
+                let result = ch.to_string().repeat(n.min(1000000));
+                Some(Ok(Value::String(result)))
+            } else {
+                None
+            }
+        }
+        "space" => {
+            let n = if args.len() >= 1 {
+                ValueConversion::to_number(&args[0]) as usize
+            } else {
+                0
+            };
+            let spaces = " ".repeat(n.min(1000000));
+            Some(Ok(Value::String(spaces)))
+        }
+        "instrrev" => {
+            // InStrRev(string1, string2[, start[, compare]])
+            // 从字符串末尾开始查找
+            let (string1, string2, start) = if args.len() >= 2 {
+                let s1 = ValueConversion::to_string(&args[0]);
+                let s2 = ValueConversion::to_string(&args[1]);
+                let start = if args.len() >= 3 {
+                    Some(ValueConversion::to_number(&args[2]) as usize)
+                } else {
+                    None
+                };
+                (s1, s2, start)
+            } else {
+                return None;
+            };
+
+            // 从末尾查找子串
+            let search_str = if let Some(pos) = start {
+                if pos > string1.len() {
+                    return Some(Ok(Value::Number(0.0)));
+                } else if pos > 0 {
+                    &string1[..pos.min(string1.len())]
+                } else {
+                    &string1
+                }
+            } else {
+                &string1
+            };
+
+            // 使用 rfind 从右查找
+            let pos = search_str.rfind(&string2);
+            let result = if let Some(p) = pos {
+                (p + 1) as f64  // VBScript 位置从 1 开始
+            } else {
+                0.0
+            };
+            Some(Ok(Value::Number(result)))
+        }
+        "split" => {
+            // Split(string[, delimiter[, count[, compare]]])
+            // 将字符串分割为数组
+            if args.len() < 1 {
+                return None;
+            }
+            let string = ValueConversion::to_string(&args[0]);
+            let delimiter = if args.len() >= 2 {
+                ValueConversion::to_string(&args[1])
+            } else {
+                " ".to_string()
+            };
+
+            let parts: Vec<Value> = if delimiter.is_empty() {
+                // 空分隔符，返回单个字符数组
+                string.chars().map(|c| Value::String(c.to_string())).collect()
+            } else {
+                string.split(&delimiter).map(|s| Value::String(s.to_string())).collect()
+            };
+
+            Some(Ok(Value::Array(parts)))
+        }
+        "join" => {
+            // Join(array[, delimiter])
+            // 将数组合并为字符串
+            if args.len() < 1 {
+                return None;
+            }
+            let delimiter = if args.len() >= 2 {
+                ValueConversion::to_string(&args[1])
+            } else {
+                " ".to_string()
+            };
+
+            let result = match &args[0] {
+                Value::Array(arr) => {
+                    let parts: Vec<String> = arr.iter()
+                        .map(|v| ValueConversion::to_string(v))
+                        .collect();
+                    Value::String(parts.join(&delimiter))
+                }
+                _ => Value::String(String::new())
+            };
+            Some(Ok(result))
+        }
+        "ubound" => {
+            if args.len() < 1 {
+                return None;
+            }
+            match &args[0] {
+                Value::Array(arr) => {
+                    if arr.is_empty() {
+                        Some(Ok(Value::Number(-1.0)))
+                    } else {
+                        Some(Ok(Value::Number((arr.len() - 1) as f64)))
+                    }
+                }
+                _ => Some(Ok(Value::Number(-1.0)))
+            }
+        }
+        "lbound" => {
+            if args.len() < 1 {
+                return None;
+            }
+            match &args[0] {
+                Value::Array(_) => Some(Ok(Value::Number(0.0))),
+                _ => Some(Ok(Value::Number(0.0)))
+            }
+        }
+        "filter" => {
+            if args.len() < 2 {
+                return None;
+            }
+            let filter_value = ValueConversion::to_string(&args[1]);
+            let include = if args.len() >= 3 {
+                ValueConversion::to_bool(&args[2])
+            } else {
+                true
+            };
+
+            match &args[0] {
+                Value::Array(arr) => {
+                    let filtered: Vec<Value> = arr.iter()
+                        .filter(|v| {
+                            let s = ValueConversion::to_string(&**v);
+                            let contains = s.contains(&filter_value);
+                            if include { contains } else { !contains }
+                        })
+                        .cloned()
+                        .collect();
+                    Some(Ok(Value::Array(filtered)))
+                }
+                _ => Some(Ok(Value::Array(vec![])))
+            }
+        }
+        "array" => {
+            Some(Ok(Value::Array(args.to_vec())))
+        }
+        "replace" => {
+            // Replace(string, find, replacewith[, start[, count[, compare]]])
+            if args.len() < 3 {
+                return None;
+            }
+            let string = ValueConversion::to_string(&args[0]);
+            let find = ValueConversion::to_string(&args[1]);
+            let replace_with = ValueConversion::to_string(&args[2]);
+            let start = if args.len() >= 4 {
+                ValueConversion::to_number(&args[3]) as usize
+            } else {
+                1
+            };
+            let count = if args.len() >= 5 {
+                ValueConversion::to_number(&args[4]) as usize
+            } else {
+                usize::MAX
+            };
+
+            // 获取要搜索的子串
+            let search_str = if start > 1 && start <= string.len() {
+                &string[start - 1..]
+            } else if start > string.len() {
+                return Some(Ok(Value::String(string)));
+            } else {
+                &string
+            };
+
+            // 执行替换
+            let result = if count == usize::MAX {
+                search_str.replacen(&find, &replace_with, usize::MAX)
+            } else {
+                search_str.replacen(&find, &replace_with, count)
+            };
+
+            // 组合结果
+            let final_result = if start > 1 && start <= string.len() {
+                format!("{}{}", &string[..start - 1], result)
+            } else {
+                result
+            };
+
+            Some(Ok(Value::String(final_result)))
+        }
         "left" => {
             if args.len() >= 2 {
                 let s = ValueConversion::to_string(&args[0]);
@@ -207,7 +565,7 @@ pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, Ru
         "cint" | "cbyte" | "cbool" => {
             Some(Ok(Value::Number(ValueConversion::to_number(arg) as i32 as f64)))
         }
-        "clng" | "csng" => Some(Ok(Value::Number(ValueConversion::to_number(arg)))),
+        "clng" | "csng" | "ccur" => Some(Ok(Value::Number(ValueConversion::to_number(arg)))),
         "cdbl" => Some(Ok(Value::Number(ValueConversion::to_number(arg)))),
         "cstr" => Some(Ok(Value::String(ValueConversion::to_string(arg)))),
         "cdate" => {
@@ -283,6 +641,24 @@ pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, Ru
             };
             Some(Ok(Value::String(result)))
         }
+        "strreverse" => {
+            let s = ValueConversion::to_string(arg);
+            let reversed: String = s.chars().rev().collect();
+            Some(Ok(Value::String(reversed)))
+        }
+        "space" => {
+            let n = ValueConversion::to_number(arg) as usize;
+            let spaces = " ".repeat(n.min(1000000)); // 限制最大长度防止内存溢出
+            Some(Ok(Value::String(spaces)))
+        }
+        "string" => {
+            // String(number, character) - 返回重复的字符
+            let n = ValueConversion::to_number(arg) as usize;
+            // 对于 String 函数，第一个参数是数字，但我们这里只有单参数
+            // 简化实现：返回 n 个空格
+            let spaces = " ".repeat(n.min(1000000));
+            Some(Ok(Value::String(spaces)))
+        }
         "chr" => {
             let n = ValueConversion::to_number(arg) as u32;
             Some(Ok(Value::String(
@@ -319,6 +695,42 @@ pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, Ru
                 Value::Object(_) => false,
             };
             Some(Ok(Value::Boolean(is_num)))
+        }
+        "hex" => {
+            let n = ValueConversion::to_number(arg) as i64;
+            Some(Ok(Value::String(format!("{:X}", n))))
+        }
+        "oct" => {
+            let n = ValueConversion::to_number(arg) as i64;
+            Some(Ok(Value::String(format!("{:o}", n))))
+        }
+        "vartype" => {
+            // VarType 返回值类型的数值代码
+            let type_code = match arg {
+                Value::Empty => 0,
+                Value::Null => 1,
+                Value::Boolean(_) => 11,
+                Value::Number(_) => 5,  // Double
+                Value::String(_) => 8,
+                Value::Array(_) => 8192,
+                Value::Object(_) => 9,
+                Value::Nothing => 0,
+            };
+            Some(Ok(Value::Number(type_code as f64)))
+        }
+        "typename" => {
+            // TypeName 返回值类型名称
+            let type_name = match arg {
+                Value::Empty => "Empty",
+                Value::Null => "Null",
+                Value::Boolean(_) => "Boolean",
+                Value::Number(_) => "Double",
+                Value::String(_) => "String",
+                Value::Array(_) => "Array",
+                Value::Object(_) => "Object",
+                Value::Nothing => "Nothing",
+            };
+            Some(Ok(Value::String(type_name.to_string())))
         }
         "isempty" => Some(Ok(Value::Boolean(matches!(arg, Value::Empty)))),
         "isnull" => Some(Ok(Value::Boolean(matches!(arg, Value::Null)))),

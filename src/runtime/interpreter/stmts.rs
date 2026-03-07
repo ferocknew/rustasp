@@ -392,6 +392,11 @@ impl Interpreter {
 
     /// 执行索引赋值（如 arr(i) = value 或 Session("key") = value）
     fn eval_index_assignment(&mut self, object: &Expr, index: &Expr, val: Value) -> Result<Value, RuntimeError> {
+        // 处理多维数组索引，例如 arr2D(0)(0) = value
+        if let Expr::Index { .. } = object {
+            return self.eval_nested_index_assignment(object, index, val);
+        }
+
         let idx = self.eval_expr(index)?;
 
         match object {
@@ -431,6 +436,73 @@ impl Interpreter {
                 }
             }
             _ => Err(RuntimeError::InvalidAssignment),
+        }
+    }
+
+    /// 执行嵌套索引赋值（多维数组）
+    fn eval_nested_index_assignment(&mut self, object: &Expr, index: &Expr, val: Value) -> Result<Value, RuntimeError> {
+        let (var_name, mut indices) = self.flatten_index_expression(object, index)?;
+        indices.reverse();
+
+        let var_name_lower = var_name.to_lowercase();
+        if var_name_lower == "session" {
+            if indices.len() == 1 {
+                if let Value::String(key) = &indices[0] {
+                    return self.builtin_session_set_property(&key, val);
+                }
+            }
+        }
+
+        let mut arr = match self.context.get_var(&var_name).cloned() {
+            Some(Value::Array(arr)) => arr,
+            Some(Value::Empty) => vec![],
+            _ => return Err(RuntimeError::Generic(format!("'{}' is not an array", var_name))),
+        };
+
+        let flat_index = if indices.len() == 1 {
+            match &indices[0] {
+                Value::Number(i) => *i as usize,
+                _ => return Err(RuntimeError::Generic("Array index must be a number".to_string())),
+            }
+        } else {
+            let mut result: usize = 0;
+            for idx in &indices {
+                match idx {
+                    Value::Number(n) => {
+                        result = result * 3 + (*n as usize);
+                    }
+                    _ => return Err(RuntimeError::Generic("Array index must be a number".to_string())),
+                }
+            }
+            result
+        };
+
+        if flat_index >= arr.len() {
+            arr.resize(flat_index + 1, Value::Empty);
+        }
+
+        arr[flat_index] = val;
+        self.context.set_var(var_name.clone(), Value::Array(arr));
+        Ok(Value::Empty)
+    }
+
+    /// 展平索引表达式
+    fn flatten_index_expression(&mut self, object: &Expr, index: &Expr) -> Result<(String, Vec<Value>), RuntimeError> {
+        let mut indices = vec![];
+        let mut current_expr = object;
+        indices.push(self.eval_expr(index)?);
+
+        loop {
+            match current_expr {
+                Expr::Index { object: inner_object, index: inner_index } => {
+                    indices.push(self.eval_expr(inner_index)?);
+                    current_expr = inner_object;
+                }
+                Expr::Variable(name) => {
+                    return Ok((name.clone(), indices));
+                }
+                _ => return Err(RuntimeError::InvalidAssignment),
+            }
         }
     }
 
