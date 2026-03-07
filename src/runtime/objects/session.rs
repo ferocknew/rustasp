@@ -197,7 +197,14 @@ impl crate::runtime::BuiltinObject for Session {
             "sessionid" => Ok(Value::String(self.session_id.clone())),
             "timeout" => Ok(Value::Number(self.timeout as f64)),
             "codepage" => Ok(Value::Empty), // CodePage 属性，返回 Empty
-            // Note: Contents 属性的特殊处理在 eval_property 中实现
+            "contents" => {
+                // Contents 属性返回 Session 本身（支持 Contents("key") 访问）
+                Ok(Value::Object(Box::new(self.clone())))
+            }
+            "staticobjects" => {
+                // StaticObjects 属性 - 暂不支持
+                Ok(Value::new_dictionary())
+            }
             _ => {
                 // 尝试获取 Session 值
                 self.get(name)
