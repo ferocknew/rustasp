@@ -28,7 +28,7 @@ fn parse_vbscript_time(time_str: &str) -> Option<chrono::NaiveTime> {
     ];
 
     for format in &formats {
-        if let Ok(mut time) = chrono::NaiveTime::parse_from_str(time_part, format) {
+        if let Ok(mut time) = chrono::NaiveTime::parse_from_str(&time_part, format) {
             // 如果是 12 小时制且是 PM，且小时不是 12
             if has_period && is_pm && time.hour() < 12 {
                 time = chrono::NaiveTime::from_hms_opt(
