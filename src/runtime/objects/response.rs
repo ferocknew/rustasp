@@ -33,6 +33,8 @@ pub struct Response {
     cookies: HashMap<String, String>,
     /// 日志追加内容
     append_to_log: Vec<String>,
+    /// 是否已结束（Response.End 调用后设置为 true）
+    is_ended: bool,
 }
 
 impl Response {
@@ -52,6 +54,7 @@ impl Response {
             pics: None,
             cookies: HashMap::new(),
             append_to_log: Vec::new(),
+            is_ended: false,
         }
     }
 
