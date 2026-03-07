@@ -292,7 +292,7 @@ impl crate::runtime::BuiltinObject for Response {
                 }
                 self.add_header(
                     &ValueConversion::to_string(&args[0]),
-                    &ValueConversion::to_string(&args[1])
+                    &ValueConversion::to_string(&args[1]),
                 );
                 Ok(Value::Empty)
             }

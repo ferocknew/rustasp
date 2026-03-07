@@ -1,11 +1,4 @@
-//! 内置函数 Token 识别模块
-//!
-//! 使用 Token Key 而非字符串匹配，提高内置函数调用性能
-//! 将函数名映射为整数 ID，通过 match/switch 快速分发
-
-use crate::runtime::{RuntimeError, Value, ValueConversion};
-use rand::Rng;
-use std::collections::HashMap;
+//! 内置函数 Token ID 定义
 
 /// 内置函数 Token ID
 /// 每个内置函数对应一个唯一的整数 ID，用于快速匹配
@@ -55,7 +48,7 @@ pub enum BuiltinToken {
     Join = 115,
     StrReverse = 116,
     Space = 117,
-    String_ = 118,  // String 是 Rust 关键字，加下划线
+    String_ = 118,
     Asc = 119,
     Chr = 120,
     AscW = 121,
@@ -114,3 +107,98 @@ pub enum BuiltinToken {
     // 未知函数
     Unknown = 0,
 }
+
+/// Token 注册表项
+pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
+    // 数学函数
+    ("abs", BuiltinToken::Abs),
+    ("sqr", BuiltinToken::Sqr),
+    ("sin", BuiltinToken::Sin),
+    ("cos", BuiltinToken::Cos),
+    ("tan", BuiltinToken::Tan),
+    ("atn", BuiltinToken::Atn),
+    ("log", BuiltinToken::Log),
+    ("exp", BuiltinToken::Exp),
+    ("int", BuiltinToken::Int),
+    ("fix", BuiltinToken::Fix),
+    ("round", BuiltinToken::Round),
+    ("rnd", BuiltinToken::Rnd),
+    ("sgn", BuiltinToken::Sgn),
+    // 类型转换函数
+    ("cstr", BuiltinToken::CStr),
+    ("cint", BuiltinToken::CInt),
+    ("clng", BuiltinToken::CLng),
+    ("csng", BuiltinToken::CSng),
+    ("cdbl", BuiltinToken::CDbl),
+    ("cbool", BuiltinToken::CBool),
+    ("cdate", BuiltinToken::CDate),
+    ("cbyte", BuiltinToken::CByte),
+    // 字符串函数
+    ("len", BuiltinToken::Len),
+    ("trim", BuiltinToken::Trim),
+    ("ltrim", BuiltinToken::LTrim),
+    ("rtrim", BuiltinToken::RTrim),
+    ("left", BuiltinToken::Left),
+    ("right", BuiltinToken::Right),
+    ("mid", BuiltinToken::Mid),
+    ("ucase", BuiltinToken::UCase),
+    ("lcase", BuiltinToken::LCase),
+    ("instr", BuiltinToken::InStr),
+    ("instrrev", BuiltinToken::InStrRev),
+    ("strcomp", BuiltinToken::StrComp),
+    ("replace", BuiltinToken::Replace),
+    ("split", BuiltinToken::Split),
+    ("join", BuiltinToken::Join),
+    ("strreverse", BuiltinToken::StrReverse),
+    ("space", BuiltinToken::Space),
+    ("string", BuiltinToken::String_),
+    ("asc", BuiltinToken::Asc),
+    ("chr", BuiltinToken::Chr),
+    ("ascw", BuiltinToken::AscW),
+    ("chrw", BuiltinToken::ChrW),
+    // 日期时间函数
+    ("now", BuiltinToken::Now),
+    ("date", BuiltinToken::Date),
+    ("time", BuiltinToken::Time),
+    ("year", BuiltinToken::Year),
+    ("month", BuiltinToken::Month),
+    ("day", BuiltinToken::Day),
+    ("hour", BuiltinToken::Hour),
+    ("minute", BuiltinToken::Minute),
+    ("second", BuiltinToken::Second),
+    ("weekday", BuiltinToken::WeekDay),
+    ("dateadd", BuiltinToken::DateAdd),
+    ("datediff", BuiltinToken::DateDiff),
+    ("datepart", BuiltinToken::DatePart),
+    ("dateserial", BuiltinToken::DateSerial),
+    ("datevalue", BuiltinToken::DateValue),
+    ("timeserial", BuiltinToken::TimeSerial),
+    ("timevalue", BuiltinToken::TimeValue),
+    ("formatdatetime", BuiltinToken::FormatDateTime),
+    ("monthname", BuiltinToken::MonthName),
+    ("weekdayname", BuiltinToken::WeekDayName),
+    // 数组函数
+    ("array", BuiltinToken::Array),
+    ("ubound", BuiltinToken::UBound),
+    ("lbound", BuiltinToken::LBound),
+    ("filter", BuiltinToken::Filter),
+    ("isarray", BuiltinToken::IsArray),
+    // 检验函数
+    ("isnumeric", BuiltinToken::IsNumeric),
+    ("isdate", BuiltinToken::IsDate),
+    ("isempty", BuiltinToken::IsEmpty),
+    ("isnull", BuiltinToken::IsNull),
+    ("isobject", BuiltinToken::IsObject),
+    ("isnothing", BuiltinToken::IsNothing),
+    ("typename", BuiltinToken::TypeName),
+    ("vartype", BuiltinToken::VarType),
+    // 交互函数
+    ("msgbox", BuiltinToken::MsgBox),
+    ("inputbox", BuiltinToken::InputBox),
+    // 其他函数
+    ("createobject", BuiltinToken::CreateObject),
+    ("getobject", BuiltinToken::GetObject),
+    ("eval", BuiltinToken::Eval),
+    ("execute", BuiltinToken::Execute),
+    ("rgb", BuiltinToken::RGB),
+];
