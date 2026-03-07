@@ -203,13 +203,12 @@ impl SessionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use tempfile::TempDir;
 
     #[test]
     fn test_session_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
-        let manager = SessionManager::new(temp_dir.path()).unwrap();
+        let _manager = SessionManager::new(temp_dir.path()).unwrap();
 
         // 验证 sessions 目录被创建
         let sessions_dir = temp_dir.path().join("sessions");
@@ -223,7 +222,7 @@ mod tests {
 
         // 创建 Session
         let session_id = SessionManager::generate_session_id();
-        let session = manager.create_session(session_id.clone(), 20).unwrap();
+        let _session = manager.create_session(session_id.clone(), 20).unwrap();
 
         // 重新加载 Session
         let loaded = manager.load_session(&session_id).unwrap();

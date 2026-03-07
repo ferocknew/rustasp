@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_parent_path_allowed() {
-        let resolver = PathResolver::new(PathBuf::from("/var/www"), true);
+        let _resolver = PathResolver::new(PathBuf::from("/var/www"), true);
 
         // 应该允许父路径（如果仍在 web_root 内）
         // 注意：这个测试结果取决于实际的文件系统
