@@ -357,109 +357,92 @@ impl Interpreter {
         Ok(Value::Empty)
     }
 
-    /// 处理属性访问表达式
+    /// 处理属性访问表达式（优化：统一 trait dispatch）
     fn eval_property(&mut self, object: &Expr, property: &str) -> Result<Value, RuntimeError> {
         // 获取对象名称（如果是变量）
         let object_name = match object {
-            Expr::Variable(name) => Some(name.to_lowercase()),
+            Expr::Variable(name) => Some(crate::utils::normalize_identifier(name)),
             _ => None,
         };
 
         let property_lower = property.to_lowercase();
 
-        // 处理内建对象的属性访问
-        match object_name.as_deref() {
-            Some("request") => self.eval_request_property(property_lower.as_str()),
-            Some("response") => {
-                // 处理无参数方法调用：Response.Clear 和 Response.End
-                match property_lower.as_str() {
-                    "clear" => {
-                        self.context.response_mut().clear();
-                        return Ok(Value::Empty);
-                    }
-                    "end" => {
-                        self.context.response_mut().end();
-                        // 设置退出标志，停止后续执行
-                        self.context.should_exit = true;
-                        return Ok(Value::Empty);
-                    }
-                    _ => {}
+        // 特殊处理：Response.Clear/End（需要设置退出标志）
+        if object_name.as_deref() == Some("response") {
+            match property_lower.as_str() {
+                "clear" => {
+                    self.context.response_mut().clear();
+                    return Ok(Value::Empty);
                 }
-                // 从 response 对象获取属性
-                let response = self.context.response();
-                match response.get_property(property) {
-                    Ok(val) => return Ok(val),
-                    Err(_) => {
-                        // 如果 BuiltinObject 返回错误，提供默认空值
-                        match property_lower.as_str() {
-                            "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
-                            | "expires" | "expiresabsolute" | "pics" | "isclientconnected" | "cookies" => Ok(Value::Empty),
-                            _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
-                        }
-                    }
+                "end" => {
+                    self.context.response_mut().end();
+                    self.context.should_exit = true;
+                    return Ok(Value::Empty);
                 }
-            }
-            Some("server") => {
-                match property_lower.as_str() {
-                    "scripttimeout" => Ok(Value::Number(90.0)),
-                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
-                }
-            }
-            Some("session") => {
-                // 处理 Session 对象的属性访问
-                match property_lower.as_str() {
-                    "contents" => {
-                        // 返回特殊的 SessionContents 标记对象
-                        let mut contents_obj = std::collections::HashMap::new();
-                        contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
-                        contents_obj.insert("count".to_string(), Value::Number(-1.0));
-                        return Ok(Value::from_hashmap(contents_obj));
-                    }
-                    _ => {
-                        // 处理其他 Session 属性
-                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
-                            // 使用 BuiltinObject trait 的 get_property 方法
-                            match session_obj.get_property(property) {
-                                Ok(value) => return Ok(value),
-                                Err(_) => {}
-                            }
-                        }
-                        Err(RuntimeError::PropertyNotFound(property.to_string()))
-                    }
-                }
-            }
-            _ => {
-                // 处理通用属性访问（从变量或表达式中获取对象）
-                let obj_value = self.eval_expr(object)?;
-
-                // 处理 .Count 属性（适用于各种类型）
-                if property_lower == "count" {
-                    return Ok(match &obj_value {
-                        Value::Array(arr) => Value::Number(arr.len() as f64),
-                        Value::Object(obj) => {
-                            // 使用 BuiltinObject 的 get_property 方法
-                            obj.get_property("count").unwrap_or(Value::Number(0.0))
-                        }
-                        Value::String(_) | Value::Number(_) | Value::Boolean(_)
-                        | Value::Empty | Value::Null | Value::Nothing => Value::Number(1.0),
-                    });
-                }
-
-                // 处理对象的属性访问
-                match obj_value {
-                    Value::Object(obj) => {
-                        // 使用 BuiltinObject trait 的 get_property 方法
-                        match obj.get_property(property) {
-                            Ok(value) => return Ok(value),
-                            Err(_) => {}
-                        }
-                    }
-                    _ => {}
-                }
-
-                Err(RuntimeError::PropertyNotFound(property.to_string()))
+                _ => {}
             }
         }
+
+        // 特殊处理：Request 属性访问
+        if object_name.as_deref() == Some("request") {
+            return self.eval_request_property(property_lower.as_str());
+        }
+
+        // 特殊处理：Server.ScriptTimeout
+        if object_name.as_deref() == Some("server") && property_lower == "scripttimeout" {
+            return Ok(Value::Number(90.0));
+        }
+
+        // 特殊处理：Session.Contents
+        if object_name.as_deref() == Some("session") && property_lower == "contents" {
+            let mut contents_obj = std::collections::HashMap::new();
+            contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
+            contents_obj.insert("count".to_string(), Value::Number(-1.0));
+            return Ok(Value::from_hashmap(contents_obj));
+        }
+
+        // 统一 trait dispatch：从变量中获取对象并访问属性
+        if let Some(name) = object_name {
+            if let Some(value) = self.context.get_var(&name).cloned() {
+                // 特殊处理：Response 对象（通过 context.response() 访问）
+                if name == "response" {
+                    let response = self.context.response();
+                    if let Ok(val) = response.get_property(property) {
+                        return Ok(val);
+                    }
+                    // 提供默认空值
+                    match property_lower.as_str() {
+                        "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
+                        | "expires" | "expiresabsolute" | "pics" | "isclientconnected" | "cookies" => {
+                            return Ok(Value::Empty);
+                        }
+                        _ => {}
+                    }
+                } else if let Value::Object(obj) = value {
+                    return obj.get_property(&property_lower);
+                }
+            }
+        }
+
+        // 回退：eval object 表达式并访问属性
+        let obj_value = self.eval_expr(object)?;
+
+        // 特殊处理：.Count 属性（适用于多种类型）
+        if property_lower == "count" {
+            return Ok(match &obj_value {
+                Value::Array(arr) => Value::Number(arr.len() as f64),
+                Value::Object(obj) => obj.get_property("count").unwrap_or(Value::Number(0.0)),
+                Value::String(_) | Value::Number(_) | Value::Boolean(_)
+                | Value::Empty | Value::Null | Value::Nothing => Value::Number(1.0),
+            });
+        }
+
+        // 处理对象的属性访问
+        if let Value::Object(obj) = obj_value {
+            return obj.get_property(&property_lower);
+        }
+
+        Err(RuntimeError::PropertyNotFound(property.to_string()))
     }
 
     fn eval_request_method(&mut self, args: &[Expr]) -> Result<Value, RuntimeError> {
