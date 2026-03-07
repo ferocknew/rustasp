@@ -12,7 +12,7 @@ use super::error_page::{ErrorInfo, ErrorKind, ErrorPageGenerator};
 use super::path_resolver::PathResolver;
 use super::request_context::RequestContext;
 use super::state::AppState;
-use vbscript::builtins::SessionManager;
+use vbscript::runtime::objects::SessionManager;
 
 /// 处理 ASP 请求
 pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {

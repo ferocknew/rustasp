@@ -11,7 +11,7 @@ use vbscript::parser::Parser;
 use vbscript::runtime::Value;
 use vbscript::Response;
 
-use vbscript::builtins::{Session, SessionManager};
+use vbscript::runtime::objects::{Session, SessionManager, SessionData};
 use crate::http::RequestContext;
 
 /// ASP 执行结果
@@ -238,7 +238,7 @@ impl Engine {
             }
 
             // 创建 SessionData
-            let session_data = vbscript::builtins::session_manager::SessionData {
+            let session_data = SessionData {
                 session_id: session.session_id().to_string(),
                 timeout: session.timeout(),
                 created_at: now - 100, // 假设创建于 100 秒前
