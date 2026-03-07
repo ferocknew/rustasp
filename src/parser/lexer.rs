@@ -12,6 +12,7 @@ pub enum Token {
     String(String),
     Number(f64),
     Boolean(bool),
+    Date(String),  // 日期字面量，如 #2024-01-01#
 
     // 标识符和关键字
     Ident(String),
@@ -103,6 +104,12 @@ impl Lexer {
             // 字符串
             if ch == '"' {
                 tokens.push(self.lex_string()?);
+                continue;
+            }
+
+            // 日期字面量 (如 #2024-01-01#)
+            if ch == '#' {
+                tokens.push(self.lex_date()?);
                 continue;
             }
 
@@ -203,6 +210,32 @@ impl Lexer {
 
         Err(ParseError::LexerError(format!(
             "Unterminated string at line {}",
+            self.line
+        )))
+    }
+
+    fn lex_date(&mut self) -> Result<Token, ParseError> {
+        self.advance(); // 跳过开始 #
+        let mut content = String::new();
+
+        while self.pos < self.input.len() {
+            let ch = self.input[self.pos];
+            if ch == '#' {
+                self.advance(); // 跳过结束 #
+                return Ok(Token::Date(content));
+            } else if ch == '\n' {
+                return Err(ParseError::LexerError(format!(
+                    "Unterminated date literal at line {}",
+                    self.line
+                )));
+            } else {
+                content.push(ch);
+                self.advance();
+            }
+        }
+
+        Err(ParseError::LexerError(format!(
+            "Unterminated date literal at line {}",
             self.line
         )))
     }
