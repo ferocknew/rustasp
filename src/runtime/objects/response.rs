@@ -86,6 +86,12 @@ impl Response {
     /// 结束响应
     pub fn end(&mut self) {
         self.is_buffering = false;
+        self.is_ended = true;
+    }
+
+    /// 检查是否已结束
+    pub fn is_ended(&self) -> bool {
+        self.is_ended
     }
 
     /// Write 方法

@@ -98,6 +98,18 @@ impl crate::runtime::BuiltinObject for Server {
                 let s = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.html_encode(&s)))
             }
+            "createobject" => {
+                // Server.CreateObject - 不支持 COM，返回 Empty
+                Ok(Value::Empty)
+            }
+            "execute" | "transfer" => {
+                // Server.Execute / Server.Transfer - 暂不支持
+                Ok(Value::Empty)
+            }
+            "getlasterror" => {
+                // Server.GetLastError - 暂不支持
+                Ok(Value::Empty)
+            }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }
     }

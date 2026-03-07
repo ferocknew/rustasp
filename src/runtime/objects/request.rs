@@ -6,10 +6,10 @@ use std::collections::HashMap;
 /// Request 对象
 #[derive(Debug, Clone)]
 pub struct Request {
-    /// 查询字符串参数
-    query_string: HashMap<String, String>,
-    /// 表单数据
-    form: HashMap<String, String>,
+    /// 查询字符串参数（支持多值）
+    query_string: HashMap<String, Vec<String>>,
+    /// 表单数据（支持多值）
+    form: HashMap<String, Vec<String>>,
     /// Cookies
     cookies: HashMap<String, String>,
     /// 服务器变量
@@ -66,14 +66,14 @@ impl Request {
         self.client_certificate.get(&field.to_lowercase())
     }
 
-    /// 设置查询字符串参数
+    /// 设置查询字符串参数（单个值）
     pub fn set_query_string(&mut self, key: String, value: String) {
-        self.query_string.insert(key.to_lowercase(), value);
+        self.query_string.insert(key.to_lowercase(), vec![value]);
     }
 
-    /// 设置表单数据
+    /// 设置表单数据（单个值）
     pub fn set_form(&mut self, key: String, value: String) {
-        self.form.insert(key.to_lowercase(), value);
+        self.form.insert(key.to_lowercase(), vec![value]);
     }
 
     /// 设置 Cookie
@@ -86,58 +86,43 @@ impl Request {
         self.server_variables.insert(key.to_lowercase(), value);
     }
 
-    /// 设置多个查询字符串值（支持同名多值）
+    /// 设置查询字符串参数（多个值）
     pub fn set_query_string_multiple(&mut self, key: String, values: Vec<String>) {
-        for value in values {
-            self.query_string.insert(key.to_lowercase(), value);
-        }
+        self.query_string.insert(key.to_lowercase(), values);
     }
 
-    /// 设置多个表单值（支持同名多值）
+    /// 设置表单数据（多个值）
     pub fn set_form_multiple(&mut self, key: String, values: Vec<String>) {
-        for value in values {
-            self.form.insert(key.to_lowercase(), value);
-        }
+        self.form.insert(key.to_lowercase(), values);
     }
 
-    /// 获取 QueryString
+    /// 获取 QueryString 第一个值
     pub fn query_string(&self, key: &str) -> Option<&String> {
-        self.query_string.get(&key.to_lowercase())
+        self.query_string.get(&key.to_lowercase()).and_then(|v| v.first())
     }
 
-    /// 获取 Form
+    /// 获取 Form 第一个值
     pub fn form(&self, key: &str) -> Option<&String> {
-        self.form.get(&key.to_lowercase())
+        self.form.get(&key.to_lowercase()).and_then(|v| v.first())
     }
 
     /// 获取 QueryString 所有值
-    pub fn query_string_all(&self, key: &str) -> Vec<String> {
-        self.query_string
-            .get(&key.to_lowercase())
-            .cloned()
-            .into_iter()
-            .collect()
+    pub fn query_string_all(&self, key: &str) -> Option<&Vec<String>> {
+        self.query_string.get(&key.to_lowercase())
     }
 
     /// 获取 Form 所有值
-    pub fn form_all(&self, key: &str) -> Vec<String> {
-        self.form
-            .get(&key.to_lowercase())
-            .cloned()
-            .into_iter()
-            .collect()
+    pub fn form_all(&self, key: &str) -> Option<&Vec<String>> {
+        self.form.get(&key.to_lowercase())
     }
 
     /// 获取所有值（先 QueryString 后 Form）
-    pub fn get_all(&self, key: &str) -> Vec<String> {
+    pub fn get_all(&self, key: &str) -> Option<&Vec<String>> {
         let key_lower = key.to_lowercase();
-        if let Some(value) = self.query_string.get(&key_lower) {
-            return vec![value.clone()];
+        if let Some(values) = self.query_string.get(&key_lower) {
+            return Some(values);
         }
-        if let Some(value) = self.form.get(&key_lower) {
-            return vec![value.clone()];
-        }
-        Vec::new()
+        self.form.get(&key_lower)
     }
 }
 
@@ -198,22 +183,28 @@ impl crate::runtime::BuiltinObject for Request {
                     return Ok(Value::Empty);
                 }
                 let key = ValueConversion::to_string(&args[0]).to_lowercase();
-                Ok(self
-                    .query_string
-                    .get(&key)
-                    .map(|s| Value::String(s.clone()))
-                    .unwrap_or(Value::Empty))
+                match self.query_string.get(&key) {
+                    Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
+                    Some(values) => {
+                        let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
+                        Ok(Value::Array(arr))
+                    }
+                    None => Ok(Value::Empty),
+                }
             }
             "form" => {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
                 let key = ValueConversion::to_string(&args[0]).to_lowercase();
-                Ok(self
-                    .form
-                    .get(&key)
-                    .map(|s| Value::String(s.clone()))
-                    .unwrap_or(Value::Empty))
+                match self.form.get(&key) {
+                    Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
+                    Some(values) => {
+                        let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
+                        Ok(Value::Array(arr))
+                    }
+                    None => Ok(Value::Empty),
+                }
             }
             "cookies" => {
                 if args.is_empty() {
@@ -244,11 +235,19 @@ impl crate::runtime::BuiltinObject for Request {
     fn index(&self, key: &Value) -> Result<Value, RuntimeError> {
         let key_str = ValueConversion::to_string(key).to_lowercase();
         // 优先查询 querystring，然后是 form
-        if let Some(value) = self.query_string.get(&key_str) {
-            return Ok(Value::String(value.clone()));
+        if let Some(values) = self.query_string.get(&key_str) {
+            if values.len() == 1 {
+                return Ok(Value::String(values[0].clone()));
+            }
+            let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
+            return Ok(Value::Array(arr));
         }
-        if let Some(value) = self.form.get(&key_str) {
-            return Ok(Value::String(value.clone()));
+        if let Some(values) = self.form.get(&key_str) {
+            if values.len() == 1 {
+                return Ok(Value::String(values[0].clone()));
+            }
+            let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
+            return Ok(Value::Array(arr));
         }
         Ok(Value::Empty)
     }
