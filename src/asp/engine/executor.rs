@@ -143,9 +143,9 @@ impl Engine {
                         key.clone(),
                         vbscript::runtime::Value::String(first_value.clone()),
                     );
-                    // 设置到 Request 对象
-                    request.set_query_string(key.clone(), first_value.clone());
                 }
+                // 设置所有值到 Request 对象（支持多值访问）
+                request.set_query_string_multiple(key.clone(), values.clone());
                 request_data.insert(key.to_lowercase(), values.clone());
             }
 
@@ -157,9 +157,9 @@ impl Engine {
                         key.clone(),
                         vbscript::runtime::Value::String(first_value.clone()),
                     );
-                    // 设置到 Request 对象
-                    request.set_form(key.clone(), first_value.clone());
                 }
+                // 设置所有值到 Request 对象（支持多值访问）
+                request.set_form_multiple(key.clone(), values.clone());
                 request_data.insert(key.to_lowercase(), values.clone());
             }
 
