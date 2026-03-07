@@ -28,7 +28,12 @@ impl Interpreter {
                     if let Some(result) = super::builtins::call_builtin_function_multi(name, &[]) {
                         result
                     } else {
-                        Ok(Value::Empty)
+                        // 检查是否是用户定义的函数（无参数调用）
+                        if self.context.get_function(name).is_some() {
+                            self.eval_user_function_call(name, &[])
+                        } else {
+                            Ok(Value::Empty)
+                        }
                     }
                 }
             }
