@@ -299,45 +299,20 @@ impl Interpreter {
 
         let method_lower = method.to_lowercase();
 
-        // 特殊处理：Response.End 需要设置退出标志
-        if object_name.as_deref() == Some("response") && method_lower == "end" {
-            self.context.response_mut().end();
-            self.context.should_exit = true;
-            return Ok(Value::Empty);
-        }
-
-        // 特殊处理：Request.QueryString / Request.Form（需要特殊的数据访问逻辑）
-        if object_name.as_deref() == Some("request") {
-            match method_lower.as_str() {
-                "querystring" | "form" => {
-                    return self.eval_request_method(args);
-                }
-                _ => {}
-            }
-        }
-
-        // 特殊处理：Server.CreateObject（不支持 COM）
-        if object_name.as_deref() == Some("server") && method_lower == "createobject" {
-            return Ok(Value::Empty);
-        }
-
-        // 特殊处理：Session.Contents 的方法调用
-        if let Expr::Property { object: inner_obj, property: contents_prop } = object {
-            if contents_prop.to_lowercase() == "contents" {
-                if let Expr::Variable(session_name) = inner_obj.as_ref() {
-                    if session_name.to_lowercase() == "session" {
-                        if let Some(Value::Object(mut session_obj)) = self.context.get_var("Session").cloned() {
-                            let result = session_obj.call_method(method, arg_values);
-                            self.context.set_var("Session".to_string(), Value::Object(session_obj));
-                            return result;
-                        }
-                    }
-                }
-            }
-        }
-
         // 统一 trait dispatch：尝试从变量中获取对象并调用方法
         if let Some(name) = object_name {
+            // 特殊处理：Response 对象（存储在 context 中）
+            if name == "response" {
+                let response = self.context.response_mut();
+                let result = response.call_method(&method_lower, arg_values);
+                // 检查 Response.End 标志
+                if response.is_ended() {
+                    self.context.should_exit = true;
+                }
+                return result;
+            }
+
+            // 其他对象：从变量表中获取
             if let Some(value) = self.context.get_var(&name).cloned() {
                 if let Value::Object(mut obj) = value {
                     let result = obj.call_method(&method_lower, arg_values);
