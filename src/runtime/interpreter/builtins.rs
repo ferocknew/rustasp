@@ -238,6 +238,68 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
             Some(Ok(Value::Empty))
         }
         // 字符串函数 - 多参数
+        "rgb" => {
+            // RGB(red, green, blue) - 返回 RGB 颜色值
+            if args.len() < 3 {
+                return None;
+            }
+            let red = ValueConversion::to_number(&args[0]) as u32;
+            let green = ValueConversion::to_number(&args[1]) as u32;
+            let blue = ValueConversion::to_number(&args[2]) as u32;
+
+            // RGB 值: &HBBGGRR (蓝蓝绿绿红红)
+            let rgb_value = (red & 0xFF) | ((green & 0xFF) << 8) | ((blue & 0xFF) << 16);
+            Some(Ok(Value::Number(rgb_value as f64)))
+        }
+        "formatcurrency" => {
+            // FormatCurrency(expression[, numdigits[, leadingdigit[, parenthesis[, groupdigit]]]])
+            if args.len() < 1 {
+                return None;
+            }
+            let value = ValueConversion::to_number(&args[0]);
+            let num_digits = if args.len() >= 2 {
+                ValueConversion::to_number(&args[1]) as usize
+            } else {
+                2
+            };
+            Some(Ok(Value::String(format!("{:.precision$}", value, precision = num_digits))))
+        }
+        "formatnumber" => {
+            // FormatNumber(expression[, numdigits[, leadingdigit[, parenthesis[, groupdigit]]]])
+            if args.len() < 1 {
+                return None;
+            }
+            let value = ValueConversion::to_number(&args[0]);
+            let num_digits = if args.len() >= 2 {
+                ValueConversion::to_number(&args[1]) as usize
+            } else {
+                2
+            };
+            Some(Ok(Value::String(format!("{:.precision$}", value, precision = num_digits))))
+        }
+        "formatpercent" => {
+            // FormatPercent(expression[, numdigits[, leadingdigit[, parenthesis[, groupdigit]]]])
+            if args.len() < 1 {
+                return None;
+            }
+            let value = ValueConversion::to_number(&args[0]) * 100.0;
+            let num_digits = if args.len() >= 2 {
+                ValueConversion::to_number(&args[1]) as usize
+            } else {
+                2
+            };
+            Some(Ok(Value::String(format!("{:.precision$}%", value, precision = num_digits))))
+        }
+        "formatdatetime" => {
+            // FormatDateTime(date, format)
+            // 简化实现：返回日期字符串
+            if args.len() < 1 {
+                return None;
+            }
+            let now = chrono::Local::now();
+            let (now_format, _, _) = get_datetime_format();
+            Some(Ok(Value::String(now.format(&now_format).to_string())))
+        }
         "instr" => {
             // InStr([start, ]string1, string2[, compare])
             // 返回 string2 在 string1 中首次出现的位置

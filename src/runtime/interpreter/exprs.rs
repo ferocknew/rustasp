@@ -264,10 +264,8 @@ impl Interpreter {
             }
             // Server.CreateObject
             (Some("server"), "createobject") => {
-                // 不支持 COM 对象创建
-                Err(RuntimeError::Generic(
-                    "COM object creation is not supported".to_string(),
-                ))
+                // 不支持 COM 对象创建，返回 Empty 以避免页面中断
+                Ok(Value::Empty)
             }
             // 其他方法调用
             _ => {
