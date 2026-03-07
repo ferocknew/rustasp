@@ -114,6 +114,7 @@ impl Interpreter {
     fn eval_user_function_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
         if let Some(func) = self.context.get_function(name).cloned() {
             eprintln!("DEBUG: Found user function {}", name);
+            eprintln!("DEBUG: func.params = {:?}", func.params.iter().map(|p| (&p.name, p.is_byref)).collect::<Vec<_>>());
             
             // 记录 ByRef 参数映射: (参数名 -> 原始变量名)
             let mut byref_mapping: Vec<(String, String)> = Vec::new();
@@ -123,10 +124,12 @@ impl Interpreter {
             for (i, arg) in args.iter().enumerate() {
                 // 检查是否是 ByRef 参数且参数为变量
                 let is_byref_param = i < func.params.len() && func.params[i].is_byref;
+                eprintln!("DEBUG: arg[{}] is_byref_param = {}, arg = {:?}", i, is_byref_param, arg);
                 if is_byref_param {
                     if let Expr::Variable(var_name) = arg {
                         // ByRef 参数，记录映射
                         let param_name = func.params[i].name.clone();
+                        eprintln!("DEBUG: ByRef mapping: param {} -> var {}", param_name, var_name);
                         byref_mapping.push((param_name, var_name.clone()));
                         // 使用当前变量值
                         let value = self.context.get_var(var_name)
