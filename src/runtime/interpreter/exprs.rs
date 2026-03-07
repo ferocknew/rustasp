@@ -184,14 +184,23 @@ impl Interpreter {
                 .cloned()
                 .unwrap_or(Value::Empty);
 
-            // 处理 ByRef 参数回写
+            // 在 pop_scope 之前保存 ByRef 参数的值
+            let byref_values: Vec<(String, Value)> = byref_mapping.iter()
+                .filter_map(|(param_name, _)| {
+                    self.context.get_var(param_name).cloned()
+                        .map(|v| (param_name.clone(), v))
+                })
+                .collect();
+
+            self.context.pop_scope();
+
+            // 在 pop_scope 之后，将 ByRef 参数的值写回外部变量
             for (param_name, original_var_name) in &byref_mapping {
-                if let Some(value) = self.context.get_var(param_name).cloned() {
-                    self.context.set_var(original_var_name.clone(), value);
+                if let Some((_, value)) = byref_values.iter().find(|(pn, _)| pn == param_name) {
+                    self.context.set_var(original_var_name.clone(), value.clone());
                 }
             }
 
-            self.context.pop_scope();
             return Ok(result);
         }
 
