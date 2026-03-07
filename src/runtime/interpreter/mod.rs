@@ -7,10 +7,13 @@ mod stmts;
 
 use crate::ast::Program;
 use crate::runtime::{Context, RuntimeError, Value};
+use crate::runtime::builtins::TokenRegistry;
 
 /// 解释器
 pub struct Interpreter {
     pub(crate) context: Context,
+    /// 内置函数注册表（缓存，避免每次调用都创建）
+    builtin_registry: TokenRegistry,
 }
 
 impl Interpreter {
@@ -18,6 +21,7 @@ impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             context: Context::new(),
+            builtin_registry: TokenRegistry::new(),
         }
     }
 
