@@ -4,6 +4,7 @@ use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
 
 /// Request 对象
+#[derive(Debug, Clone)]
 pub struct Request {
     /// 查询字符串参数
     query_string: HashMap<String, String>,
@@ -141,13 +142,25 @@ impl Request {
 }
 
 impl crate::runtime::BuiltinObject for Request {
+    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
-            "querystring" => Ok(Value::Object(HashMap::new())),
-            "form" => Ok(Value::Object(HashMap::new())),
-            "cookies" => Ok(Value::Object(HashMap::new())),
-            "servervariables" => Ok(Value::Object(HashMap::new())),
-            "clientcertificate" => Ok(Value::Object(HashMap::new())),
+            "querystring" => Ok(Value::new_dictionary()),
+            "form" => Ok(Value::new_dictionary()),
+            "cookies" => Ok(Value::new_dictionary()),
+            "servervariables" => Ok(Value::new_dictionary()),
+            "clientcertificate" => Ok(Value::new_dictionary()),
             "totalbytes" => Ok(Value::Number(self.total_bytes() as f64)),
             _ => Err(RuntimeError::PropertyNotFound(name.to_string())),
         }

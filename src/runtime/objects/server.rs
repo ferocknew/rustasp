@@ -3,6 +3,7 @@
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 
 /// Server 对象
+#[derive(Debug, Clone)]
 pub struct Server {
     /// 脚本超时时间（秒）
     script_timeout: u32,
@@ -45,6 +46,18 @@ impl Server {
 }
 
 impl crate::runtime::BuiltinObject for Server {
+    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
             "scripttimeout" => Ok(Value::Number(self.script_timeout as f64)),

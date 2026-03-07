@@ -40,7 +40,7 @@ impl SessionData {
 pub type SessionStore = Arc<Mutex<HashMap<String, Value>>>;
 
 /// Session 对象
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Session {
     /// Session ID
     session_id: String,
@@ -180,6 +180,18 @@ impl Session {
 }
 
 impl crate::runtime::BuiltinObject for Session {
+    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
             "sessionid" => Ok(Value::String(self.session_id.clone())),

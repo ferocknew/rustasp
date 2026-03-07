@@ -23,8 +23,17 @@ impl fmt::Display for Value {
                 write!(f, "[{}]", items.join(", "))
             }
             Value::Object(obj) => {
-                let items: Vec<String> = obj.iter().map(|(k, v)| format!("{}: {}", k, v)).collect();
-                write!(f, "{{{}}}", items.join(", "))
+                // 尝试作为字典显示
+                if let Some(dict) = obj.as_any().downcast_ref::<super::super::objects::Dictionary>() {
+                    let items: Vec<String> = dict.as_hashmap()
+                        .iter()
+                        .map(|(k, v)| format!("{}: {}", k, v))
+                        .collect();
+                    write!(f, "{{{}}}", items.join(", "))
+                } else {
+                    // 其他对象显示类型名
+                    write!(f, "[object]")
+                }
             }
         }
     }

@@ -2,6 +2,7 @@
 //!
 //! 包含所有 ASP 内置对象的实现：Request, Response, Session, Server
 
+mod dictionary;
 mod request;
 mod response;
 mod server;
@@ -9,6 +10,8 @@ mod session;
 mod session_manager;
 mod session_store;
 
+// 重导出 Dictionary 对象
+pub use dictionary::Dictionary;
 // 重导出 Request 对象
 pub use request::Request;
 // 重导出 Response 对象

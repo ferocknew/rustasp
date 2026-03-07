@@ -113,7 +113,7 @@ impl Engine {
 
         // 尝试从 SessionManager 加载或创建新的 Session
         let session_id_for_session = session_id.clone();
-        let mut session = if let Some(ref mut manager) = self.session_manager {
+        let session = if let Some(ref mut manager) = self.session_manager {
             match manager.load_session(&session_id) {
                 Ok(Some(s)) => s,
                 Ok(None) => {
@@ -136,27 +136,18 @@ impl Engine {
             Session::new(session_id_for_session)
         };
 
-        // 创建 Session 存储对象 - 使用 HashMap 包装
-        let mut session_map: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
-
-        // 从 Session 对象中复制已有数据
-        for (key, value) in session.get_all_data() {
-            session_map.insert(key, value);
-        }
-
-        // 将 Session ID 和 Timeout 作为特殊属性存储
-        session_map.insert("__session_id".to_string(), Value::String(session_id.clone()));
-        session_map.insert("sessionid".to_string(), Value::String(session.session_id().to_string()));
-        session_map.insert("timeout".to_string(), Value::Number(session.timeout() as f64));
-
+        // 将 Session 对象作为 BuiltinObject 存储
         interpreter.context_mut().define_var(
             "Session".to_string(),
-            Value::Object(session_map),
+            Value::Object(Box::new(session)),
         );
 
         // 6. 注入内建对象（在执行前）
         if let Some(ref ctx) = self.request_context {
             let context = interpreter.context_mut();
+
+            // 创建 Request 对象
+            let mut request = vbscript::runtime::objects::Request::new();
 
             // 构建请求参数数据（合并 QueryString 和 Form，支持多值）
             let mut request_data = HashMap::new();
@@ -169,6 +160,8 @@ impl Engine {
                         key.clone(),
                         vbscript::runtime::Value::String(first_value.clone()),
                     );
+                    // 设置到 Request 对象
+                    request.set_query_string(key.clone(), first_value.clone());
                 }
                 request_data.insert(key.to_lowercase(), values.clone());
             }
@@ -181,11 +174,19 @@ impl Engine {
                         key.clone(),
                         vbscript::runtime::Value::String(first_value.clone()),
                     );
+                    // 设置到 Request 对象
+                    request.set_form(key.clone(), first_value.clone());
                 }
                 request_data.insert(key.to_lowercase(), values.clone());
             }
 
-            // 设置请求数据（用于 Request("key") 语法）
+            // 将 Request 对象作为变量存储
+            context.define_var(
+                "Request".to_string(),
+                vbscript::runtime::Value::Object(Box::new(request)),
+            );
+
+            // 设置请求数据（用于兼容性）
             context.set_request_data(request_data);
         }
 
@@ -198,58 +199,23 @@ impl Engine {
         })?;
 
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
-        if let Some(Value::Object(session_map)) = interpreter.context().get_var("Session") {
-            // 先将 context 中的 session_map 数据复制到 Session 对象（以便后续使用）
-            for (key, value) in session_map {
-                // 跳过特殊属性
-                if key.starts_with("__") || key == "sessionid" || key == "timeout" {
-                    continue;
-                }
-                session.set(key.clone(), value.clone());
-            }
-
-            // 从 context 中的 session_map 创建新的 SessionData 并保存
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
-
-            // 将 HashMap<String, Value> 转换为 HashMap<String, serde_json::Value>
-            let mut data = std::collections::HashMap::new();
-            for (key, value) in session_map {
-                // 跳过特殊属性
-                if key.starts_with("__") || key == "sessionid" || key == "timeout" {
-                    continue;
-                }
-                // 简化处理：只支持基本类型
-                let json_value = match value {
-                    Value::String(s) => serde_json::Value::String(s.clone()),
-                    Value::Number(n) => {
-                        if n.fract() == 0.0 && *n >= i64::MIN as f64 && *n <= i64::MAX as f64 {
-                            serde_json::Value::Number(serde_json::Number::from(*n as i64))
-                        } else {
-                            serde_json::Value::String(n.to_string())
+        if let Some(Value::Object(session_obj)) = interpreter.context().get_var("Session") {
+            // 从 BuiltinObject 中获取 Session 对象
+            use vbscript::runtime::BuiltinObject;
+            if let Some(session) = session_obj.as_any().downcast_ref::<Session>() {
+                // 创建 SessionData 并保存
+                match session.to_session_data() {
+                    Ok(session_data) => {
+                        // 保存到 SessionManager
+                        if let Some(ref mut manager) = self.session_manager {
+                            if let Err(e) = manager.save_session_data(&session_data) {
+                                eprintln!("警告: 无法保存 Session: {}", e);
+                            }
                         }
                     }
-                    Value::Boolean(b) => serde_json::Value::Bool(*b),
-                    _ => serde_json::Value::Null,
-                };
-                data.insert(key.clone(), json_value);
-            }
-
-            // 创建 SessionData
-            let session_data = SessionData {
-                session_id: session.session_id().to_string(),
-                timeout: session.timeout(),
-                created_at: now - 100, // 假设创建于 100 秒前
-                last_accessed: now,
-                data,
-            };
-
-            // 保存到 SessionManager
-            if let Some(ref mut manager) = self.session_manager {
-                if let Err(e) = manager.save_session_data(&session_data) {
-                    eprintln!("警告: 无法保存 Session: {}", e);
+                    Err(e) => {
+                        eprintln!("警告: 无法序列化 Session: {}", e);
+                    }
                 }
             }
         }

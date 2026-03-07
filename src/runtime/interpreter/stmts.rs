@@ -277,9 +277,9 @@ impl Interpreter {
         match property.to_uppercase().as_str() {
             "TIMEOUT" | "CODEPAGE" | "LCID" => Ok(Value::Empty),
             _ => {
-                if let Some(Value::Object(mut map)) = self.context.get_var("Session").cloned() {
-                    map.insert(property.to_lowercase(), value);
-                    self.context.set_var("Session".to_string(), Value::Object(map));
+                if let Some(Value::Object(mut session_obj)) = self.context.get_var("Session").cloned() {
+                    session_obj.set_property(property, value)?;
+                    self.context.set_var("Session".to_string(), Value::Object(session_obj));
                     Ok(Value::Empty)
                 } else {
                     Err(RuntimeError::Generic("Session object not found".to_string()))
@@ -333,7 +333,23 @@ impl Interpreter {
 
         let elements = match collection_val {
             Value::Array(arr) => arr,
-            Value::Object(obj) => obj.values().cloned().collect::<Vec<_>>(),
+            Value::Object(mut obj) => {
+                // 尝试作为字典处理
+                use crate::runtime::objects::Dictionary;
+                if let Some(dict) = obj.as_any().downcast_ref::<Dictionary>() {
+                    dict.values()
+                } else {
+                    // 对于其他对象，尝试调用 items 方法
+                    match obj.call_method("items", vec![]) {
+                        Ok(Value::Array(arr)) => arr,
+                        _ => {
+                            return Err(RuntimeError::Generic(
+                                "For Each requires an iterable object".to_string()
+                            ))
+                        }
+                    }
+                }
+            }
             Value::String(s) => s.chars().map(|c| Value::String(c.to_string())).collect(),
             _ => {
                 return Err(RuntimeError::Generic(format!(

@@ -59,7 +59,8 @@ impl Value {
             (Value::Number(a), Value::Number(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Array(a), Value::Array(b)) => a == b,
-            (Value::Object(a), Value::Object(b)) => a == b,
+            // 对象比较：只比较是否同一类型，不比较内容
+            (Value::Object(_), Value::Object(_)) => false,
             // 弱类型比较
             (Value::Number(a), Value::String(b)) => {
                 if let Ok(n) = b.parse::<f64>() {

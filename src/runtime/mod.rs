@@ -17,7 +17,10 @@ pub use scope::Scope;
 pub use value::{Value, ValueCompare, ValueConversion, ValueOps};
 
 /// 内置对象 trait
-pub trait BuiltinObject: Send + Sync {
+pub trait BuiltinObject: Send + Sync + std::fmt::Debug {
+    /// 克隆对象
+    fn clone_box(&self) -> Box<dyn BuiltinObject>;
+
     /// 获取属性
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError>;
 
@@ -32,5 +35,17 @@ pub trait BuiltinObject: Send + Sync {
         let key_str = ValueConversion::to_string(key);
         // 默认实现：尝试作为属性访问
         self.get_property(&key_str)
+    }
+
+    /// 向下转型支持
+    fn as_any(&self) -> &dyn std::any::Any;
+
+    /// 向下转型支持（可变）
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+}
+
+impl Clone for Box<dyn BuiltinObject> {
+    fn clone(&self) -> Self {
+        self.clone_box()
     }
 }

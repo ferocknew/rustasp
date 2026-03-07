@@ -194,11 +194,11 @@ impl Interpreter {
                 Ok(Value::Empty)
             }
             Value::Object(obj) => {
-                let key = ValueConversion::to_string(index);
-                if let Some(v) = obj.get(&key.to_lowercase()) {
-                    return Ok(v.clone());
+                // 使用 BuiltinObject trait 的 index 方法
+                match obj.index(index) {
+                    Ok(value) => Ok(value),
+                    Err(_) => Ok(Value::Empty),
                 }
-                Ok(Value::Empty)
             }
             _ => Ok(Value::Empty),
         }
@@ -257,50 +257,12 @@ impl Interpreter {
                         if let Expr::Variable(session_name) = object.as_ref() {
                             if session_name.to_lowercase() == "session" {
                                 // 这是 Session.Contents 的方法调用
-                                match method_lower.as_str() {
-                                    "remove" => {
-                                        if let Some(arg) = arg_values.first() {
-                                            let key = ValueConversion::to_string(arg);
-                                            // 从 Session 中删除变量
-                                            if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
-                                                let mut new_session = session_obj.clone();
-                                                new_session.remove(&key.to_lowercase());
-                                            }
-                                        }
-                                        return Ok(Value::Empty);
-                                    }
-                                    "removeall" => {
-                                        // 清空 Session 中所有非特殊变量
-                                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
-                                            let mut new_session = session_obj.clone();
-                                            let keys_to_remove: Vec<String> = new_session.keys()
-                                                .filter(|k| !k.starts_with("__") && k.as_str() != "sessionid" && k.as_str() != "timeout")
-                                                .cloned()
-                                                .collect();
-                                            for key in keys_to_remove {
-                                                new_session.remove(&key);
-                                            }
-                                        }
-                                        return Ok(Value::Empty);
-                                    }
-                                    "key" => {
-                                        if let Some(arg) = arg_values.first() {
-                                            let index = arg.to_number() as i32;
-                                            if index >= 1 {
-                                                if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
-                                                    let keys: Vec<String> = session_obj.keys()
-                                                        .filter(|k| !k.starts_with("__") && k.as_str() != "sessionid" && k.as_str() != "timeout")
-                                                        .cloned()
-                                                        .collect();
-                                                    if let Some(key) = keys.get((index - 1) as usize) {
-                                                        return Ok(Value::String(key.clone()));
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        return Ok(Value::Empty);
-                                    }
-                                    _ => {}
+                                // 通过 Session 对象的 call_method 来处理
+                                if let Some(Value::Object(mut session_obj)) = self.context.get_var("Session").cloned() {
+                                    let result = session_obj.call_method(method, arg_values);
+                                    // 将修改后的 session 对象写回
+                                    self.context.set_var("Session".to_string(), Value::Object(session_obj));
+                                    return result;
                                 }
                             }
                         }
@@ -355,13 +317,15 @@ impl Interpreter {
                         let mut contents_obj = std::collections::HashMap::new();
                         contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
                         contents_obj.insert("count".to_string(), Value::Number(-1.0));
-                        return Ok(Value::Object(contents_obj));
+                        return Ok(Value::from_hashmap(contents_obj));
                     }
                     _ => {
                         // 处理其他 Session 属性
                         if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
-                            if let Some(value) = session_obj.get(&property_lower) {
-                                return Ok(value.clone());
+                            // 使用 BuiltinObject trait 的 get_property 方法
+                            match session_obj.get_property(property) {
+                                Ok(value) => return Ok(value),
+                                Err(_) => {}
                             }
                         }
                         Err(RuntimeError::PropertyNotFound(property.to_string()))
@@ -376,7 +340,10 @@ impl Interpreter {
                 if property_lower == "count" {
                     return Ok(match &obj_value {
                         Value::Array(arr) => Value::Number(arr.len() as f64),
-                        Value::Object(obj) => Value::Number(obj.len() as f64),
+                        Value::Object(obj) => {
+                            // 使用 BuiltinObject 的 get_property 方法
+                            obj.get_property("count").unwrap_or(Value::Number(0.0))
+                        }
                         Value::String(_) | Value::Number(_) | Value::Boolean(_)
                         | Value::Empty | Value::Null | Value::Nothing => Value::Number(1.0),
                     });
@@ -385,8 +352,10 @@ impl Interpreter {
                 // 处理对象的属性访问
                 match obj_value {
                     Value::Object(obj) => {
-                        if let Some(v) = obj.get(&property_lower) {
-                            return Ok(v.clone());
+                        // 使用 BuiltinObject trait 的 get_property 方法
+                        match obj.get_property(property) {
+                            Ok(value) => return Ok(value),
+                            Err(_) => {}
                         }
                     }
                     _ => {}
@@ -426,10 +395,10 @@ impl Interpreter {
                     };
                     data.insert(key.clone(), Value::String(value_str));
                 }
-                Ok(Value::Object(data))
+                Ok(Value::from_hashmap(data))
             }
             "cookies" | "servervariables" => {
-                Ok(Value::Object(std::collections::HashMap::new()))
+                Ok(Value::new_dictionary())
             }
             _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
         }

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Response 对象
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Response {
     /// 输出缓冲区
     buffer: String,
@@ -196,6 +196,18 @@ impl Response {
 }
 
 impl crate::runtime::BuiltinObject for Response {
+    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
+        Box::new(self.clone())
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
             // 基本属性
@@ -213,7 +225,7 @@ impl crate::runtime::BuiltinObject for Response {
             "cookies" => {
                 let mut cookies_obj = HashMap::new();
                 cookies_obj.insert("__response_cookies__".to_string(), Value::Boolean(true));
-                Ok(Value::Object(cookies_obj))
+                Ok(Value::from_hashmap(cookies_obj))
             }
             _ => Err(RuntimeError::PropertyNotFound(name.to_string())),
         }
