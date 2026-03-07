@@ -8,6 +8,7 @@ pub mod keyword;
 pub mod lexer;
 
 // Parser 核心
+mod class_parser;
 mod parser;
 mod program;
 

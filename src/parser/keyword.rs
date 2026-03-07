@@ -44,12 +44,14 @@ pub enum Keyword {
 
     // 类
     Class,
+    EndClass,
     Property,
     Get,
     Let,
     Set,
     Public,
     Private,
+    Me,
 
     // 值
     True,
@@ -117,12 +119,14 @@ impl Keyword {
             Keyword::ByRef => "ByRef",
             Keyword::ByVal => "ByVal",
             Keyword::Class => "Class",
+            Keyword::EndClass => "EndClass",
             Keyword::Property => "Property",
             Keyword::Get => "Get",
             Keyword::Let => "Let",
             Keyword::Set => "Set",
             Keyword::Public => "Public",
             Keyword::Private => "Private",
+            Keyword::Me => "Me",
             Keyword::True => "True",
             Keyword::False => "False",
             Keyword::Nothing => "Nothing",

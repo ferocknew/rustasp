@@ -171,46 +171,56 @@ impl Param {
     }
 }
 
+/// 可见性修饰符
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Visibility {
+    Public,
+    Private,
+}
+
+/// 字段声明
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FieldDecl {
+    pub name: String,
+    pub visibility: Visibility,
+}
+
+/// 方法声明
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MethodDecl {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub body: Vec<Stmt>,
+    pub visibility: Visibility,
+}
+
+/// 属性声明
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PropertyDecl {
+    pub name: String,
+    pub params: Vec<Param>,
+    pub body: Vec<Stmt>,
+    pub visibility: Visibility,
+    pub prop_type: PropertyType,
+}
+
+/// 属性类型
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PropertyType {
+    Get,
+    Let,
+    Set,
+}
+
 /// 类成员
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ClassMember {
-    Dim {
-        name: String,
-        is_public: bool,
-    },
+    Field(FieldDecl),
     Const {
         name: String,
         value: Expr,
-        is_public: bool,
+        visibility: Visibility,
     },
-    Sub {
-        name: String,
-        params: Vec<Param>,
-        body: Vec<Stmt>,
-        is_public: bool,
-    },
-    Function {
-        name: String,
-        params: Vec<Param>,
-        body: Vec<Stmt>,
-        is_public: bool,
-    },
-    PropertyGet {
-        name: String,
-        params: Vec<Param>,
-        body: Vec<Stmt>,
-        is_public: bool,
-    },
-    PropertyLet {
-        name: String,
-        params: Vec<Param>,
-        body: Vec<Stmt>,
-        is_public: bool,
-    },
-    PropertySet {
-        name: String,
-        params: Vec<Param>,
-        body: Vec<Stmt>,
-        is_public: bool,
-    },
+    Method(MethodDecl),
+    Property(PropertyDecl),
 }

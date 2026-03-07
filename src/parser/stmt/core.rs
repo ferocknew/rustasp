@@ -23,6 +23,9 @@ impl Parser {
             Token::Keyword(Keyword::Select) => self.parse_select(),
             Token::Keyword(Keyword::Do) => self.parse_do(),
 
+            // 类定义
+            Token::Keyword(Keyword::Class) => self.parse_class(),
+
             // 函数/过程
             Token::Keyword(Keyword::Function) => self.parse_function(),
             Token::Keyword(Keyword::Sub) => self.parse_sub(),
