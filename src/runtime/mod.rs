@@ -2,6 +2,7 @@
 //!
 //! 执行 AST、管理变量作用域、管理函数调用、实现弱类型系统
 
+mod class;
 mod context;
 mod error;
 mod interpreter;
@@ -11,6 +12,7 @@ pub mod builtins;
 pub mod value;
 pub mod objects;
 
+pub use class::{VbsClass, VbsInstance};
 pub use context::{ClassDef, Context, Function};
 pub use error::RuntimeError;
 pub use interpreter::Interpreter;

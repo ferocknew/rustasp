@@ -1,6 +1,6 @@
 //! Class 类解析器
 
-use crate::ast::{ClassMember, FieldDecl, MethodDecl, Param, PropertyDecl, PropertyType, Stmt, Visibility};
+use crate::ast::{ClassMember, FieldDecl, MethodDecl, PropertyDecl, PropertyType, Stmt, Visibility};
 use crate::parser::keyword::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::ParseError;
@@ -19,7 +19,7 @@ impl Parser {
     ///     End Function
     /// End Class
     /// ```
-    pub fn parse_class(&mut self) -> Result<Stmt, ParseError> {
+    pub fn parse_class(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::Class)?;
 
         let name = self.expect_ident()?;
@@ -35,7 +35,7 @@ impl Parser {
 
         self.expect_keyword(Keyword::EndClass)?;
 
-        Ok(Stmt::Class { name, members })
+        Ok(Some(Stmt::Class { name, members }))
     }
 
     /// 解析类成员
@@ -122,7 +122,7 @@ impl Parser {
         // 所以这里只需要读取名称
 
         // 消耗换行符
-        self.consume_newline();
+        self.skip_newlines();
 
         Ok(FieldDecl { name, visibility })
     }
@@ -269,50 +269,5 @@ impl Parser {
             visibility,
             prop_type,
         })
-    }
-
-    /// 解析参数列表
-    fn parse_params(&mut self) -> Result<Vec<Param>, ParseError> {
-        let mut params = Vec::new();
-
-        if self.check(Token::LeftParen) {
-            self.advance(); // 消耗 (
-
-            loop {
-                if self.check(Token::RightParen) {
-                    self.advance();
-                    break;
-                }
-
-                if self.check(&Token::Eof) {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: ")".to_string(),
-                        found: "EOF".to_string(),
-                    });
-                }
-
-                // 检查 ByRef/ByVal
-                let mut is_byref = false;
-                if self.check_keyword(Keyword::ByRef) {
-                    is_byref = true;
-                    self.advance();
-                } else if self.check_keyword(Keyword::ByVal) {
-                    self.advance();
-                }
-
-                let name = self.expect_ident()?;
-
-                let mut param = Param::new(name);
-                param.is_byref = is_byref;
-                params.push(param);
-
-                // 检查逗号
-                if self.check(Token::Comma) {
-                    self.advance();
-                }
-            }
-        }
-
-        Ok(params)
     }
 }
