@@ -255,8 +255,19 @@ impl Engine {
         }
 
         // 8. 收集输出和 Response 对象
-        let output = interpreter.context().get_output().to_string();
         let mut response = interpreter.context_mut().take_response().unwrap_or_default();
+
+        // 8.1 将 Response.buffer 合并到输出中
+        let response_buffer = response.get_output().to_string();
+        let context_output = interpreter.context().get_output().to_string();
+
+        let output = if !response_buffer.is_empty() && !context_output.is_empty() {
+            format!("{}{}", response_buffer, context_output)
+        } else if !response_buffer.is_empty() {
+            response_buffer
+        } else {
+            context_output
+        };
 
         // 8.1 设置 Session Cookie（如果 Session ID 存在且与请求中的不同）
         if let Some(ref ctx) = self.request_context {
