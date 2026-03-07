@@ -30,15 +30,14 @@ impl Interpreter {
                 } else {
                     // 如果没有找到变量，检查是否是内置函数（无参数调用）
                     // 支持：Now、Date、Time 等无参数内置函数
-                    if let Some(result) = super::builtins::call_builtin_function_multi(name, &[]) {
-                        result
+                    if let Some(result) = self.try_call_builtin(name, &[]) {
+                        return result;
+                    }
+                    // 检查是否是用户定义的函数（无参数调用）
+                    if self.context.get_function(name).is_some() {
+                        self.eval_user_function_call(name, &[])
                     } else {
-                        // 检查是否是用户定义的函数（无参数调用）
-                        if self.context.get_function(name).is_some() {
-                            self.eval_user_function_call(name, &[])
-                        } else {
-                            Ok(Value::Empty)
-                        }
+                        Ok(Value::Empty)
                     }
                 }
             }
@@ -88,20 +87,23 @@ impl Interpreter {
         }
     }
 
+    /// 尝试调用内置函数
+    fn try_call_builtin(&mut self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
+        use super::builtin_tokens::{TokenRegistry, BuiltinExecutor};
+
+        let registry = TokenRegistry::new();
+        registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
+    }
+
     fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
         let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
         let arg_values = arg_values?;
 
         eprintln!("DEBUG: Call {} with {:?} args", name, arg_values.len());
 
-        if let Some(result) = super::builtins::call_builtin_function_multi(name, &arg_values) {
+        // 尝试调用内置函数
+        if let Some(result) = self.try_call_builtin(name, &arg_values) {
             return result;
-        }
-
-        if arg_values.len() == 1 {
-            if let Some(result) = super::builtins::call_builtin_function(&name.to_lowercase(), &arg_values[0]) {
-                return result;
-            }
         }
 
         self.eval_user_function_call(name, &arg_values)
@@ -169,9 +171,7 @@ impl Interpreter {
             // 处理变量索引访问
             Expr::Variable(name) => {
                 // 检查是否是内置函数调用
-                if let Some(result) =
-                    super::builtins::call_builtin_function(&name.to_lowercase(), &index_val)
-                {
+                if let Some(result) = self.try_call_builtin(name, &[index_val.clone()]) {
                     return result;
                 }
 

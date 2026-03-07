@@ -103,6 +103,9 @@ pub enum BuiltinToken {
     Eval = 273,
     Execute = 274,
     RGB = 275,
+    FormatCurrency = 276,
+    FormatNumber = 277,
+    FormatPercent = 278,
 
     // 未知函数
     #[allow(dead_code)]
@@ -203,4 +206,7 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("eval", BuiltinToken::Eval),
     ("execute", BuiltinToken::Execute),
     ("rgb", BuiltinToken::RGB),
+    ("formatcurrency", BuiltinToken::FormatCurrency),
+    ("formatnumber", BuiltinToken::FormatNumber),
+    ("formatpercent", BuiltinToken::FormatPercent),
 ];
