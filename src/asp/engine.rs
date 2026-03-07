@@ -76,7 +76,6 @@ impl Engine {
 
         // 2. 构建完整的 VBScript 程序
         let full_program = self.build_full_program(&segments_with_pos)?;
-        eprintln!("DEBUG: Full program:\n{}", full_program);
 
         // 3. 词法分析
         let tokens = tokenize(&full_program).map_err(|e| {

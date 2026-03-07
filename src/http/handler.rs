@@ -16,7 +16,25 @@ use vbscript::builtins::SessionManager;
 
 /// 处理 ASP 请求
 pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
+    let uri = uri;
     let uri_str = uri.path();
+
+    // 记录 HTTP 请求信息
+    if state.config.debug {
+        let method = request.method();
+        let headers = request.headers();
+        let user_agent = headers.get("user-agent")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("Unknown");
+        let content_type = headers.get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("None");
+
+        println!("\n🌐 HTTP Request: {} {}", method, uri_str);
+        println!("   User-Agent: {}", user_agent);
+        println!("   Content-Type: {}", content_type);
+    }
+
     let error_gen = ErrorPageGenerator::from_state(&state).await;
     let request_ctx = RequestContext::from_request(request).await;
 
@@ -60,6 +78,13 @@ pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> im
 /// 处理静态文件请求
 pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) -> impl IntoResponse {
     let uri_str = uri.path();
+
+    // 记录 HTTP 请求信息
+    if state.config.debug {
+        let method = request.method();
+        println!("\n🌐 HTTP Request (Static): {} {}", method, uri_str);
+    }
+
     let error_gen = ErrorPageGenerator::from_state(&state).await;
 
     // 解析路径
@@ -215,6 +240,12 @@ async fn execute_asp_file(
 
     match engine.execute(&processed_content) {
         Ok(result) => {
+            // 调试信息：显示执行结果
+            if state.config.debug {
+                println!("   ✅ ASP 执行成功");
+                println!("   📊 输出长度: {} bytes, 状态码: {}", result.output.len(), result.response.get_status());
+            }
+
             // 检查是否是重定向
             if result.response.get_status() == 302 {
                 if let Some(location) = result.response.get_headers().get("Location") {
@@ -260,6 +291,10 @@ async fn execute_asp_file(
             }
         }
         Err(e) => {
+            // 调试信息：显示执行错误
+            if state.config.debug {
+                println!("   ❌ ASP 执行失败: {}", e);
+            }
             let error_info = ErrorInfo::new(
                 "engine.rs",
                 0,
@@ -317,6 +352,12 @@ async fn execute_asp_file_without_session(
 
     match engine.execute(&processed_content) {
         Ok(result) => {
+            // 调试信息：显示执行结果
+            if state.config.debug {
+                println!("   ✅ ASP 执行成功 (无 Session)");
+                println!("   📊 输出长度: {} bytes, 状态码: {}", result.output.len(), result.response.get_status());
+            }
+
             // 构建响应
             let mut builder = AxumResponse::builder();
 
