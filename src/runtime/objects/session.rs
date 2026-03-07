@@ -196,6 +196,7 @@ impl crate::runtime::BuiltinObject for Session {
         match name.to_lowercase().as_str() {
             "sessionid" => Ok(Value::String(self.session_id.clone())),
             "timeout" => Ok(Value::Number(self.timeout as f64)),
+            "codepage" => Ok(Value::Empty), // CodePage 属性，返回 Empty
             // Note: Contents 属性的特殊处理在 eval_property 中实现
             _ => {
                 // 尝试获取 Session 值
@@ -209,6 +210,11 @@ impl crate::runtime::BuiltinObject for Session {
         match name.to_lowercase().as_str() {
             "timeout" => {
                 self.timeout = value.to_number() as u32;
+                Ok(())
+            }
+            "codepage" => {
+                // CodePage 属性，保存但不做实际转换
+                // 因为 Rust 的字符串处理默认就是 UTF-8
                 Ok(())
             }
             _ => {

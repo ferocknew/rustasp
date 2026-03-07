@@ -55,7 +55,88 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
             let (_, _, time_format) = get_datetime_format();
             Some(Ok(Value::String(now.format(&time_format).to_string())))
         }
+        // 随机数函数（无参数或单参数）
+        "rnd" => {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let n = if args.len() >= 1 {
+                ValueConversion::to_number(&args[0])
+            } else {
+                1.0 // 默认返回下一个随机数
+            };
+            let seed = if n < 0.0 {
+                (n.abs() as u32) as u64
+            } else {
+                SystemTime::now().duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos() as u64
+            };
+            // 使用更简单的随机数生成，避免溢出
+            let random = (seed % 2147483647) as f64 / 2147483647.0;
+            Some(Ok(Value::Number(random)))
+        }
+        "randomize" => {
+            // Randomize 函数：初始化随机数生成器
+            // 在当前实现中不需要做任何事
+            Some(Ok(Value::Empty))
+        }
         // 字符串函数 - 多参数
+        "instr" => {
+            // InStr([start, ]string1, string2[, compare])
+            // 返回 string2 在 string1 中首次出现的位置
+            let (start, string1, string2) = if args.len() >= 3 {
+                // 有 start 参数
+                (Some(ValueConversion::to_number(&args[0]) as usize),
+                 ValueConversion::to_string(&args[1]),
+                 ValueConversion::to_string(&args[2]))
+            } else if args.len() == 2 {
+                // 没有 start 参数
+                (None, ValueConversion::to_string(&args[0]), ValueConversion::to_string(&args[1]))
+            } else {
+                return None;
+            };
+
+            // 从指定位置开始搜索（VBScript 位置从 1 开始）
+            let search_str = if let Some(pos) = start {
+                if pos > string1.len() {
+                    return Some(Ok(Value::Number(0.0)));
+                } else if pos > 1 {
+                    &string1.chars().skip(pos - 1).collect::<String>()
+                } else {
+                    &string1
+                }
+            } else {
+                &string1
+            };
+
+            // 查找子串
+            let pos = search_str.find(&string2);
+            let result = if let Some(p) = pos {
+                // VBScript 位置从 1 开始
+                let base_pos = start.unwrap_or(1);
+                (base_pos + p) as f64
+            } else {
+                0.0
+            };
+            Some(Ok(Value::Number(result)))
+        }
+        "strcomp" => {
+            // StrComp(string1, string2[, compare])
+            // 比较两个字符串，返回 -1, 0, 或 1
+            if args.len() < 2 {
+                return None;
+            }
+            let string1 = ValueConversion::to_string(&args[0]);
+            let string2 = ValueConversion::to_string(&args[1]);
+
+            let result = if string1 == string2 {
+                0.0
+            } else if string1 < string2 {
+                -1.0
+            } else {
+                1.0
+            };
+            Some(Ok(Value::Number(result)))
+        }
         "left" => {
             if args.len() >= 2 {
                 let s = ValueConversion::to_string(&args[0]);
@@ -155,6 +236,30 @@ pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, Ru
             let n = ValueConversion::to_number(arg);
             Some(Ok(Value::Number(n.sqrt())))
         }
+        "sin" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.sin())))
+        }
+        "cos" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.cos())))
+        }
+        "tan" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.tan())))
+        }
+        "atn" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.atan())))
+        }
+        "exp" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.exp())))
+        }
+        "log" => {
+            let n = ValueConversion::to_number(arg);
+            Some(Ok(Value::Number(n.ln())))
+        }
         "len" => {
             let s = ValueConversion::to_string(arg);
             Some(Ok(Value::Number(s.len() as f64)))
@@ -184,9 +289,22 @@ pub fn call_builtin_function(name: &str, arg: &Value) -> Option<Result<Value, Ru
                 char::from_u32(n).unwrap_or('\0').to_string(),
             )))
         }
+        "chrw" => {
+            // ChrW - 返回 Unicode 字符（与 Chr 相同，因为 Rust 使用 UTF-8）
+            let n = ValueConversion::to_number(arg) as u32;
+            Some(Ok(Value::String(
+                char::from_u32(n).unwrap_or('\0').to_string(),
+            )))
+        }
         "asc" => {
             let s = ValueConversion::to_string(arg);
             let code = s.chars().next().map(|c| c as u8 as f64).unwrap_or(0.0);
+            Some(Ok(Value::Number(code)))
+        }
+        "ascw" => {
+            // AscW - 返回 Unicode 码点（16 位）
+            let s = ValueConversion::to_string(arg);
+            let code = s.chars().next().map(|c| c as u32 as f64).unwrap_or(0.0);
             Some(Ok(Value::Number(code)))
         }
         "isnumeric" => {

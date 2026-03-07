@@ -254,7 +254,7 @@ impl Interpreter {
     fn builtin_response_set_property(&mut self, property: &str, value: Value) -> Result<Value, RuntimeError> {
         let response = self.context.response_mut();
         match property.to_uppercase().as_str() {
-            "BUFFER" | "CONTENTTYPE" | "CACHECONTROL" | "EXPIRES" | "EXPIRESABSOLUTE" | "PICS" | "ISCLIENTCONNECTED" | "STATUS" => {
+            "BUFFER" | "CONTENTTYPE" | "CACHECONTROL" | "EXPIRES" | "EXPIRESABSOLUTE" | "PICS" | "ISCLIENTCONNECTED" | "STATUS" | "CODEPAGE" => {
                 let prop_lower = property.to_lowercase();
                 response.set_property(&prop_lower, value)?;
                 Ok(Value::Empty)
