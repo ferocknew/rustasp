@@ -228,6 +228,13 @@ impl Interpreter {
                     args.iter().map(|e| self.eval_expr(e)).collect();
                 let arg_values = arg_values?;
 
+                // 特殊处理 Response.End - 设置退出标志
+                if method_name.to_lowercase() == "end" {
+                    self.context.response_mut().end();
+                    self.context.should_exit = true;
+                    return Ok(Value::Empty);
+                }
+
                 // 调用 Response 对象的方法
                 let response = self.context.response_mut();
                 response.call_method(method_name, arg_values)
@@ -289,6 +296,20 @@ impl Interpreter {
         match object_name.as_deref() {
             Some("request") => self.eval_request_property(property_lower.as_str()),
             Some("response") => {
+                // 处理无参数方法调用：Response.Clear 和 Response.End
+                match property_lower.as_str() {
+                    "clear" => {
+                        self.context.response_mut().clear();
+                        return Ok(Value::Empty);
+                    }
+                    "end" => {
+                        self.context.response_mut().end();
+                        // 设置退出标志，停止后续执行
+                        self.context.should_exit = true;
+                        return Ok(Value::Empty);
+                    }
+                    _ => {}
+                }
                 // 从 response 对象获取属性
                 let response = self.context.response();
                 match response.get_property(property) {

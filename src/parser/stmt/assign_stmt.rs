@@ -151,7 +151,23 @@ impl Parser {
                 // 属性访问: obj.property
                 Token::Dot => {
                     self.advance();
-                    let prop = self.expect_ident()?;
+                    // 点号后面允许标识符或关键字作为属性名
+                    let prop = match self.peek().clone() {
+                        Token::Ident(name) => {
+                            self.advance();
+                            name
+                        }
+                        Token::Keyword(kw) => {
+                            self.advance();
+                            kw.as_str().to_string()
+                        }
+                        _ => {
+                            return Err(ParseError::ParserError(format!(
+                                "Expected identifier after '.', got {:?}",
+                                self.peek()
+                            )))
+                        }
+                    };
                     expr = Expr::Property {
                         object: Box::new(expr),
                         property: prop,

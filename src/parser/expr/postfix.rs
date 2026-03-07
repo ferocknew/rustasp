@@ -12,7 +12,23 @@ impl Parser {
                 // 成员访问：obj.property 或 obj.method(...)
                 Token::Dot => {
                     self.advance(); // 消耗 .
-                    let name = self.expect_ident()?;
+                    // 点号后面允许标识符或关键字作为属性名（如 Response.End）
+                    let name = match self.peek().clone() {
+                        Token::Ident(name) => {
+                            self.advance();
+                            name
+                        }
+                        Token::Keyword(kw) => {
+                            self.advance();
+                            kw.as_str().to_string()
+                        }
+                        _ => {
+                            return Err(ParseError::ParserError(format!(
+                                "Expected identifier after '.', got {:?}",
+                                self.peek()
+                            )))
+                        }
+                    };
                     lhs = Expr::Property {
                         object: Box::new(lhs),
                         property: name,
