@@ -29,6 +29,20 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             args[0].clone()
         }
+        BuiltinToken::Hex => {
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let n = ValueConversion::to_number(&args[0]) as i64;
+            Value::String(format!("{:X}", n))
+        }
+        BuiltinToken::Oct => {
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let n = ValueConversion::to_number(&args[0]) as i64;
+            Value::String(format!("{:o}", n))
+        }
         _ => return Ok(None),
     };
     Ok(Some(result))
