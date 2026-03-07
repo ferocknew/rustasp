@@ -265,6 +265,122 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             Value::String(ValueConversion::to_string(&args[0]).chars().rev().collect::<String>())
         }
+        BuiltinToken::LenB => {
+            // LenB - 返回字符串的字节长度
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            Value::Number(ValueConversion::to_string(&args[0]).as_bytes().len() as f64)
+        }
+        BuiltinToken::LeftB => {
+            // LeftB - 返回左边指定字节数
+            if args.len() < 2 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            let n = ValueConversion::to_number(&args[1]) as usize;
+            let bytes = s.as_bytes();
+            // 截取前 n 个字节，注意不能在多字节字符中间截断
+            let end = bytes.len().min(n);
+            // 使用 from_utf8 取前 end 个字节
+            match std::str::from_utf8(&bytes[..end]) {
+                Ok(result) => Value::String(result.to_string()),
+                Err(_) => {
+                    // 如果截断位置不在字符边界，找到最近的边界
+                    let valid_end = s.floor_char_boundary(end);
+                    Value::String(s[..valid_end].to_string())
+                }
+            }
+        }
+        BuiltinToken::RightB => {
+            // RightB - 返回右边指定字节数
+            if args.len() < 2 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            let n = ValueConversion::to_number(&args[1]) as usize;
+            let bytes = s.as_bytes();
+            // 从末尾取 n 个字节
+            let start = if bytes.len() > n { bytes.len() - n } else { 0 };
+            // 找到最近的字符边界
+            let valid_start = s.ceil_char_boundary(start);
+            Value::String(s[valid_start..].to_string())
+        }
+        BuiltinToken::MidB => {
+            // MidB - 返回中间指定字节数
+            if args.len() < 2 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            let start = ValueConversion::to_number(&args[1]) as usize;
+            let length = args.get(2).map(|v| ValueConversion::to_number(v) as usize).unwrap_or(s.as_bytes().len());
+            let bytes = s.as_bytes();
+            // VBScript 位置从 1 开始，转换为从 0 开始
+            let start_byte = start.saturating_sub(1).min(bytes.len());
+            let end_byte = (start_byte + length).min(bytes.len());
+            // 找到最近的字符边界
+            let valid_start = s.ceil_char_boundary(start_byte);
+            let valid_end = s.floor_char_boundary(end_byte);
+            if valid_start < valid_end {
+                Value::String(s[valid_start..valid_end].to_string())
+            } else {
+                Value::String(String::new())
+            }
+        }
+        BuiltinToken::InStrB => {
+            // InStrB - 按字节查找字符串
+            if args.len() < 2 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let (start, string1, string2) = if args.len() >= 3 {
+                // 有 start 参数
+                (Some(ValueConversion::to_number(&args[0]) as usize),
+                 ValueConversion::to_string(&args[1]),
+                 ValueConversion::to_string(&args[2]))
+            } else {
+                // 没有 start 参数
+                (None, ValueConversion::to_string(&args[0]), ValueConversion::to_string(&args[1]))
+            };
+
+            let bytes1 = string1.as_bytes();
+            let bytes2 = string2.as_bytes();
+
+            // 从指定字节位置开始搜索（VBScript 位置从 1 开始）
+            let search_bytes = if let Some(pos) = start {
+                let start_byte = pos.saturating_sub(1).min(bytes1.len());
+                &bytes1[start_byte..]
+            } else {
+                bytes1
+            };
+
+            // 查找子串（区分大小写，字节匹配）
+            let pos = search_bytes.windows(bytes2.len()).position(|w| w == bytes2);
+            let result = if let Some(p) = pos {
+                let base_pos = start.unwrap_or(1);
+                (base_pos + p) as f64
+            } else {
+                0.0
+            };
+            Value::Number(result)
+        }
+        BuiltinToken::AscB => {
+            // AscB - 返回第一个字节的 ASCII 值
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            Value::Number(s.as_bytes().first().map(|&b| b as f64).unwrap_or(0.0))
+        }
+        BuiltinToken::ChrB => {
+            // ChrB - 返回指定字节对应的单字节字符串
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let n = (ValueConversion::to_number(&args[0]) as u32) & 0xFF; // 只取低 8 位
+            // 将字节转换为 Latin-1 字符（单字节编码）
+            let ch = (n as u8) as char;
+            Value::String(ch.to_string())
+        }
         _ => return Ok(None),
     };
     Ok(Some(result))

@@ -56,6 +56,13 @@ pub enum BuiltinToken {
     Chr = 120,
     AscW = 121,
     ChrW = 122,
+    LenB = 123,
+    LeftB = 124,
+    RightB = 125,
+    MidB = 126,
+    InStrB = 127,
+    AscB = 128,
+    ChrB = 129,
 
     // ========== 日期时间函数 (151-200) ==========
     Now = 151,
@@ -168,6 +175,13 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("chr", BuiltinToken::Chr),
     ("ascw", BuiltinToken::AscW),
     ("chrw", BuiltinToken::ChrW),
+    ("lenb", BuiltinToken::LenB),
+    ("leftb", BuiltinToken::LeftB),
+    ("rightb", BuiltinToken::RightB),
+    ("midb", BuiltinToken::MidB),
+    ("instrb", BuiltinToken::InStrB),
+    ("ascb", BuiltinToken::AscB),
+    ("chrb", BuiltinToken::ChrB),
     // 日期时间函数
     ("now", BuiltinToken::Now),
     ("date", BuiltinToken::Date),
