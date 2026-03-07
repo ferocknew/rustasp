@@ -123,3 +123,42 @@ Sub 内部 y = 15
 ## 参考文档
 
 - [VBScript 过程](https://www.weistock.com/docs/VBA/VBScript/过程.html)
+
+---
+
+## 测试完成总结
+
+### IIS vs Rust 对比结果 (2026-03-08)
+
+| 测试文件 | IIS 结果 | Rust 结果 | 状态 |
+|---------|---------|----------|------|
+| test_function.asp | 8/8 通过 | 8/8 通过 | ✅ |
+| test_sub.asp | 6/6 通过 | 6/6 通过 | ✅ |
+| test_call.asp | 9/9 通过 | 9/9 通过 | ✅ |
+| test_params.asp | 5/5 通过 | 5/5 通过 | ✅ |
+
+**总计: 28/28 测试用例全部通过**
+
+### 关键修复内容
+
+本次测试过程中发现并修复了以下问题：
+
+| 修复项 | 文件 | 说明 |
+|--------|------|------|
+| ByVal/ByRef 关键字 | `lexer.rs` | 添加 `byval`/`byref` 关键字映射 |
+| 参数默认传递方式 | `proc_stmt.rs` | 修复为默认 ByRef（VBScript 规范） |
+| Function 参数类型 | `context.rs` | `Function.params` 改为 `Vec<Param>` |
+| ByRef 参数回写 | `exprs.rs`, `control_stmt.rs` | 正确处理参数回写时机 |
+
+### ByRef 实现原理
+
+```
+问题: ByRef 参数修改后未正确写回调用者变量
+原因: pop_scope 前回写会写入当前作用域而非外部
+解决: 先保存 ByRef 值 → pop_scope → 再写回外部变量
+```
+
+### 测试环境
+
+- **IIS**: `http://10.0.0.217/www/rust_vbs_test/test_fn_sub/`
+- **Rust**: `http://127.0.0.1:8080/test/class_fun_sub_test/`
