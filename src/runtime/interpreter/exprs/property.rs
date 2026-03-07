@@ -1,7 +1,7 @@
 //! 属性访问表达式求值
 
 use crate::ast::Expr;
-use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueConversion, ValueIndex};
+use crate::runtime::{BuiltinObject, RuntimeError, Value};
 
 use super::super::Interpreter;
 
