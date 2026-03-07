@@ -7,9 +7,6 @@ mod builtin_tokens;
 mod exprs;
 mod stmts;
 
-// 导出 Token 相关类型
-pub use builtin_tokens::{BuiltinToken, TokenRegistry, BuiltinExecutor, execute_builtin};
-
 use crate::ast::Program;
 use crate::runtime::{Context, RuntimeError, Value};
 
