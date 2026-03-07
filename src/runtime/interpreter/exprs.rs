@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 表达式的求值逻辑
 
 use crate::ast::{BinaryOp, Expr, UnaryOp};
-use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps, VbsClass};
+use crate::runtime::{BuiltinObject, ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps, VbsClass};
 
 use super::Interpreter;
 
@@ -116,6 +116,7 @@ impl Interpreter {
             eprintln!("DEBUG: Found user function {}", name);
             self.context.push_scope();
 
+            // 绑定参数
             for (i, param_name) in func.params.iter().enumerate() {
                 let value = if i < arg_values.len() {
                     arg_values[i].clone()
@@ -125,9 +126,19 @@ impl Interpreter {
                 self.context.define_var(param_name.clone(), value);
             }
 
+            // 初始化函数名变量为 Empty（用于返回值）
+            let func_name_lower = crate::utils::normalize_identifier(&func.name);
+            self.context.define_var(func.name.clone(), Value::Empty);
+
+            // 执行函数体，处理 Exit Function/Sub
             for stmt in &func.body {
                 match self.eval_stmt(stmt) {
                     Ok(_) => {}
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction)) |
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
+                        // Exit Function/Sub - 正常退出，读取返回值
+                        break;
+                    }
                     Err(e) => {
                         self.context.pop_scope();
                         return Err(e);
@@ -135,7 +146,7 @@ impl Interpreter {
                 }
             }
 
-            let func_name_lower = crate::utils::normalize_identifier(&func.name);
+            // 获取返回值（Function 名称变量的值）
             let result = self.context.get_var(&func.name)
                 .or_else(|| self.context.get_var(&func_name_lower))
                 .cloned()

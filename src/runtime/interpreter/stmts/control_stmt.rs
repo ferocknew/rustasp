@@ -3,7 +3,7 @@
 //! 处理 If、For、While、ForEach、Select Case 等控制流语句
 
 use crate::ast::{BinaryOp, CaseClause, Expr, IfBranch, Stmt};
-use crate::runtime::{ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion};
+use crate::runtime::{ControlFlow, Function, RuntimeError, Value, ValueCompare, ValueConversion};
 
 use super::Interpreter;
 
@@ -240,6 +240,7 @@ impl Interpreter {
         if let Some(func) = self.context.functions.get(&name_lower).cloned() {
             self.context.push_scope();
 
+            // 绑定参数
             for (i, param_name) in func.params.iter().enumerate() {
                 let value = if i < arg_values.len() {
                     arg_values[i].clone()
@@ -249,9 +250,26 @@ impl Interpreter {
                 self.context.define_var(param_name.clone(), value);
             }
 
-            let result = self.exec_block(&func.body);
+            // 初始化函数名变量为 Empty（用于返回值）
+            self.context.define_var(func.name.clone(), Value::Empty);
+
+            // 执行函数体，处理 Exit Sub/Function
+            for stmt in &func.body {
+                match self.eval_stmt(stmt) {
+                    Ok(_) => {}
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction)) |
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
+                        // Exit Function/Sub - 正常退出
+                        break;
+                    }
+                    Err(e) => {
+                        self.context.pop_scope();
+                        return Err(e);
+                    }
+                }
+            }
+
             self.context.pop_scope();
-            result?;
         }
         Ok(Value::Empty)
     }
