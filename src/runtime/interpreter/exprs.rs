@@ -278,45 +278,8 @@ impl Interpreter {
                 response.call_method(method_name, arg_values)
             }
             // Request.QueryString / Request.Form
-            (Some("request"), "querystring") => {
-                if !args.is_empty() {
-                    let key = self.eval_expr(&args[0])?;
-                    let key_str = ValueConversion::to_string(&key);
-                    // 从 request_data 获取 QueryString（智能处理多值）
-                    Ok(self.context.get_request_param_all(&key_str)
-                        .map(|values| {
-                            if values.len() == 1 {
-                                // 单值：返回字符串
-                                Value::String(values[0].clone())
-                            } else {
-                                // 多值：返回数组
-                                Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
-                            }
-                        })
-                        .unwrap_or(Value::Empty))
-                } else {
-                    Ok(Value::Empty)
-                }
-            }
-            (Some("request"), "form") => {
-                if !args.is_empty() {
-                    let key = self.eval_expr(&args[0])?;
-                    let key_str = ValueConversion::to_string(&key);
-                    // 从 request_data 获取 Form 数据（智能处理多值）
-                    Ok(self.context.get_request_param_all(&key_str)
-                        .map(|values| {
-                            if values.len() == 1 {
-                                // 单值：返回字符串
-                                Value::String(values[0].clone())
-                            } else {
-                                // 多值：返回数组
-                                Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
-                            }
-                        })
-                        .unwrap_or(Value::Empty))
-                } else {
-                    Ok(Value::Empty)
-                }
+            (Some("request"), "querystring" | "form") => {
+                self.eval_request_method(args)
             }
             // Server.CreateObject
             (Some("server"), "createobject") => {
@@ -407,41 +370,7 @@ impl Interpreter {
 
         // 处理内建对象的属性访问
         match object_name.as_deref() {
-            Some("request") => {
-                match property_lower.as_str() {
-                    "form" => {
-                        // 返回表单数据集合（多值转为逗号分隔字符串）
-                        let mut form_data = std::collections::HashMap::new();
-                        for (key, values) in self.context.request_data.iter() {
-                            let value_str = if values.len() == 1 {
-                                values[0].clone()
-                            } else {
-                                values.join(", ")
-                            };
-                            form_data.insert(key.clone(), Value::String(value_str));
-                        }
-                        Ok(Value::Object(form_data))
-                    }
-                    "querystring" => {
-                        // 返回查询字符串集合（多值转为逗号分隔字符串）
-                        let mut query_data = std::collections::HashMap::new();
-                        for (key, values) in self.context.request_data.iter() {
-                            let value_str = if values.len() == 1 {
-                                values[0].clone()
-                            } else {
-                                values.join(", ")
-                            };
-                            query_data.insert(key.clone(), Value::String(value_str));
-                        }
-                        Ok(Value::Object(query_data))
-                    }
-                    "cookies" | "servervariables" => {
-                        // 返回空对象（暂不支持）
-                        Ok(Value::Object(std::collections::HashMap::new()))
-                    }
-                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
-                }
-            }
+            Some("request") => self.eval_request_property(property_lower.as_str()),
             Some("response") => {
                 // 从 response 对象获取属性
                 let response = self.context.response();
@@ -536,5 +465,47 @@ impl Interpreter {
                 Err(RuntimeError::PropertyNotFound(property.to_string()))
             }
         }
+    }
+
+    fn eval_request_method(&mut self, args: &[Expr]) -> Result<Value, RuntimeError> {
+        if args.is_empty() {
+            return Ok(Value::Empty);
+        }
+        let key = self.eval_expr(&args[0])?;
+        let key_str = ValueConversion::to_string(&key);
+        Ok(self.context.get_request_param_all(&key_str)
+            .map(|values| {
+                if values.len() == 1 {
+                    Value::String(values[0].clone())
+                } else {
+                    Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
+                }
+            })
+            .unwrap_or(Value::Empty))
+    }
+
+    fn eval_request_property(&self, property: &str) -> Result<Value, RuntimeError> {
+        match property {
+            "form" | "querystring" => {
+                let mut data = std::collections::HashMap::new();
+                for (key, values) in self.context.request_data.iter() {
+                    let value_str = if values.len() == 1 {
+                        values[0].clone()
+                    } else {
+                        values.join(", ")
+                    };
+                    data.insert(key.clone(), Value::String(value_str));
+                }
+                Ok(Value::Object(data))
+            }
+            "cookies" | "servervariables" => {
+                Ok(Value::Object(std::collections::HashMap::new()))
+            }
+            _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+        }
+    }
+
+    fn is_session_user_key(k: &&str) -> bool {
+        !k.starts_with("__") && *k != "sessionid" && *k != "timeout"
     }
 }
