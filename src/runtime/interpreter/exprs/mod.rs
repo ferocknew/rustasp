@@ -10,8 +10,8 @@ mod new;
 mod property;
 mod unary;
 
-use crate::ast::{Expr, UnaryOp};
-use crate::runtime::{RuntimeError, Value, ValueConversion};
+use crate::ast::Expr;
+use crate::runtime::{RuntimeError, Value};
 
 use super::Interpreter;
 
