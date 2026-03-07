@@ -75,6 +75,7 @@ pub enum BuiltinToken {
     FormatDateTime = 168,
     MonthName = 169,
     WeekDayName = 170,
+    Timer = 171,
 
     // ========== 数组函数 (201-220) ==========
     Array = 201,
@@ -182,6 +183,7 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("formatdatetime", BuiltinToken::FormatDateTime),
     ("monthname", BuiltinToken::MonthName),
     ("weekdayname", BuiltinToken::WeekDayName),
+    ("timer", BuiltinToken::Timer),
     // 数组函数
     ("array", BuiltinToken::Array),
     ("ubound", BuiltinToken::UBound),

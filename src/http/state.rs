@@ -26,10 +26,13 @@ pub struct Config {
     /// Runtime 目录路径（用于 Session、缓存等硬盘存储）
     pub runtime_dir: PathBuf,
     /// Now 函数日期时间格式
+    #[allow(dead_code)]
     pub now_format: String,
     /// Date 函数日期格式
+    #[allow(dead_code)]
     pub date_format: String,
     /// Time 函数时间格式
+    #[allow(dead_code)]
     pub time_format: String,
 }
 

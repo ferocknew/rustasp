@@ -212,6 +212,15 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let (now_format, _, _) = get_datetime_format();
             Value::String(now.format(&now_format).to_string())
         }
+        BuiltinToken::Timer => {
+            // Timer 函数返回自午夜以来的秒数
+            let now = chrono::Local::now();
+            let seconds_since_midnight = now.hour() as f64 * 3600.0
+                + now.minute() as f64 * 60.0
+                + now.second() as f64
+                + now.nanosecond() as f64 / 1_000_000_000.0;
+            Value::Number(seconds_since_midnight)
+        }
         BuiltinToken::DateSerial | BuiltinToken::DateValue | BuiltinToken::TimeSerial | BuiltinToken::TimeValue => {
             // TODO: 实现完整的日期序列化/反序列化
             Value::Empty
@@ -219,14 +228,4 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
         _ => return Ok(None),
     };
     Ok(Some(result))
-}
-
-/// Timer 函数返回自午夜以来的秒数
-pub fn timer() -> Value {
-    let now = chrono::Local::now();
-    let seconds_since_midnight = now.hour() as f64 * 3600.0
-        + now.minute() as f64 * 60.0
-        + now.second() as f64
-        + now.nanosecond() as f64 / 1_000_000_000.0;
-    Value::Number(seconds_since_midnight)
 }
