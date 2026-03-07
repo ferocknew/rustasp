@@ -9,6 +9,19 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
     let name_lower = name.to_lowercase();
 
     match name_lower.as_str() {
+        // 日期时间函数（无参数）
+        "now" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::String(now.format("%Y-%m-%d %H:%M:%S").to_string())))
+        }
+        "date" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::String(now.format("%Y-%m-%d").to_string())))
+        }
+        "time" => {
+            let now = chrono::Local::now();
+            Some(Ok(Value::String(now.format("%H:%M:%S").to_string())))
+        }
         // 字符串函数 - 多参数
         "left" => {
             if args.len() >= 2 {

@@ -18,11 +18,20 @@ impl Interpreter {
             Expr::Nothing => Ok(Value::Nothing),
             Expr::Empty => Ok(Value::Empty),
             Expr::Null => Ok(Value::Null),
-            Expr::Variable(name) => Ok(self
-                .context
-                .get_var(name)
-                .cloned()
-                .unwrap_or(Value::Empty)),
+            Expr::Variable(name) => {
+                // 首先尝试从上下文中获取变量
+                if let Some(value) = self.context.get_var(name).cloned() {
+                    Ok(value)
+                } else {
+                    // 如果没有找到变量，检查是否是内置函数（无参数调用）
+                    // 支持：Now、Date、Time 等无参数内置函数
+                    if let Some(result) = super::builtins::call_builtin_function_multi(name, &[]) {
+                        result
+                    } else {
+                        Ok(Value::Empty)
+                    }
+                }
+            }
             Expr::Binary { left, op, right } => {
                 let left_val = self.eval_expr(left)?;
                 let right_val = self.eval_expr(right)?;
