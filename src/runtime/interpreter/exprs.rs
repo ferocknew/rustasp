@@ -15,6 +15,11 @@ impl Interpreter {
             Expr::Number(n) => Ok(Value::Number(*n)),
             Expr::String(s) => Ok(Value::String(s.clone())),
             Expr::Boolean(b) => Ok(Value::Boolean(*b)),
+            Expr::Date(date_str) => {
+                // 日期字面量暂时作为字符串处理
+                // 后续可以在需要时转换为实际的日期值
+                Ok(Value::String(date_str.clone()))
+            }
             Expr::Nothing => Ok(Value::Nothing),
             Expr::Empty => Ok(Value::Empty),
             Expr::Null => Ok(Value::Null),

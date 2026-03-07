@@ -7,9 +7,11 @@ use crate::parser::ParseError;
 use crate::parser::Parser;
 
 impl Parser {
-    /// 解析 Dim 声明
+    /// 解析 Dim 声明（支持逗号分隔的多变量）
     pub fn parse_dim(&mut self) -> Result<Option<Stmt>, ParseError> {
         self.expect_keyword(Keyword::Dim)?;
+
+        // 解析第一个变量
         let name = self.expect_ident()?;
 
         // 检查是否是数组
@@ -28,7 +30,7 @@ impl Parser {
             self.expect(Token::RParen)?;
         }
 
-        // 检查初始化（冒号是语句分隔符，不是初始化的一部分）
+        // 检查初始化
         let init = if self.check(&Token::Eq) && !self.check(&Token::Colon) {
             self.advance();
             Some(self.parse_expr(0)?)
@@ -36,7 +38,41 @@ impl Parser {
             None
         };
 
-        // 跳过冒号（语句分隔符）
+        // 检查是否有逗号分隔的更多变量
+        if self.match_token(&Token::Comma) {
+            // 有更多变量，跳过它们
+            loop {
+                self.skip_newlines();
+                match self.peek() {
+                    Token::Ident(_) => {
+                        // 跳过变量名
+                        self.advance();
+                        // 跳过数组声明（如果有）
+                        if self.match_token(&Token::LParen) {
+                            while !self.check(&Token::RParen) && !self.is_at_end() {
+                                self.advance();
+                            }
+                            self.expect(Token::RParen)?;
+                        }
+                        // 跳过初始化（如果有）
+                        if self.match_token(&Token::Eq) {
+                            // 跳过初始化表达式
+                            while !self.check(&Token::Comma) && !self.check(&Token::Colon)
+                                && !self.is_at_end() && !self.check_newline() {
+                                self.advance();
+                            }
+                        }
+                        // 检查是否还有更多变量
+                        if !self.match_token(&Token::Comma) {
+                            break;
+                        }
+                    }
+                    _ => break,
+                }
+            }
+        }
+
+        // 跳过语句分隔符
         self.match_token(&Token::Colon);
         self.skip_newlines();
 

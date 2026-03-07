@@ -24,6 +24,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::Boolean(b))
             }
+            Token::Date(date_str) => {
+                self.advance();
+                Ok(Expr::Date(date_str))
+            }
             Token::Null => {
                 self.advance();
                 Ok(Expr::Null)

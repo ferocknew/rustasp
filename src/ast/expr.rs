@@ -13,6 +13,8 @@ pub enum Expr {
     String(String),
     /// 布尔字面量
     Boolean(bool),
+    /// 日期字面量
+    Date(String),
     /// Nothing
     Nothing,
     /// Empty
