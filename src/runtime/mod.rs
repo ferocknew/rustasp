@@ -7,6 +7,7 @@ mod error;
 mod interpreter;
 mod scope;
 
+pub mod builtins;
 pub mod value;
 pub mod objects;
 

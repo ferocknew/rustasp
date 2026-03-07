@@ -89,7 +89,7 @@ impl Interpreter {
 
     /// 尝试调用内置函数
     fn try_call_builtin(&mut self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
-        use super::builtin_tokens::{TokenRegistry, BuiltinExecutor};
+        use crate::runtime::builtins::{TokenRegistry, BuiltinExecutor};
 
         let registry = TokenRegistry::new();
         registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
