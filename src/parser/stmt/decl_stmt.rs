@@ -58,7 +58,7 @@ impl Parser {
                         if self.match_token(&Token::Eq) {
                             // 跳过初始化表达式
                             while !self.check(&Token::Comma) && !self.check(&Token::Colon)
-                                && !self.is_at_end() && !self.check_newline() {
+                                && !self.is_at_end() && !self.check(&Token::Newline) {
                                 self.advance();
                             }
                         }
