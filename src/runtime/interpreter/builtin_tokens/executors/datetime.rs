@@ -5,6 +5,14 @@ use super::super::token::BuiltinToken;
 use chrono::Datelike;
 use chrono::Timelike;
 
+/// 获取语言配置
+/// 支持 zh-cn（中文）和 en（英文），默认 zh-cn
+fn get_language() -> String {
+    std::env::var("LANGUAGE")
+        .unwrap_or_else(|_| "zh-cn".to_string())
+        .to_lowercase()
+}
+
 /// 获取配置的日期格式字符串
 fn get_datetime_format() -> (String, String, String) {
     // 从环境变量读取配置，使用默认值
@@ -99,17 +107,27 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             };
 
             // VBScript: 1=Sunday, 2=Monday, ..., 7=Saturday
-            // 返回中文星期名称（中文 Windows 系统默认）
-            let names = if abbreviate {
-                ["日", "一", "二", "三", "四", "五", "六"]
+            // 根据语言配置返回星期名称
+            let lang = get_language();
+            let name = if lang == "zh-cn" || lang == "zh" {
+                // 中文星期名称
+                if abbreviate {
+                    ["日", "一", "二", "三", "四", "五", "六"]
+                } else {
+                    ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+                }
             } else {
-                ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+                // 英文星期名称
+                if abbreviate {
+                    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                } else {
+                    ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                }
             };
 
             // weekday 应该是 1-7，对应 Sunday-Saturday
             let index = if weekday == 0 { 6 } else { (weekday - 1) % 7 };
-            let name = names.get(index).unwrap_or(&"");
-            Value::String(name.to_string())
+            Value::String(name.get(index).unwrap_or(&"").to_string())
         }
         BuiltinToken::MonthName => {
             // MonthName(month, abbreviate)
@@ -123,19 +141,25 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 false
             };
 
-            // 返回中文月份名称（中文 Windows 系统默认）
-            let names = if abbreviate {
+            // 根据语言配置返回月份名称
+            let lang = get_language();
+            let name = if lang == "zh-cn" || lang == "zh" {
+                // 中文月份名称
                 ["一月", "二月", "三月", "四月", "五月", "六月",
                  "七月", "八月", "九月", "十月", "十一月", "十二月"]
             } else {
-                ["一月", "二月", "三月", "四月", "五月", "六月",
-                 "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                // 英文月份名称
+                if abbreviate {
+                    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                } else {
+                    ["January", "February", "March", "April", "May", "June",
+                     "July", "August", "September", "October", "November", "December"]
+                }
             };
 
             // month 应该是 1-12
             let index = if month == 0 { 11 } else { (month - 1) % 12 };
-            let name = names.get(index).unwrap_or(&"");
-            Value::String(name.to_string())
+            Value::String(name.get(index).unwrap_or(&"").to_string())
         }
         BuiltinToken::DateAdd => {
             // DateAdd(interval, number, date)
