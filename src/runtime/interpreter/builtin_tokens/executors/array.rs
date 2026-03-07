@@ -15,6 +15,10 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
         }
         BuiltinToken::LBound => Value::Number(0.0),
+        BuiltinToken::Array => {
+            // Array 函数：将参数转换为数组
+            Value::Array(args.to_vec())
+        }
         BuiltinToken::Filter => {
             if args.len() < 2 {
                 return Err(RuntimeError::ArgumentCountMismatch);

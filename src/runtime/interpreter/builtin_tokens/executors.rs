@@ -9,6 +9,7 @@ mod conversion;
 mod array;
 mod datetime;
 mod inspection;
+mod format;
 
 /// 内置函数执行器
 pub struct BuiltinExecutor;
@@ -43,6 +44,11 @@ impl BuiltinExecutor {
 
         // 检验函数
         if let Some(result) = inspection::execute(token, args)? {
+            return Ok(result);
+        }
+
+        // 格式化函数
+        if let Some(result) = format::execute(token, args)? {
             return Ok(result);
         }
 
