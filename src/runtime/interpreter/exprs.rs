@@ -95,7 +95,10 @@ impl Interpreter {
     }
 
     fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
-        eprintln!("DEBUG: Call {} with {:?} args", name, args.len());
+        eprintln!("DEBUG eval_call_expr: Call {} with {:?} args", name, args.len());
+        for (i, arg) in args.iter().enumerate() {
+            eprintln!("DEBUG eval_call_expr: arg[{}] = {:?}", i, arg);
+        }
 
         // 尝试调用内置函数（先计算值）
         let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
