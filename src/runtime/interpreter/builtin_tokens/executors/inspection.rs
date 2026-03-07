@@ -52,11 +52,13 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
     Ok(Some(result))
 }
 
+#[allow(dead_code)]
 fn is_numeric(v: &Value) -> bool {
     matches!(v, Value::Number(_) | Value::Boolean(_) | Value::Empty)
         || matches!(v, Value::String(s) if s.parse::<f64>().is_ok())
 }
 
+#[allow(dead_code)]
 fn var_type(v: &Value) -> u16 {
     match v {
         Value::Empty => 0,
@@ -70,6 +72,7 @@ fn var_type(v: &Value) -> u16 {
     }
 }
 
+#[allow(dead_code)]
 fn type_name(v: &Value) -> &'static str {
     match v {
         Value::Empty => "Empty",

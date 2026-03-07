@@ -5,6 +5,7 @@ use super::token::{BuiltinToken, TOKEN_REGISTRY};
 
 /// Token 注册表
 /// 维护函数名到 Token ID 的映射
+#[allow(dead_code)]
 pub struct TokenRegistry {
     /// 函数名到 Token 的映射（小写存储，不区分大小写）
     map: HashMap<String, BuiltinToken>,
@@ -26,6 +27,7 @@ impl TokenRegistry {
     }
 
     /// 检查是否为内置函数
+    #[allow(dead_code)]
     pub fn is_builtin(&self, name: &str) -> bool {
         self.map.contains_key(&name.to_lowercase())
     }

@@ -11,7 +11,7 @@ use vbscript::parser::Parser;
 use vbscript::runtime::Value;
 use vbscript::Response;
 
-use vbscript::runtime::objects::{Session, SessionManager, SessionData};
+use vbscript::runtime::objects::{Session, SessionManager};
 use crate::http::RequestContext;
 
 /// ASP 执行结果
@@ -23,6 +23,7 @@ pub struct ExecutionResult {
 }
 
 /// 将 Session 转换为 HashMap
+#[allow(dead_code)]
 fn session_to_map(session: &Session) -> HashMap<String, Value> {
     let mut map = HashMap::new();
     // 存储 Session ID
@@ -201,6 +202,7 @@ impl Engine {
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
         if let Some(Value::Object(session_obj)) = interpreter.context().get_var("Session") {
             // 从 BuiltinObject 中获取 Session 对象
+            #[allow(unused_imports)]
             use vbscript::runtime::BuiltinObject;
             if let Some(session) = session_obj.as_any().downcast_ref::<Session>() {
                 // 创建 SessionData 并保存
@@ -295,8 +297,7 @@ impl Default for Engine {
 }
 
 /// 格式化错误信息，包含源文件上下文
-
-/// 格式化错误信息，包含源文件上下文
+#[allow(dead_code)]
 fn format_error_with_context(
     error_type: &str,
     message: &str,
@@ -358,6 +359,7 @@ fn format_error_with_context(
 }
 
 /// 从错误消息中提取行号
+#[allow(dead_code)]
 fn extract_error_line(message: &str) -> Option<usize> {
     let lower = message.to_lowercase();
 
@@ -389,6 +391,7 @@ fn extract_error_line(message: &str) -> Option<usize> {
 }
 
 /// 清理错误消息，提取关键信息
+#[allow(dead_code)]
 fn clean_error_message(message: &str) -> String {
     let msg = message.to_string();
     

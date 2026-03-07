@@ -105,10 +105,12 @@ pub enum BuiltinToken {
     RGB = 275,
 
     // 未知函数
+    #[allow(dead_code)]
     Unknown = 0,
 }
 
 /// Token 注册表项
+#[allow(dead_code)]
 pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     // 数学函数
     ("abs", BuiltinToken::Abs),

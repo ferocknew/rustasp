@@ -404,6 +404,7 @@ impl Interpreter {
         }
     }
 
+    #[allow(dead_code)]
     fn is_session_user_key(k: &&str) -> bool {
         !k.starts_with("__") && *k != "sessionid" && *k != "timeout"
     }

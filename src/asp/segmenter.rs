@@ -21,6 +21,7 @@ pub struct SegmentWithPos {
     /// 代码段内容
     pub segment: Segment,
     /// 在源文件中的起始行号（1-indexed）
+    #[allow(dead_code)]
     pub start_line: usize,
     /// 在源文件中的结束行号（1-indexed）
     #[allow(dead_code)]

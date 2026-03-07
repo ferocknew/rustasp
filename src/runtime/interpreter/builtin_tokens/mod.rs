@@ -9,11 +9,13 @@ mod token;
 mod registry;
 mod executors;
 
+#[allow(unused_imports)]
 pub use token::BuiltinToken;
 pub use registry::TokenRegistry;
 pub use executors::BuiltinExecutor;
 
 /// 便捷函数：通过函数名直接执行内置函数
+#[allow(dead_code)]
 pub fn execute_builtin(name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
     let registry = TokenRegistry::new();
     registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
