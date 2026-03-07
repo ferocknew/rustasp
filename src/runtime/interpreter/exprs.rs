@@ -279,80 +279,82 @@ impl Interpreter {
         }
     }
 
-    /// 执行方法调用
+    /// 执行方法调用（优化：统一 trait dispatch）
     pub fn eval_method(
         &mut self,
         object: &Expr,
         method: &str,
         args: &[Expr],
     ) -> Result<Value, RuntimeError> {
+        // 计算参数（优化：统一在调用前计算）
+        let arg_values: Result<Vec<Value>, _> =
+            args.iter().map(|e| self.eval_expr(e)).collect();
+        let arg_values = arg_values?;
+
         // 获取对象名称（如果是变量）
         let object_name = match object {
-            Expr::Variable(name) => Some(name.to_lowercase()),
+            Expr::Variable(name) => Some(crate::utils::normalize_identifier(name)),
             _ => None,
         };
 
         let method_lower = method.to_lowercase();
 
-        // 处理内建对象的方法
-        match (object_name.as_deref(), method_lower.as_str()) {
-            // Response 方法 - 统一通过 BuiltinObject trait 调用
-            (Some("response"), method_name) => {
-                // 计算参数
-                let arg_values: Result<Vec<Value>, _> =
-                    args.iter().map(|e| self.eval_expr(e)).collect();
-                let arg_values = arg_values?;
+        // 特殊处理：Response.End 需要设置退出标志
+        if object_name.as_deref() == Some("response") && method_lower == "end" {
+            self.context.response_mut().end();
+            self.context.should_exit = true;
+            return Ok(Value::Empty);
+        }
 
-                // 特殊处理 Response.End - 设置退出标志
-                if method_name.to_lowercase() == "end" {
-                    self.context.response_mut().end();
-                    self.context.should_exit = true;
-                    return Ok(Value::Empty);
+        // 特殊处理：Request.QueryString / Request.Form（需要特殊的数据访问逻辑）
+        if object_name.as_deref() == Some("request") {
+            match method_lower.as_str() {
+                "querystring" | "form" => {
+                    return self.eval_request_method(args);
                 }
+                _ => {}
+            }
+        }
 
-                // 调用 Response 对象的方法
-                let response = self.context.response_mut();
-                response.call_method(method_name, arg_values)
-            }
-            // Request.QueryString / Request.Form
-            (Some("request"), "querystring" | "form") => {
-                self.eval_request_method(args)
-            }
-            // Server.CreateObject
-            (Some("server"), "createobject") => {
-                // 不支持 COM 对象创建，返回 Empty 以避免页面中断
-                Ok(Value::Empty)
-            }
-            // 其他方法调用
-            _ => {
-                // 尝试调用用户定义的方法
-                let arg_values: Result<Vec<Value>, _> =
-                    args.iter().map(|e| self.eval_expr(e)).collect();
-                let arg_values = arg_values?;
+        // 特殊处理：Server.CreateObject（不支持 COM）
+        if object_name.as_deref() == Some("server") && method_lower == "createobject" {
+            return Ok(Value::Empty);
+        }
 
-                // 特殊处理 Session.Contents 的方法调用
-                // 当调用 Session.Contents.Remove(key) 时
-                if let Expr::Property { object, property: contents_prop } = object {
-                    if contents_prop.to_lowercase() == "contents" {
-                        if let Expr::Variable(session_name) = object.as_ref() {
-                            if session_name.to_lowercase() == "session" {
-                                // 这是 Session.Contents 的方法调用
-                                // 通过 Session 对象的 call_method 来处理
-                                if let Some(Value::Object(mut session_obj)) = self.context.get_var("Session").cloned() {
-                                    let result = session_obj.call_method(method, arg_values);
-                                    // 将修改后的 session 对象写回
-                                    self.context.set_var("Session".to_string(), Value::Object(session_obj));
-                                    return result;
-                                }
-                            }
+        // 特殊处理：Session.Contents 的方法调用
+        if let Expr::Property { object: inner_obj, property: contents_prop } = object {
+            if contents_prop.to_lowercase() == "contents" {
+                if let Expr::Variable(session_name) = inner_obj.as_ref() {
+                    if session_name.to_lowercase() == "session" {
+                        if let Some(Value::Object(mut session_obj)) = self.context.get_var("Session").cloned() {
+                            let result = session_obj.call_method(method, arg_values);
+                            self.context.set_var("Session".to_string(), Value::Object(session_obj));
+                            return result;
                         }
                     }
                 }
-
-                // TODO: 实现用户定义方法调用
-                Ok(Value::Empty)
             }
         }
+
+        // 统一 trait dispatch：尝试从变量中获取对象并调用方法
+        if let Some(name) = object_name {
+            if let Some(value) = self.context.get_var(&name).cloned() {
+                if let Value::Object(mut obj) = value {
+                    let result = obj.call_method(&method_lower, arg_values);
+                    // 将修改后的对象写回（支持有状态的对象）
+                    self.context.set_var(name, Value::Object(obj));
+                    return result;
+                }
+            }
+        }
+
+        // 回退：尝试 eval object 表达式
+        let obj_val = self.eval_expr(object)?;
+        if let Value::Object(mut obj) = obj_val {
+            return obj.call_method(&method_lower, arg_values);
+        }
+
+        Ok(Value::Empty)
     }
 
     /// 处理属性访问表达式
