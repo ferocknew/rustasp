@@ -27,7 +27,7 @@ impl Parser {
         let mut members = Vec::new();
 
         // 解析类成员直到 EndClass
-        while !self.check_keyword(Keyword::EndClass) && !self.check(Token::Eof) {
+        while !self.check_keyword(Keyword::EndClass) && !self.check(&Token::Eof) {
             if let Some(member) = self.parse_class_member()? {
                 members.push(member);
             }
@@ -81,8 +81,8 @@ impl Parser {
             _ => {
                 let token = self.peek();
                 Err(ParseError::UnexpectedToken {
-                    expected: "class member (Function, Sub, Property, Dim, or identifier)",
-                    found: token.to_string(),
+                    expected: "class member (Function, Sub, Property, Dim, or identifier)".to_string(),
+                    found: format!("{:?}", token),
                 })
             }
         }
@@ -145,8 +145,8 @@ impl Parser {
 
         if !is_function && !is_sub {
             return Err(ParseError::UnexpectedToken {
-                expected: "Function or Sub",
-                found: self.peek().to_string(),
+                expected: "Function or Sub".to_string(),
+                found: format!("{:?}", self.peek()),
             });
         }
 
@@ -224,8 +224,8 @@ impl Parser {
             PropertyType::Set
         } else {
             return Err(ParseError::UnexpectedToken {
-                expected: "Get, Let, or Set",
-                found: self.peek().to_string(),
+                expected: "Get, Let, or Set".to_string(),
+                found: format!("{:?}", self.peek()),
             });
         };
 
@@ -284,9 +284,9 @@ impl Parser {
                     break;
                 }
 
-                if self.check(Token::Eof) {
+                if self.check(&Token::Eof) {
                     return Err(ParseError::UnexpectedToken {
-                        expected: ")",
+                        expected: ")".to_string(),
                         found: "EOF".to_string(),
                     });
                 }
