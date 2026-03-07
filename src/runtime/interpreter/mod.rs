@@ -2,6 +2,7 @@
 //!
 //! 将解释器拆分为多个子模块以提高可维护性
 
+mod builtins;
 mod builtin_tokens;
 mod exprs;
 mod stmts;

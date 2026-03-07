@@ -2,26 +2,11 @@
 //!
 //! 负责 Session 的加载、保存、清理和 Cookie 集成
 
-use super::session::Session;
+use super::session::{Session, SessionData};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-/// Session 文件格式
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct SessionData {
-    /// Session ID
-    pub session_id: String,
-    /// 超时时间（秒）
-    pub timeout: u32,
-    /// 创建时间戳
-    pub created_at: u64,
-    /// 最后访问时间戳
-    pub last_accessed: u64,
-    /// Session 数据
-    pub data: HashMap<String, serde_json::Value>,
-}
 
 /// Session 管理器
 pub struct SessionManager {
