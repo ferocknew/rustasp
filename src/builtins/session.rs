@@ -222,7 +222,36 @@ impl crate::runtime::BuiltinObject for Session {
                 self.get(&key)
                     .ok_or_else(|| RuntimeError::PropertyNotFound(key))
             }
+            "remove" => {
+                if args.is_empty() {
+                    return Ok(Value::Empty);
+                }
+                let key = ValueConversion::to_string(&args[0]).to_lowercase();
+                if let Ok(mut data) = self.data.lock() {
+                    data.remove(&key);
+                }
+                Ok(Value::Empty)
+            }
+            "removeall" => {
+                if let Ok(mut data) = self.data.lock() {
+                    // 只移除用户数据，保留 sessionid 和 timeout
+                    let keys_to_remove: Vec<String> = data.keys()
+                        .filter(|k| !k.starts_with("__") && *k != "sessionid" && *k != "timeout")
+                        .cloned()
+                        .collect();
+                    for key in keys_to_remove {
+                        data.remove(&key);
+                    }
+                }
+                Ok(Value::Empty)
+            }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }
+    }
+
+    fn index(&self, key: &Value) -> Result<Value, RuntimeError> {
+        let key_str = ValueConversion::to_string(key).to_lowercase();
+        self.get(&key_str)
+            .ok_or_else(|| RuntimeError::PropertyNotFound(key_str))
     }
 }

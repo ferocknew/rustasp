@@ -25,4 +25,11 @@ pub trait BuiltinObject: Send + Sync {
 
     /// 调用方法
     fn call_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, RuntimeError>;
+
+    /// 索引访问（如 Session("key")）
+    fn index(&self, key: &Value) -> Result<Value, RuntimeError> {
+        let key_str = ValueConversion::to_string(key);
+        // 默认实现：尝试作为属性访问
+        self.get_property(&key_str)
+    }
 }

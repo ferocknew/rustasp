@@ -124,18 +124,7 @@ impl Interpreter {
         }
 
         if arg_values.len() == 1 {
-            if identifier_matches(name, "session") {
-                if let Value::String(key) = &arg_values[0] {
-                    let key_lower = key.to_lowercase();
-                    if let Some(Value::Object(obj)) = self.context.get_var("Session").cloned() {
-                        if let Some(v) = obj.get(&key_lower) {
-                            return Ok(v.clone());
-                        }
-                    }
-                    return Ok(Value::Empty);
-                }
-            }
-
+            // 处理数组索引访问：arr(0)
             if let Some(Value::Array(arr)) = self.context.get_var(name) {
                 if let Value::Number(i) = &arg_values[0] {
                     let i = *i as usize;
@@ -152,35 +141,14 @@ impl Interpreter {
     /// 处理索引表达式
     fn eval_index(&mut self, object: &Expr, index: &Expr) -> Result<Value, RuntimeError> {
         let index_val = self.eval_expr(index)?;
-        let index_key = match &index_val {
-            Value::String(s) => s.clone(),
-            _ => ValueConversion::to_string(&index_val),
-        };
 
         match object {
-            // 特殊处理 Request 对象
-            Expr::Variable(name) if identifier_matches(name, "request") => {
-                // 从 request_data 中获取值
-                match self.context.get_request_param(&index_key) {
-                    Some(value) => Ok(Value::String(value.clone())),
-                    None => Ok(Value::Empty),
-                }
+            // 处理方法调用后的索引访问，如 Request.Form("name")(1)
+            Expr::Method { .. } | Expr::Property { .. } => {
+                let obj_val = self.eval_expr(object)?;
+                self.eval_index_on_value(&obj_val, &index_val)
             }
-            // 特殊处理 Session 对象
-            Expr::Variable(name) if identifier_matches(name, "session") => {
-                // 从 context 中获取 Session 对象的值 (使用 "Session" 作为变量名)
-                // Session 变量名存储为小写，所以需要转换
-                let key_lower = index_key.to_lowercase();
-                if let Some(value) = self.context.get_var("Session").cloned() {
-                    if let Value::Object(obj) = value {
-                        if let Some(v) = obj.get(&key_lower) {
-                            return Ok(v.clone());
-                        }
-                    }
-                }
-                Ok(Value::Empty)
-            }
-            // 处理数组或对象/字典访问，或内置函数调用
+            // 处理变量索引访问
             Expr::Variable(name) => {
                 // 检查是否是内置函数调用
                 if let Some(result) =
@@ -191,61 +159,49 @@ impl Interpreter {
 
                 // 检查变量是否是数组或对象
                 if let Some(value) = self.context.get_var(name).cloned() {
-                    match value {
-                        Value::Array(arr) => {
-                            if let Value::Number(i) = index_val {
-                                let i = i as usize;
-                                if i < arr.len() {
-                                    return Ok(arr[i].clone());
-                                }
-                            }
-                        }
-                        Value::Object(obj) => {
-                            if let Some(v) = obj.get(&index_key) {
-                                return Ok(v.clone());
-                            }
-                        }
-                        _ => {}
-                    }
+                    self.eval_index_on_value(&value, &index_val)
+                } else {
+                    Err(RuntimeError::InvalidIndex)
                 }
-                Err(RuntimeError::InvalidIndex)
             }
-            // 处理方法调用后的索引访问，如 Request.Form("name")(1)
-            Expr::Method { .. } | Expr::Property { .. } => {
-                // 先求值 object
+            _ => {
+                // 先求值 object，再进行索引访问
                 let obj_val = self.eval_expr(object)?;
-
-                // 根据索引值的类型进行访问
-                match obj_val {
-                    Value::Array(arr) => {
-                        if let Value::Number(i) = index_val {
-                            let i = i as usize;
-                            // ASP 中索引从 1 开始
-                            if i >= 1 && i <= arr.len() {
-                                return Ok(arr[i - 1].clone());
-                            }
-                        }
-                        Ok(Value::Empty)
-                    }
-                    Value::String(s) => {
-                        // ASP 中字符串的索引访问：对于单值，(1) 返回字符串本身
-                        if let Value::Number(i) = index_val {
-                            if i == 1.0 {
-                                return Ok(Value::String(s));
-                            }
-                        }
-                        Ok(Value::Empty)
-                    }
-                    Value::Object(obj) => {
-                        if let Some(v) = obj.get(&index_key) {
-                            return Ok(v.clone());
-                        }
-                        Ok(Value::Empty)
-                    }
-                    _ => Ok(Value::Empty),
-                }
+                self.eval_index_on_value(&obj_val, &index_val)
             }
-            _ => Err(RuntimeError::InvalidIndex),
+        }
+    }
+
+    /// 对 Value 进行索引访问
+    fn eval_index_on_value(&self, value: &Value, index: &Value) -> Result<Value, RuntimeError> {
+        match value {
+            Value::Array(arr) => {
+                if let Value::Number(i) = index {
+                    let i = i as usize;
+                    // ASP 中索引从 1 开始
+                    if i >= 1 && i <= arr.len() {
+                        return Ok(arr[i - 1].clone());
+                    }
+                }
+                Ok(Value::Empty)
+            }
+            Value::String(s) => {
+                // ASP 中字符串的索引访问：对于单值，(1) 返回字符串本身
+                if let Value::Number(i) = index {
+                    if i == 1.0 {
+                        return Ok(Value::String(s.clone()));
+                    }
+                }
+                Ok(Value::Empty)
+            }
+            Value::Object(obj) => {
+                let key = ValueConversion::to_string(index);
+                if let Some(v) = obj.get(&key.to_lowercase()) {
+                    return Ok(v.clone());
+                }
+                Ok(Value::Empty)
+            }
+            _ => Ok(Value::Empty),
         }
     }
 
@@ -310,7 +266,7 @@ impl Interpreter {
                                             if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
                                                 let mut new_session = session_obj.clone();
                                                 new_session.remove(&key.to_lowercase());
-                                                                                                }
+                                            }
                                         }
                                         return Ok(Value::Empty);
                                     }
@@ -325,7 +281,7 @@ impl Interpreter {
                                             for key in keys_to_remove {
                                                 new_session.remove(&key);
                                             }
-                                                                                    }
+                                        }
                                         return Ok(Value::Empty);
                                     }
                                     "key" => {
@@ -394,41 +350,16 @@ impl Interpreter {
             }
             Some("session") => {
                 // 处理 Session 对象的属性访问
-                eprintln!("DEBUG: Accessing Session property: {}", property);
                 match property_lower.as_str() {
-                    "sessionid" => {
-                        // 直接从 Session 对象获取 sessionid
-                        eprintln!("DEBUG: Getting SessionID from Session object");
-                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
-                            eprintln!("DEBUG: Session object found, keys: {:?}", session_obj.keys().collect::<Vec<_>>());
-                            if let Some(Value::String(session_id)) = session_obj.get("sessionid") {
-                                eprintln!("DEBUG: SessionID found: {}", session_id);
-                                return Ok(Value::String(session_id.clone()));
-                            }
-                        }
-                        eprintln!("DEBUG: SessionID not found");
-                        Err(RuntimeError::PropertyNotFound(property.to_string()))
-                    }
-                    "timeout" => {
-                        // 直接从 Session 对象获取 timeout
-                        if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
-                            if let Some(Value::Number(timeout)) = session_obj.get("timeout") {
-                                return Ok(Value::Number(*timeout));
-                            }
-                        }
-                        Err(RuntimeError::PropertyNotFound(property.to_string()))
-                    }
                     "contents" => {
                         // 返回特殊的 SessionContents 标记对象
-                        // 使用一个特殊的键来标记这是 Session.Contents 对象
                         let mut contents_obj = std::collections::HashMap::new();
                         contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
-                        // 添加 Count 属性的缓存值（实际值在访问时动态计算）
                         contents_obj.insert("count".to_string(), Value::Number(-1.0));
                         return Ok(Value::Object(contents_obj));
                     }
                     _ => {
-                        // 处理其他 Session 属性（如 SessionID, Timeout）
+                        // 处理其他 Session 属性
                         if let Some(Value::Object(session_obj)) = self.context.get_var("Session").cloned() {
                             if let Some(value) = session_obj.get(&property_lower) {
                                 return Ok(value.clone());

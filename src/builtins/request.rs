@@ -85,6 +85,20 @@ impl Request {
         self.server_variables.insert(key.to_lowercase(), value);
     }
 
+    /// 设置多个查询字符串值（支持同名多值）
+    pub fn set_query_string_multiple(&mut self, key: String, values: Vec<String>) {
+        for value in values {
+            self.query_string.insert(key.to_lowercase(), value);
+        }
+    }
+
+    /// 设置多个表单值（支持同名多值）
+    pub fn set_form_multiple(&mut self, key: String, values: Vec<String>) {
+        for value in values {
+            self.form.insert(key.to_lowercase(), value);
+        }
+    }
+
     /// 获取 QueryString
     pub fn query_string(&self, key: &str) -> Option<&String> {
         self.query_string.get(&key.to_lowercase())
@@ -93,6 +107,36 @@ impl Request {
     /// 获取 Form
     pub fn form(&self, key: &str) -> Option<&String> {
         self.form.get(&key.to_lowercase())
+    }
+
+    /// 获取 QueryString 所有值
+    pub fn query_string_all(&self, key: &str) -> Vec<String> {
+        self.query_string
+            .get(&key.to_lowercase())
+            .cloned()
+            .into_iter()
+            .collect()
+    }
+
+    /// 获取 Form 所有值
+    pub fn form_all(&self, key: &str) -> Vec<String> {
+        self.form
+            .get(&key.to_lowercase())
+            .cloned()
+            .into_iter()
+            .collect()
+    }
+
+    /// 获取所有值（先 QueryString 后 Form）
+    pub fn get_all(&self, key: &str) -> Vec<String> {
+        let key_lower = key.to_lowercase();
+        if let Some(value) = self.query_string.get(&key_lower) {
+            return vec![value.clone()];
+        }
+        if let Some(value) = self.form.get(&key_lower) {
+            return vec![value.clone()];
+        }
+        Vec::new()
     }
 }
 
@@ -182,6 +226,18 @@ impl crate::runtime::BuiltinObject for Request {
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }
+    }
+
+    fn index(&self, key: &Value) -> Result<Value, RuntimeError> {
+        let key_str = ValueConversion::to_string(key).to_lowercase();
+        // 优先查询 querystring，然后是 form
+        if let Some(value) = self.query_string.get(&key_str) {
+            return Ok(Value::String(value.clone()));
+        }
+        if let Some(value) = self.form.get(&key_str) {
+            return Ok(Value::String(value.clone()));
+        }
+        Ok(Value::Empty)
     }
 }
 
