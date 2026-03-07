@@ -8,6 +8,7 @@ mod interpreter;
 mod scope;
 
 pub mod value;
+pub mod objects;
 
 pub use context::{ClassDef, Context, Function};
 pub use error::RuntimeError;

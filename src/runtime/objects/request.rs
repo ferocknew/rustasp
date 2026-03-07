@@ -162,7 +162,7 @@ impl crate::runtime::BuiltinObject for Request {
     fn call_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
             "binaryread" => {
-                // BinaryRead 方法：读取请求体的二进制数据
+                // BinaryReader 方法：读取请求体的二进制数据
                 let bytes_to_read = if args.is_empty() {
                     0
                 } else {

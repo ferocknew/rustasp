@@ -4,7 +4,6 @@
 
 use crate::ast::{BinaryOp, Expr, UnaryOp};
 use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps};
-use crate::utils::identifier_matches;
 
 use super::Interpreter;
 
@@ -177,7 +176,7 @@ impl Interpreter {
         match value {
             Value::Array(arr) => {
                 if let Value::Number(i) = index {
-                    let i = i as usize;
+                    let i = *i as usize;
                     // ASP 中索引从 1 开始
                     if i >= 1 && i <= arr.len() {
                         return Ok(arr[i - 1].clone());
@@ -188,7 +187,7 @@ impl Interpreter {
             Value::String(s) => {
                 // ASP 中字符串的索引访问：对于单值，(1) 返回字符串本身
                 if let Value::Number(i) = index {
-                    if i == 1.0 {
+                    if *i == 1.0 {
                         return Ok(Value::String(s.clone()));
                     }
                 }

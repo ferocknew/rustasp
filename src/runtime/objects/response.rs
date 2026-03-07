@@ -168,7 +168,7 @@ impl Response {
         self.expires
     }
 
-    /// 获取 ExpiresAbsolute（Unix 时间戳秒数）
+    ///获取 ExpiresAbsolute（Unix 时间戳秒数）
     pub fn get_expires_absolute(&self) -> Option<f64> {
         self.expires_absolute.map(|t| {
             t.duration_since(UNIX_EPOCH)

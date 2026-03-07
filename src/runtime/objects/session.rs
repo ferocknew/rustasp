@@ -61,9 +61,7 @@ impl Session {
     }
 
     /// 从 SessionData 创建 Session（用于恢复）
-    pub fn from_session_data(session_data: super::session_manager::SessionData) -> Self {
-        
-
+    pub fn from_session_data(session_data: SessionData) -> Self {
         // 将 serde_json::Value 转换回 Value
         let mut data = HashMap::new();
         for (key, json_value) in session_data.data {
@@ -140,7 +138,7 @@ impl Session {
     }
 
     /// 转换为 SessionData（用于序列化）
-    pub fn to_session_data(&self) -> Result<super::session_manager::SessionData, String> {
+    pub fn to_session_data(&self) -> Result<SessionData, String> {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -171,7 +169,7 @@ impl Session {
             }
         }
 
-        Ok(super::session_manager::SessionData {
+        Ok(SessionData {
             session_id: self.session_id.clone(),
             timeout: self.timeout,
             created_at: now - 100, // 假设创建于 100 秒前
