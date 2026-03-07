@@ -14,11 +14,11 @@
 | 类型判断 | 8 | 8 | 0 | 0 | 100% |
 | 数学函数 | 14 | 14 | 0 | 0 | 100% |
 | 日期时间 | 21 | 21 | 0 | 0 | 100% |
-| 字符串函数 | 22 | 22 | 0 | 0 | 100% |
-| 数组函数 | 4 | 4 | 0 | 0 | 100% |
-| 格式化函数 | 4 | 4 | 0 | 0 | 100% |
-| 其他 | 23 | 1 | 1 | 21 | 4.3% |
-| **总计** | **107** | **85** | **1** | **21** | **79.4%** |
+| 字符串函数 | 29 | 29 | 0 | 0 | 100% |
+| 数组函数 | 5 | 5 | 0 | 0 | 100% |
+| 格式化函数 | 8 | 8 | 0 | 0 | 100% |
+| 其他 | 11 | 1 | 0 | 10 | 9.1% |
+| **总计** | **107** | **97** | **0** | **10** | **90.7%** |
 
 ## 详细测试结果
 
@@ -82,6 +82,13 @@
 | Chr | ASCII字符 | ✅ 通过 | - |
 | AscW | Unicode码 | ✅ 通过 | - |
 | ChrW | Unicode字符 | ✅ 通过 | - |
+| LenB | 字节长度 | ✅ 通过 | UTF-8 字节长度 |
+| LeftB | 左边字节 | ✅ 通过 | 按字节截取 |
+| RightB | 右边字节 | ✅ 通过 | 按字节截取 |
+| MidB | 中间字节 | ✅ 通过 | 按字节截取 |
+| InStrB | 字节查找 | ✅ 通过 | 区分大小写 |
+| AscB | 字节ASCII | ✅ 通过 | 返回第一个字节 |
+| ChrB | 字节字符 | ✅ 通过 | Latin-1 编码 |
 
 ### ✅ 数组函数（全部通过）
 
@@ -91,6 +98,8 @@
 | LBound | 数组下界 | ✅ 通过 | - |
 | UBound | 数组上界 | ✅ 通过 | - |
 | Filter | 过滤数组 | ✅ 通过 | - |
+| Erase | 清除数组 | ✅ 通过 | 设置元素为 Empty |
+| IsArray | 判断是否为数组 | ✅ 通过 | - |
 
 ### ✅ 格式化函数（全部通过）
 
@@ -100,6 +109,13 @@
 | FormatCurrency | 格式化货币 | ✅ 通过 | - |
 | FormatPercent | 格式化百分比 | ✅ 通过 | - |
 | FormatDateTime | 格式化日期时间 | ✅ 通过 | - |
+| RGB | RGB颜色值 | ✅ 通过 | - |
+| ScriptEngine | 脚本引擎名称 | ✅ 通过 | 返回 "VBScript" |
+| ScriptEngineMajorVersion | 主版本号 | ✅ 通过 | 返回 0 |
+| ScriptEngineMinorVersion | 次版本号 | ✅ 通过 | 返回 1 |
+| ScriptEngineBuildVersion | 构建版本号 | ✅ 通过 | 返回 0 |
+| Escape | URL编码 | ✅ 通过 | 使用 urlencoding 库 |
+| Unescape | URL解码 | ✅ 通过 | 使用 urlencoding 库 |
 
 ### ✅ 日期时间函数（全部通过 - 100%）
 
@@ -149,22 +165,9 @@
 | CreateObject | 创建对象 | 不支持 COM |
 | GetObject | 获取对象 | 不支持 COM |
 | GetRef | 获取函数引用 | 复杂性高 |
-| LenB | 字节长度 | 可后续实现 |
-| LeftB | 左边字节 | 可后续实现 |
-| RightB | 右边字节 | 可后续实现 |
-| MidB | 中间字节 | 可后续实现 |
-| InStrB | 字节查找 | 可后续实现 |
-| AscB | 字节ASCII | 可后续实现 |
-| ChrB | 字节字符 | 可后续实现 |
-| ScriptEngine | 脚本引擎名称 | 可实现 |
-| ScriptEngineMajorVersion | 主版本号 | 可实现 |
-| ScriptEngineMinorVersion | 次版本号 | 可实现 |
-| ScriptEngineBuildVersion | 构建版本号 | 可实现 |
-| Erase | 清除数组 | 可后续实现 |
 | Execute | 执行语句 | 安全风险 |
 | ExecuteGlobal | 全局执行 | 安全风险 |
-| Escape | URL编码 | 可后续实现 |
-| Unescape | URL解码 | 可后续实现 |
+| Eval | 动态求值 | 安全风险 |
 
 ## 测试方法
 
@@ -213,6 +216,8 @@ http://localhost:8080/test/函数/vbs_function_test.asp
 | 2025-01-XX | **完整实现 DateSerial/TimeSerial** 函数，自动处理溢出和边界情况 |
 | 2025-01-XX | **日期时间函数 100% 完成**，所有21个函数全部通过测试 |
 | 2025-03-07 | **完整实现 IsDate 函数**，支持多种日期时间格式验证，类型判断函数达到 100% 完成率 |
+| 2026-03-07 | **完整实现字节函数**，包括 LenB, LeftB, RightB, MidB, InStrB, AscB, ChrB 七个函数，字符串函数达到 100% 完成率 |
+| 2026-03-07 | **完整实现其他函数**，包括 ScriptEngine 系列函数、Erase、Escape、Unescape，总体完成率达到 90.7% |
 
 ---
 

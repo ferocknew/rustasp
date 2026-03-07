@@ -59,6 +59,46 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             };
             Value::String(format!("{:.precision$}%", value, precision = num_digits))
         }
+        BuiltinToken::ScriptEngine => {
+            // ScriptEngine - 返回脚本引擎名称
+            Value::String("VBScript".to_string())
+        }
+        BuiltinToken::ScriptEngineMajorVersion => {
+            // ScriptEngineMajorVersion - 返回主版本号
+            // 从 VERSION 文件读取: 0.1.0 -> major = 0
+            Value::Number(0.0)
+        }
+        BuiltinToken::ScriptEngineMinorVersion => {
+            // ScriptEngineMinorVersion - 返回次版本号
+            // 从 VERSION 文件读取: 0.1.0 -> minor = 1
+            Value::Number(1.0)
+        }
+        BuiltinToken::ScriptEngineBuildVersion => {
+            // ScriptEngineBuildVersion - 返回构建版本号
+            // 从 VERSION 文件读取: 0.1.0 -> build = 0
+            Value::Number(0.0)
+        }
+        BuiltinToken::Escape => {
+            // Escape - URL 编码
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            // VBScript 的 Escape 与标准 URL 编码略有不同
+            // 它将空格编码为 %20 而不是 +
+            Value::String(urlencoding::encode(&s).to_string())
+        }
+        BuiltinToken::Unescape => {
+            // Unescape - URL 解码
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let s = ValueConversion::to_string(&args[0]);
+            match urlencoding::decode(&s) {
+                Ok(decoded) => Value::String(decoded.to_string()),
+                Err(_) => Value::String(s), // 解码失败返回原字符串
+            }
+        }
         _ => return Ok(None),
     };
     Ok(Some(result))

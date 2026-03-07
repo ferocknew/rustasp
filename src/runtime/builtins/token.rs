@@ -117,6 +117,13 @@ pub enum BuiltinToken {
     FormatCurrency = 276,
     FormatNumber = 277,
     FormatPercent = 278,
+    ScriptEngine = 279,
+    ScriptEngineMajorVersion = 280,
+    ScriptEngineMinorVersion = 281,
+    ScriptEngineBuildVersion = 282,
+    Erase = 283,
+    Escape = 284,
+    Unescape = 285,
 
     // 未知函数
     #[allow(dead_code)]
@@ -231,4 +238,11 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("formatcurrency", BuiltinToken::FormatCurrency),
     ("formatnumber", BuiltinToken::FormatNumber),
     ("formatpercent", BuiltinToken::FormatPercent),
+    ("scriptengine", BuiltinToken::ScriptEngine),
+    ("scriptenginemajorversion", BuiltinToken::ScriptEngineMajorVersion),
+    ("scriptengineminorversion", BuiltinToken::ScriptEngineMinorVersion),
+    ("scriptenginebuildversion", BuiltinToken::ScriptEngineBuildVersion),
+    ("erase", BuiltinToken::Erase),
+    ("escape", BuiltinToken::Escape),
+    ("unescape", BuiltinToken::Unescape),
 ];

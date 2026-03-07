@@ -44,6 +44,23 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             Value::Boolean(matches!(args[0], Value::Array(_)))
         }
+        BuiltinToken::Erase => {
+            // Erase - 清除数组元素，将其设置为 Empty
+            // 注意：VBScript 中 Erase 是语句，但这里作为函数实现
+            // 对于固定大小数组，将每个元素设置为 Empty
+            // 对于动态数组，重新分配内存
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            match &args[0] {
+                Value::Array(arr) => {
+                    // 创建一个新数组，所有元素设置为 Empty
+                    let erased = vec![Value::Empty; arr.len()];
+                    Value::Array(erased)
+                }
+                _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
+            }
+        }
         _ => return Ok(None),
     };
     Ok(Some(result))
