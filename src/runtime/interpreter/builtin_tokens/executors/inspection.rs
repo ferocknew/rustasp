@@ -1,6 +1,6 @@
 //! 检验函数执行器
 
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
@@ -33,7 +33,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
-            Value::Boolean(false)
+            Value::Boolean(is_date(&args[0]))
         }
         BuiltinToken::VarType => {
             if args.is_empty() {
