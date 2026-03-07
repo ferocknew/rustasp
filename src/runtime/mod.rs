@@ -42,6 +42,13 @@ pub trait BuiltinObject: Send + Sync + std::fmt::Debug {
         self.get_property(&key_str)
     }
 
+    /// 索引赋值（如 Session("key") = value）
+    fn set_index(&mut self, key: &Value, value: Value) -> Result<(), RuntimeError> {
+        let key_str = ValueConversion::to_string(key);
+        // 默认实现：尝试作为属性设置
+        self.set_property(&key_str, value)
+    }
+
     /// 向下转型支持
     fn as_any(&self) -> &dyn std::any::Any;
 
