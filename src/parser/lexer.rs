@@ -36,6 +36,8 @@ pub enum Token {
     // 分隔符
     LParen,
     RParen,
+    LeftBracket,   // [ 用于转义关键字
+    RightBracket,  // ] 用于转义关键字
     Comma,
     Dot,
     Colon,
@@ -116,6 +118,12 @@ impl Lexer {
             // 数字
             if ch.is_ascii_digit() {
                 tokens.push(self.lex_number()?);
+                continue;
+            }
+
+            // 方括号转义的标识符（如 [Error], [Date]）
+            if ch == '[' {
+                tokens.push(self.lex_bracket_ident()?);
                 continue;
             }
 
@@ -262,6 +270,33 @@ impl Lexer {
             .map_err(|_| ParseError::LexerError(format!("Invalid number: {}", num_str)))?;
 
         Ok(Token::Number(num))
+    }
+
+    fn lex_bracket_ident(&mut self) -> Result<Token, ParseError> {
+        self.advance(); // 跳过开始 [
+        let mut content = String::new();
+
+        while self.pos < self.input.len() {
+            let ch = self.input[self.pos];
+            if ch == ']' {
+                self.advance(); // 跳过结束 ]
+                // 方括号内的内容始终作为标识符，不检查关键字
+                return Ok(Token::Ident(content));
+            } else if ch == '\n' {
+                return Err(ParseError::LexerError(format!(
+                    "Unterminated bracket identifier at line {}",
+                    self.line
+                )));
+            } else {
+                content.push(ch);
+                self.advance();
+            }
+        }
+
+        Err(ParseError::LexerError(format!(
+            "Unterminated bracket identifier at line {}",
+            self.line
+        )))
     }
 
     fn lex_ident_or_keyword(&mut self) -> Result<Token, ParseError> {
@@ -413,6 +448,14 @@ impl Lexer {
             ')' => {
                 self.advance();
                 Token::RParen
+            }
+            '[' => {
+                self.advance();
+                Token::LeftBracket
+            }
+            ']' => {
+                self.advance();
+                Token::RightBracket
             }
             ',' => {
                 self.advance();
