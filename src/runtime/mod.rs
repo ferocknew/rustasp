@@ -14,6 +14,8 @@ pub mod objects;
 
 pub use class::{VbsClass, VbsInstance};
 pub use context::{ClassDef, Context, Function};
+// 重新导出 Rc 供其他模块使用
+pub use std::rc::Rc;
 pub use error::{ControlFlow, RuntimeError};
 pub use interpreter::Interpreter;
 pub use scope::Scope;

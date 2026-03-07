@@ -8,6 +8,7 @@ mod control_stmt;
 
 use crate::ast::{Param, Stmt};
 use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass};
+use std::rc::Rc;
 
 use super::Interpreter;
 
@@ -99,13 +100,22 @@ impl Interpreter {
         Ok(Value::Empty)
     }
 
-    /// 注册类定义
+    /// 注册类定义（预编译 VbsClass 并缓存）
     fn register_class(&mut self, name: &str, members: &[crate::ast::ClassMember]) -> Result<Value, RuntimeError> {
-        // 创建 VbsClass 并存储到 context 中
-        let _vbs_class = VbsClass::from_ast(name.to_string(), members.to_vec());
-
+        let normalized_name = crate::utils::normalize_identifier(name);
+        
+        // 预编译 VbsClass（只构建一次）
+        let vbs_class = VbsClass::from_ast(name.to_string(), members.to_vec());
+        
+        // 缓存编译后的类
         self.context.classes.insert(
-            crate::utils::normalize_identifier(name),
+            normalized_name.clone(),
+            Rc::new(vbs_class),
+        );
+        
+        // 保留原始定义用于调试
+        self.context.class_defs.insert(
+            normalized_name,
             ClassDef {
                 name: name.to_string(),
                 members: members.to_vec(),

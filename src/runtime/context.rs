@@ -3,8 +3,10 @@
 use super::Scope;
 use super::Value;
 use super::objects::Response;
+use super::VbsClass;
 use crate::ast::Param;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// 函数定义
 #[derive(Debug, Clone)]
@@ -23,8 +25,10 @@ pub struct Context {
     pub scope_stack: Vec<Scope>,
     /// 函数表
     pub functions: HashMap<String, Function>,
-    /// 类表
-    pub classes: HashMap<String, ClassDef>,
+    /// 类表（预编译后的 VbsClass，使用 Rc 共享）
+    pub classes: HashMap<String, Rc<VbsClass>>,
+    /// 类定义（保留原始 AST 用于调试）
+    pub class_defs: HashMap<String, ClassDef>,
     /// 输出缓冲区
     pub output: String,
     /// 是否应该退出
@@ -50,6 +54,7 @@ impl Context {
             scope_stack: Vec::new(),
             functions: HashMap::new(),
             classes: HashMap::new(),
+            class_defs: HashMap::new(),
             output: String::new(),
             should_exit: false,
             request_data: HashMap::new(),
