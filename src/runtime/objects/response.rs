@@ -19,6 +19,8 @@ pub struct Response {
     is_buffering: bool,
     /// 字符集
     charset: Option<String>,
+    /// 代码页
+    codepage: Option<i32>,
     /// 缓存控制
     cache_control: Option<String>,
     /// 过期时间（分钟）
@@ -43,6 +45,7 @@ impl Response {
             headers: HashMap::new(),
             is_buffering: true,
             charset: None,
+            codepage: None,
             cache_control: None,
             expires: None,
             expires_absolute: None,
@@ -216,6 +219,7 @@ impl crate::runtime::BuiltinObject for Response {
             "status" => Ok(Value::Number(self.status as f64)),
             // 新增属性
             "charset" => Ok(self.get_charset().map(|s| Value::String(s.clone())).unwrap_or(Value::Empty)),
+            "codepage" => Ok(self.codepage.map(|n| Value::Number(n as f64)).unwrap_or(Value::Empty)),
             "cachecontrol" => Ok(self.get_cache_control().map(|s| Value::String(s.clone())).unwrap_or(Value::Empty)),
             "expires" => Ok(self.get_expires().map(|n| Value::Number(n as f64)).unwrap_or(Value::Empty)),
             "expiresabsolute" => Ok(self.get_expires_absolute().map(|n| Value::Number(n)).unwrap_or(Value::Empty)),
@@ -255,6 +259,12 @@ impl crate::runtime::BuiltinObject for Response {
             // 新增属性
             "charset" => {
                 self.set_charset(&ValueConversion::to_string(&value));
+                Ok(())
+            }
+            "codepage" => {
+                // 保存代码页设置,但在当前实现中不做实际转换
+                // 因为 Rust 的字符串处理默认就是 UTF-8
+                self.codepage = Some(ValueConversion::to_number(&value) as i32);
                 Ok(())
             }
             "cachecontrol" => {

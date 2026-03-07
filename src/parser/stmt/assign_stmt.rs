@@ -136,15 +136,12 @@ impl Parser {
                     self.expect(Token::RParen)?;
 
                     // 在赋值左侧，括号总是表示索引访问
-                    if args.len() == 1 {
+                    // 支持多维数组: arr(0,0) 被解析为嵌套索引 ((arr(0))(0))
+                    for arg in args {
                         expr = Expr::Index {
                             object: Box::new(expr),
-                            index: Box::new(args.into_iter().next().unwrap()),
+                            index: Box::new(arg),
                         };
-                    } else {
-                        return Err(ParseError::ParserError(
-                            "Invalid index in assignment target".to_string(),
-                        ));
                     }
                 }
 
