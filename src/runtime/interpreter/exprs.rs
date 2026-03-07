@@ -286,11 +286,8 @@ impl Interpreter {
                 let arg_values = arg_values?;
 
                 // 调用 Response 对象的方法
-                if let Some(response) = self.context.response_mut() {
-                    response.call_method(method_name, arg_values)
-                } else {
-                    Err(RuntimeError::Generic("Response object not available".to_string()))
-                }
+                let response = self.context.response_mut();
+                response.call_method(method_name, arg_values)
             }
             // Request.QueryString / Request.Form
             (Some("request"), "querystring") => {
@@ -386,7 +383,7 @@ impl Interpreter {
                                             if index >= 1 {
                                                 if let Some(Value::Object(session_obj)) = self.context.get_var("Session") {
                                                     let keys: Vec<String> = session_obj.keys()
-                                                        .filter(|k| !k.starts_with("__") && k != "sessionid" && k != "timeout")
+                                                        .filter(|k| !k.starts_with("__") && k.as_str() != "sessionid" && k.as_str() != "timeout")
                                                         .cloned()
                                                         .collect();
                                                     if let Some(key) = keys.get((index - 1) as usize) {
@@ -459,15 +456,17 @@ impl Interpreter {
             }
             Some("response") => {
                 // 从 response 对象获取属性
-                if let Some(response) = self.context.response() {
-                    let response_ref = response.clone();
-                    return response_ref.get_property(property);
-                }
-                // 如果无法获取 response，返回空值
-                match property_lower.as_str() {
-                    "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
-                    | "expires" | "expiresabsolute" | "pics" | "isclientconnected" => Ok(Value::Empty),
-                    _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                let response = self.context.response();
+                match response.get_property(property) {
+                    Ok(val) => return Ok(val),
+                    Err(_) => {
+                        // 如果 BuiltinObject 返回错误，提供默认空值
+                        match property_lower.as_str() {
+                            "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
+                            | "expires" | "expiresabsolute" | "pics" | "isclientconnected" | "cookies" => Ok(Value::Empty),
+                            _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
+                        }
+                    }
                 }
             }
             Some("server") => {
