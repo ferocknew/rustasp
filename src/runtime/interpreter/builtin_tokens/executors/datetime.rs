@@ -4,6 +4,54 @@ use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
 use chrono::{Datelike, Timelike, NaiveDate, NaiveDateTime};
 
+/// 解析 VBScript 时间字符串
+/// 支持格式: "12:30:45", "4:35:17 PM", "14:30" 等
+fn parse_vbscript_time(time_str: &str) -> Option<chrono::NaiveTime> {
+    let trimmed = time_str.trim().to_lowercase();
+
+    // 处理 AM/PM 标记
+    let (time_part, is_pm, has_period) = if trimmed.ends_with("pm") {
+        (trimmed[..trimmed.len()-2].trim().to_string(), true, true)
+    } else if trimmed.ends_with("am") {
+        (trimmed[..trimmed.len()-2].trim().to_string(), false, true)
+    } else {
+        (trimmed.to_string(), false, false)
+    };
+
+    // 尝试各种时间格式
+    let formats = [
+        "%H:%M:%S",    // 14:30:45
+        "%H:%M",       // 14:30
+        "%I:%M:%S",    // 2:30:45 (12小时制)
+        "%I:%M",       // 2:30 (12小时制)
+        "%H:%M:%S %.f", // 带毫秒
+    ];
+
+    for format in &formats {
+        if let Ok(mut time) = chrono::NaiveTime::parse_from_str(time_part, format) {
+            // 如果是 12 小时制且是 PM，且小时不是 12
+            if has_period && is_pm && time.hour() < 12 {
+                time = chrono::NaiveTime::from_hms_opt(
+                    time.hour() + 12,
+                    time.minute(),
+                    time.second()
+                ).unwrap_or(time);
+            }
+            // 如果是 12 小时制且是 AM，且小时是 12
+            if has_period && !is_pm && time.hour() == 12 {
+                time = chrono::NaiveTime::from_hms_opt(
+                    0,
+                    time.minute(),
+                    time.second()
+                ).unwrap_or(time);
+            }
+            return Some(time);
+        }
+    }
+
+    None
+}
+
 /// 解析 VBScript 日期字符串
 /// 支持格式: #2024-01-01#, "2024-01-01", "2024/01/01", "01/01/2024" 等
 fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
@@ -354,9 +402,80 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 + now.nanosecond() as f64 / 1_000_000_000.0;
             Value::Number(seconds_since_midnight)
         }
-        BuiltinToken::DateSerial | BuiltinToken::DateValue | BuiltinToken::TimeSerial | BuiltinToken::TimeValue => {
-            // TODO: 实现完整的日期序列化/反序列化
-            Value::Empty
+        BuiltinToken::DateValue => {
+            // DateValue(date_string) - 将日期字符串转换为日期
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let date_str = ValueConversion::to_string(&args[0]);
+
+            // 解析日期字符串（忽略时间部分）
+            if let Some(dt) = parse_vbscript_date(&date_str) {
+                let (_, date_format, _) = get_datetime_format();
+                Value::String(dt.format(&date_format).to_string())
+            } else {
+                Value::Empty
+            }
+        }
+        BuiltinToken::TimeValue => {
+            // TimeValue(time_string) - 将时间字符串转换为时间
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let time_str = ValueConversion::to_string(&args[0]);
+
+            // 解析时间字符串
+            if let Some(dt) = parse_vbscript_time(&time_str) {
+                let (_, _, time_format) = get_datetime_format();
+                Value::String(dt.format(&time_format).to_string())
+            } else {
+                Value::Empty
+            }
+        }
+        BuiltinToken::DateSerial => {
+            // DateSerial(year, month, day) - 根据年月日生成日期
+            if args.len() < 3 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let year = ValueConversion::to_number(&args[0]) as i32;
+            let month = ValueConversion::to_number(&args[1]) as i32;
+            let day = ValueConversion::to_number(&args[2]) as i32;
+
+            // 处理月份溢出（如 month=13 表示下一年的1月）
+            let adjusted_year = year + (month - 1) / 12;
+            let adjusted_month = ((month - 1) % 12 + 12) % 12 + 1;
+
+            // 尝试创建日期
+            if let Some(date) = NaiveDate::from_ymd_opt(adjusted_year, adjusted_month as u32, day as u32) {
+                let (_, date_format, _) = get_datetime_format();
+                Value::String(date.format(&date_format).to_string())
+            } else {
+                Value::Empty
+            }
+        }
+        BuiltinToken::TimeSerial => {
+            // TimeSerial(hour, minute, second) - 根据时分秒生成时间
+            if args.len() < 3 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let hour = ValueConversion::to_number(&args[0]) as i64;
+            let minute = ValueConversion::to_number(&args[1]) as i64;
+            let second = ValueConversion::to_number(&args[2]) as i64;
+
+            // 处理溢出：将所有时间转换为秒，然后计算时分秒
+            let total_seconds = hour * 3600 + minute * 60 + second;
+            let normalized_seconds = ((total_seconds % 86400) + 86400) % 86400; // 确保在 0-86399 之间
+
+            let norm_hour = (normalized_seconds / 3600) as u32;
+            let norm_minute = ((normalized_seconds % 3600) / 60) as u32;
+            let norm_second = (normalized_seconds % 60) as u32;
+
+            if let Some(time) = chrono::NaiveTime::from_hms_opt(norm_hour, norm_minute, norm_second) {
+                let (_, _, time_format) = get_datetime_format();
+                Value::String(time.format(&time_format).to_string())
+            } else {
+                Value::Empty
+            }
         }
         _ => return Ok(None),
     };
