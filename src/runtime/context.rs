@@ -3,13 +3,14 @@
 use super::Scope;
 use super::Value;
 use super::objects::Response;
+use crate::ast::Param;
 use std::collections::HashMap;
 
 /// 函数定义
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<Param>,
     pub body: Vec<crate::ast::Stmt>,
 }
 

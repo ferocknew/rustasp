@@ -357,6 +357,8 @@ impl Lexer {
             "sub" => Some(Keyword::Sub),
             "function" => Some(Keyword::Function),
             "call" => Some(Keyword::Call),
+            "byval" => Some(Keyword::ByVal),
+            "byref" => Some(Keyword::ByRef),
             "set" => Some(Keyword::Set),
             "let" => Some(Keyword::Let),
             "class" => Some(Keyword::Class),
