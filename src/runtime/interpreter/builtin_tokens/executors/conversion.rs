@@ -17,7 +17,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             Value::Number(ValueConversion::to_number(&args[0]) as i32 as f64)
         }
-        BuiltinToken::CLng | BuiltinToken::CSng | BuiltinToken::CDbl => {
+        BuiltinToken::CLng | BuiltinToken::CSng | BuiltinToken::CDbl | BuiltinToken::CCur => {
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
