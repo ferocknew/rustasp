@@ -126,7 +126,13 @@ pub fn process_includes(
                 web_root,
                 processed_files,
             )?;
-            
+
+            // 在 include 内容前添加文件名标记，方便错误定位
+            // 使用相对路径显示，更易读
+            let relative_path = resolved_path.strip_prefix(web_root)
+                .unwrap_or(&resolved_path);
+            result.push_str(&format!("' === Included from: {} ===\n",
+                relative_path.display()));
             result.push_str(&processed_include);
             result.push('\n');
         } else {
