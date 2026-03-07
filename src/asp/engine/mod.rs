@@ -6,7 +6,6 @@
 mod executor;
 mod error;
 
-pub use error::{format_error_with_context, extract_error_line};
 pub use executor::Engine;
 
 use std::collections::HashMap;
