@@ -95,32 +95,61 @@ impl Interpreter {
     }
 
     fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
+        eprintln!("DEBUG: Call {} with {:?} args", name, args.len());
+
+        // 尝试调用内置函数（先计算值）
         let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
         let arg_values = arg_values?;
-
-        eprintln!("DEBUG: Call {} with {:?} args", name, arg_values.len());
-
-        // 尝试调用内置函数
         if let Some(result) = self.try_call_builtin(name, &arg_values) {
             return result;
         }
 
-        self.eval_user_function_call(name, &arg_values)
+        // 用户函数调用，传递原始表达式以支持 ByRef
+        self.eval_user_function_call(name, args)
     }
 
-    fn eval_user_function_call(&mut self, name: &str, arg_values: &[Value]) -> Result<Value, RuntimeError> {
+    fn eval_user_function_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
         if let Some(func) = self.context.get_function(name).cloned() {
             eprintln!("DEBUG: Found user function {}", name);
+            
+            // 记录 ByRef 参数映射: (参数名 -> 原始变量名)
+            let mut byref_mapping: Vec<(String, String)> = Vec::new();
+            
+            // 计算参数值
+            let mut arg_values = Vec::new();
+            for (i, arg) in args.iter().enumerate() {
+                // 检查是否是 ByRef 参数且参数为变量
+                let is_byref_param = i < func.params.len() && func.params[i].is_byref;
+                if is_byref_param {
+                    if let Expr::Variable(var_name) = arg {
+                        // ByRef 参数，记录映射
+                        let param_name = func.params[i].name.clone();
+                        byref_mapping.push((param_name, var_name.clone()));
+                        // 使用当前变量值
+                        let value = self.context.get_var(var_name)
+                            .cloned()
+                            .unwrap_or(Value::Empty);
+                        arg_values.push(value);
+                    } else {
+                        // 不是变量表达式，按值传递
+                        arg_values.push(self.eval_expr(arg)?);
+                    }
+                } else {
+                    // ByVal 参数，正常计算
+                    arg_values.push(self.eval_expr(arg)?);
+                }
+            }
+
             self.context.push_scope();
 
             // 绑定参数
-            for (i, param_name) in func.params.iter().enumerate() {
+            for (i, param) in func.params.iter().enumerate() {
                 let value = if i < arg_values.len() {
                     arg_values[i].clone()
                 } else {
                     Value::Empty
                 };
-                self.context.define_var(param_name.clone(), value);
+                self.context.define_var(param.name.clone(), value);
             }
 
             // 初始化函数名变量为 Empty（用于返回值）
@@ -149,10 +178,21 @@ impl Interpreter {
                 .cloned()
                 .unwrap_or(Value::Empty);
 
+            // 处理 ByRef 参数回写
+            for (param_name, original_var_name) in &byref_mapping {
+                if let Some(value) = self.context.get_var(param_name).cloned() {
+                    self.context.set_var(original_var_name.clone(), value);
+                }
+            }
+
             self.context.pop_scope();
             return Ok(result);
         }
 
+        // 回退到数组索引访问
+        let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+        let arg_values = arg_values?;
+        
         if arg_values.len() == 1 {
             // 处理数组索引访问：arr(0)
             if let Some(Value::Array(arr)) = self.context.get_var(name) {
