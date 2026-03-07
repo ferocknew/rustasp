@@ -13,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct SessionData {
     /// Session ID
     pub session_id: String,
-    /// 超时时间（分钟）
+    /// 超时时间（秒）
     pub timeout: u32,
     /// 创建时间戳
     pub created_at: u64,
@@ -178,8 +178,8 @@ impl SessionManager {
             .unwrap_or_default()
             .as_secs();
 
-        let timeout_seconds = session_data.timeout as u64 * 60;
-        now > session_data.last_accessed + timeout_seconds
+        // timeout 单位为秒
+        now > session_data.last_accessed + session_data.timeout as u64
     }
 
     /// 清理所有过期 Session
@@ -253,6 +253,9 @@ mod tests {
         // 创建过期时间的 Session（1秒）
         let session_id = SessionManager::generate_session_id();
         manager.create_session(session_id.clone(), 1).unwrap();
+
+        // 清除缓存，确保从文件加载
+        manager.cache.clear();
 
         // 等待 Session 过期
         std::thread::sleep(std::time::Duration::from_secs(2));

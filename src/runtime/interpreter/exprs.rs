@@ -49,98 +49,7 @@ impl Interpreter {
                 }
             }
             Expr::Call { name, args } => {
-                // 计算参数值
-                let arg_values: Result<Vec<Value>, _> =
-                    args.iter().map(|e| self.eval_expr(e)).collect();
-                let arg_values = arg_values?;
-
-                eprintln!("DEBUG: Call {} with {:?} args", name, arg_values.len());
-
-                // 首先尝试作为内置函数调用
-                if let Some(result) = super::builtins::call_builtin_function_multi(name, &arg_values) {
-                    return result;
-                }
-
-                // 单参数内置函数回退
-                if arg_values.len() == 1 {
-                    if let Some(result) =
-                        super::builtins::call_builtin_function(&name.to_lowercase(), &arg_values[0])
-                    {
-                        return result;
-                    }
-                }
-
-                // 尝试作为用户定义函数调用
-                if let Some(func) = self.context.get_function(name).cloned() {
-                    eprintln!("DEBUG: Found user function {}", name);
-
-                    // 创建新的作用域
-                    self.context.push_scope();
-
-                    // 绑定参数到函数作用域
-                    for (i, param_name) in func.params.iter().enumerate() {
-                        let value = if i < arg_values.len() {
-                            arg_values[i].clone()
-                        } else {
-                            Value::Empty
-                        };
-                        self.context.define_var(param_name.clone(), value);
-                    }
-
-                    // 执行函数体
-                    for stmt in &func.body {
-                        match self.eval_stmt(stmt) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                self.context.pop_scope();
-                                return Err(e);
-                            }
-                        }
-                    }
-
-                    // 获取函数返回值（在 VBScript 中，函数名作为返回值变量）
-                    let func_name_lower = crate::utils::normalize_identifier(&func.name);
-                    let result = self.context.get_var(&func.name)
-                        .or_else(|| self.context.get_var(&func_name_lower))
-                        .cloned()
-                        .unwrap_or(Value::Empty);
-
-                    // 弹出作用域
-                    self.context.pop_scope();
-
-                    return Ok(result);
-                }
-
-                // 未找到函数，尝试作为数组索引访问
-                // 支持 fruits(i) 这样的数组访问语法
-                if arg_values.len() == 1 {
-                    // 特殊处理 Session 对象：Session("key") 语法
-                    if identifier_matches(name, "session") {
-                        if let Value::String(key) = &arg_values[0] {
-                            let key_lower = key.to_lowercase();
-                            if let Some(Value::Object(obj)) = self.context.get_var("Session").cloned() {
-                                if let Some(v) = obj.get(&key_lower) {
-                                    return Ok(v.clone());
-                                }
-                            }
-                            return Ok(Value::Empty);
-                        }
-                    }
-
-                    // 处理普通数组索引
-                    if let Some(Value::Array(arr)) = self.context.get_var(name) {
-                        let idx = &arg_values[0];
-                        if let Value::Number(i) = idx {
-                            let i = *i as usize;
-                            if i < arr.len() {
-                                return Ok(arr[i].clone());
-                            }
-                        }
-                    }
-                }
-
-                // 未找到函数或索引
-                Err(RuntimeError::UndefinedVariable(format!("Function '{}' or array index", name)))
+                self.eval_call_expr(name, args)
             }
             Expr::Property { object, property } => {
                 self.eval_property(object, property)
@@ -159,6 +68,85 @@ impl Interpreter {
                 expr
             ))),
         }
+    }
+
+    fn eval_call_expr(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
+        let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+        let arg_values = arg_values?;
+
+        eprintln!("DEBUG: Call {} with {:?} args", name, arg_values.len());
+
+        if let Some(result) = super::builtins::call_builtin_function_multi(name, &arg_values) {
+            return result;
+        }
+
+        if arg_values.len() == 1 {
+            if let Some(result) = super::builtins::call_builtin_function(&name.to_lowercase(), &arg_values[0]) {
+                return result;
+            }
+        }
+
+        self.eval_user_function_call(name, &arg_values)
+    }
+
+    fn eval_user_function_call(&mut self, name: &str, arg_values: &[Value]) -> Result<Value, RuntimeError> {
+        if let Some(func) = self.context.get_function(name).cloned() {
+            eprintln!("DEBUG: Found user function {}", name);
+            self.context.push_scope();
+
+            for (i, param_name) in func.params.iter().enumerate() {
+                let value = if i < arg_values.len() {
+                    arg_values[i].clone()
+                } else {
+                    Value::Empty
+                };
+                self.context.define_var(param_name.clone(), value);
+            }
+
+            for stmt in &func.body {
+                match self.eval_stmt(stmt) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        self.context.pop_scope();
+                        return Err(e);
+                    }
+                }
+            }
+
+            let func_name_lower = crate::utils::normalize_identifier(&func.name);
+            let result = self.context.get_var(&func.name)
+                .or_else(|| self.context.get_var(&func_name_lower))
+                .cloned()
+                .unwrap_or(Value::Empty);
+
+            self.context.pop_scope();
+            return Ok(result);
+        }
+
+        if arg_values.len() == 1 {
+            if identifier_matches(name, "session") {
+                if let Value::String(key) = &arg_values[0] {
+                    let key_lower = key.to_lowercase();
+                    if let Some(Value::Object(obj)) = self.context.get_var("Session").cloned() {
+                        if let Some(v) = obj.get(&key_lower) {
+                            return Ok(v.clone());
+                        }
+                    }
+                    return Ok(Value::Empty);
+                }
+            }
+
+            if let Some(Value::Array(arr)) = self.context.get_var(name) {
+                if let Value::Number(i) = &arg_values[0] {
+                    let i = *i as usize;
+                    if i < arr.len() {
+                        return Ok(arr[i].clone());
+                    }
+                }
+            }
+        }
+
+        Err(RuntimeError::UndefinedVariable(format!("Function '{}' or array index", name)))
     }
 
     /// 处理索引表达式
