@@ -231,7 +231,13 @@ impl crate::runtime::BuiltinObject for Response {
                 Ok(())
             }
             "status" => {
-                self.status = ValueConversion::to_number(&value) as u16;
+                let status_str = ValueConversion::to_string(&value);
+                // 解析状态码，支持 "404 Not Found" 或纯数字 "404" 格式
+                if let Some(code_str) = status_str.split_whitespace().next() {
+                    if let Ok(code) = code_str.parse::<u16>() {
+                        self.status = code;
+                    }
+                }
                 Ok(())
             }
             // 新增属性
