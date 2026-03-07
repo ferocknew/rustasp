@@ -5,10 +5,12 @@
 mod compare;
 mod conversion;
 mod display;
+mod index;
 mod operators;
 mod value;
 
 pub use compare::ValueCompare;
 pub use conversion::ValueConversion;
+pub use index::ValueIndex;
 pub use operators::ValueOps;
 pub use value::Value;
