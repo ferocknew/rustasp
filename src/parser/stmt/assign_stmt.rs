@@ -37,17 +37,14 @@ impl Parser {
 
         // Lookahead 寻找赋值符号
         let mut pos = 1;
-        eprintln!("DEBUG is_assignment_start: ident={:?}", self.peek());
         loop {
             let tok = self.peek_ahead(pos);
-            eprintln!("DEBUG is_assignment_start: pos={}, tok={:?}", pos, tok);
             match tok {
                 // 直接赋值: x = ...
                 Token::Eq => {
                     // 检查 = 后面是否是新的一行或语句结束
                     // 如果是，则是比较表达式；否则是赋值
                     // 在 VBScript 中，单独一行的 x = 1 总是赋值
-                    eprintln!("DEBUG is_assignment_start: found Eq, returning true");
                     return true;
                 }
 
@@ -85,7 +82,6 @@ impl Parser {
 
                 // 其他情况不是赋值
                 _ => {
-                    eprintln!("DEBUG is_assignment_start: other token, returning false");
                     return false;
                 }
             }
