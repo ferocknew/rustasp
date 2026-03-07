@@ -2,7 +2,7 @@
 //!
 //! 将解释器拆分为多个子模块以提高可维护性
 
-mod exprs;
+pub mod exprs;
 mod stmts;
 
 use crate::ast::Program;
@@ -13,7 +13,7 @@ use crate::runtime::builtins::TokenRegistry;
 pub struct Interpreter {
     pub(crate) context: Context,
     /// 内置函数注册表（缓存，避免每次调用都创建）
-    builtin_registry: TokenRegistry,
+    pub(crate) builtin_registry: TokenRegistry,
 }
 
 impl Interpreter {
