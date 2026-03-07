@@ -3,7 +3,7 @@
 //! 处理 Assignment、Set 及索引/属性赋值
 
 use crate::ast::Expr;
-use crate::runtime::{BuiltinObject, RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value};
 
 use super::Interpreter;
 
@@ -51,10 +51,14 @@ impl Interpreter {
 
         match object {
             Expr::Variable(name) => {
-                // 处理 Session 对象
-                if name.to_lowercase() == "session" {
-                    if let Value::String(key) = idx {
-                        return self.builtin_session_set_property(&key, val);
+                // 先尝试从变量表获取对象
+                if let Some(obj_val) = self.context.get_var(name).cloned() {
+                    // 如果是对象，使用 trait 的 set_index 方法
+                    if let Value::Object(mut obj) = obj_val {
+                        obj.set_index(&idx, val.clone())?;
+                        // 更新变量表中的对象（某些对象可能需要写回）
+                        self.context.set_var(name.clone(), Value::Object(obj));
+                        return Ok(Value::Empty);
                     }
                 }
 
@@ -103,16 +107,6 @@ impl Interpreter {
     ) -> Result<Value, RuntimeError> {
         let (var_name, mut indices) = self.flatten_index_expression(object, index)?;
         indices.reverse();
-
-        let var_name_lower = var_name.to_lowercase();
-        // 处理 Session 对象
-        if var_name_lower == "session" {
-            if indices.len() == 1 {
-                if let Value::String(key) = &indices[0] {
-                    return self.builtin_session_set_property(&key, val);
-                }
-            }
-        }
 
         // 获取数组
         let mut arr = match self.context.get_var(&var_name).cloned() {
@@ -190,90 +184,38 @@ impl Interpreter {
     }
 
     /// 执行属性赋值（如 Response.Buffer = value）
+    /// 统一使用 trait dispatch
     fn eval_property_assignment(
         &mut self,
         object: &Expr,
         property: &str,
         val: Value,
     ) -> Result<Value, RuntimeError> {
+        // 获取对象表达式并求值
         match object {
-            Expr::Variable(obj_name) => {
-                match obj_name.to_lowercase().as_str() {
-                    "response" => self.builtin_response_set_property(property, val),
-                    "request" => {
-                        Err(RuntimeError::PropertyNotFound(format!("Request.{}", property)))
+            Expr::Variable(var_name) => {
+                // 从变量表获取对象
+                if let Some(obj_val) = self.context.get_var(var_name).cloned() {
+                    if let Value::Object(mut obj) = obj_val {
+                        obj.set_property(property, val)?;
+                        // 更新变量表中的对象（某些对象可能需要写回）
+                        self.context.set_var(var_name.clone(), Value::Object(obj));
+                        return Ok(Value::Empty);
                     }
-                    "server" => self.builtin_server_set_property(property, val),
-                    "session" => self.builtin_session_set_property(property, val),
-                    _ => Err(RuntimeError::PropertyNotFound(format!(
-                        "{}.{}",
-                        obj_name, property
-                    ))),
                 }
+                Err(RuntimeError::PropertyNotFound(format!(
+                    "{}.{}",
+                    var_name, property
+                )))
             }
-            _ => Err(RuntimeError::InvalidAssignment),
-        }
-    }
-
-    /// 设置 Response 对象的属性
-    fn builtin_response_set_property(
-        &mut self,
-        property: &str,
-        value: Value,
-    ) -> Result<Value, RuntimeError> {
-        let response = self.context.response_mut();
-        match property.to_uppercase().as_str() {
-            "BUFFER"
-            | "CONTENTTYPE"
-            | "CACHECONTROL"
-            | "EXPIRES"
-            | "EXPIRESABSOLUTE"
-            | "PICS"
-            | "ISCLIENTCONNECTED"
-            | "STATUS"
-            | "CODEPAGE" => {
-                let prop_lower = property.to_lowercase();
-                response.set_property(&prop_lower, value)?;
-                Ok(Value::Empty)
-            }
-            "CHARSET" => Ok(Value::Empty),
-            _ => Err(RuntimeError::PropertyNotFound(format!(
-                "Response.{}",
-                property
-            ))),
-        }
-    }
-
-    /// 设置 Server 对象的属性
-    fn builtin_server_set_property(
-        &mut self,
-        property: &str,
-        _value: Value,
-    ) -> Result<Value, RuntimeError> {
-        match property.to_uppercase().as_str() {
-            "SCRIPTTIMEOUT" => Ok(Value::Empty),
-            _ => Err(RuntimeError::PropertyNotFound(format!("Server.{}", property))),
-        }
-    }
-
-    /// 设置 Session 对象的属性
-    fn builtin_session_set_property(
-        &mut self,
-        property: &str,
-        value: Value,
-    ) -> Result<Value, RuntimeError> {
-        match property.to_uppercase().as_str() {
-            "TIMEOUT" | "CODEPAGE" | "LCID" => Ok(Value::Empty),
             _ => {
-                if let Some(Value::Object(mut session_obj)) =
-                    self.context.get_var("Session").cloned()
-                {
-                    session_obj.set_property(property, value)?;
-                    self.context.set_var("Session".to_string(), Value::Object(session_obj));
-                    Ok(Value::Empty)
-                } else {
-                    Err(RuntimeError::Generic("Session object not found".to_string()))
+                // 对于非变量的对象表达式（如 obj.prop.subprop），先求值
+                let obj_val = self.eval_expr(object)?;
+                if let Value::Object(mut obj) = obj_val {
+                    obj.set_property(property, val)?;
+                    return Ok(Value::Empty);
                 }
+                Err(RuntimeError::InvalidAssignment)
             }
         }
     }
