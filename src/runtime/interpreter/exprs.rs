@@ -3,7 +3,7 @@
 //! 处理各种 VBScript 表达式的求值逻辑
 
 use crate::ast::{BinaryOp, Expr, UnaryOp};
-use crate::runtime::{BuiltinObject, ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps, VbsClass};
+use crate::runtime::{BuiltinObject, ControlFlow, RuntimeError, Value, ValueCompare, ValueConversion, ValueOps};
 
 use super::Interpreter;
 
