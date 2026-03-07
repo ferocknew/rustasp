@@ -342,58 +342,35 @@ impl Interpreter {
 
         let property_lower = property.to_lowercase();
 
-        // 特殊处理：Response.Clear/End（需要设置退出标志）
-        if object_name.as_deref() == Some("response") {
-            match property_lower.as_str() {
-                "clear" => {
-                    self.context.response_mut().clear();
-                    return Ok(Value::Empty);
-                }
-                "end" => {
-                    self.context.response_mut().end();
-                    self.context.should_exit = true;
-                    return Ok(Value::Empty);
-                }
-                _ => {}
-            }
-        }
-
-        // 特殊处理：Request 属性访问
-        if object_name.as_deref() == Some("request") {
-            return self.eval_request_property(property_lower.as_str());
-        }
-
-        // 特殊处理：Server.ScriptTimeout
-        if object_name.as_deref() == Some("server") && property_lower == "scripttimeout" {
-            return Ok(Value::Number(90.0));
-        }
-
-        // 特殊处理：Session.Contents
-        if object_name.as_deref() == Some("session") && property_lower == "contents" {
-            let mut contents_obj = std::collections::HashMap::new();
-            contents_obj.insert("__session_contents__".to_string(), Value::Boolean(true));
-            contents_obj.insert("count".to_string(), Value::Number(-1.0));
-            return Ok(Value::from_hashmap(contents_obj));
-        }
-
         // 统一 trait dispatch：从变量中获取对象并访问属性
         if let Some(name) = object_name {
+            // 特殊处理：Response 对象（存储在 context 中）
+            if name == "response" {
+                let response = self.context.response();
+                // 先尝试通过 trait 获取属性
+                if let Ok(val) = response.get_property(&property_lower) {
+                    return Ok(val);
+                }
+                // 特殊处理：Response.Clear/End 作为属性访问（无参数调用）
+                match property_lower.as_str() {
+                    "clear" => {
+                        self.context.response_mut().clear();
+                        return Ok(Value::Empty);
+                    }
+                    "end" => {
+                        self.context.response_mut().end();
+                        self.context.should_exit = true;
+                        return Ok(Value::Empty);
+                    }
+                    _ => {}
+                }
+                // 未知属性返回 Empty
+                return Ok(Value::Empty);
+            }
+
+            // 其他对象：从变量表中获取
             if let Some(value) = self.context.get_var(&name).cloned() {
-                // 特殊处理：Response 对象（通过 context.response() 访问）
-                if name == "response" {
-                    let response = self.context.response();
-                    if let Ok(val) = response.get_property(property) {
-                        return Ok(val);
-                    }
-                    // 提供默认空值
-                    match property_lower.as_str() {
-                        "status" | "contenttype" | "buffer" | "charset" | "cachecontrol"
-                        | "expires" | "expiresabsolute" | "pics" | "isclientconnected" | "cookies" => {
-                            return Ok(Value::Empty);
-                        }
-                        _ => {}
-                    }
-                } else if let Value::Object(obj) = value {
+                if let Value::Object(obj) = value {
                     return obj.get_property(&property_lower);
                 }
             }
@@ -418,44 +395,6 @@ impl Interpreter {
         }
 
         Err(RuntimeError::PropertyNotFound(property.to_string()))
-    }
-
-    fn eval_request_method(&mut self, args: &[Expr]) -> Result<Value, RuntimeError> {
-        if args.is_empty() {
-            return Ok(Value::Empty);
-        }
-        let key = self.eval_expr(&args[0])?;
-        let key_str = ValueConversion::to_string(&key);
-        Ok(self.context.get_request_param_all(&key_str)
-            .map(|values| {
-                if values.len() == 1 {
-                    Value::String(values[0].clone())
-                } else {
-                    Value::Array(values.iter().map(|s| Value::String(s.clone())).collect())
-                }
-            })
-            .unwrap_or(Value::Empty))
-    }
-
-    fn eval_request_property(&self, property: &str) -> Result<Value, RuntimeError> {
-        match property {
-            "form" | "querystring" => {
-                let mut data = std::collections::HashMap::new();
-                for (key, values) in self.context.request_data.iter() {
-                    let value_str = if values.len() == 1 {
-                        values[0].clone()
-                    } else {
-                        values.join(", ")
-                    };
-                    data.insert(key.clone(), Value::String(value_str));
-                }
-                Ok(Value::from_hashmap(data))
-            }
-            "cookies" | "servervariables" => {
-                Ok(Value::new_dictionary())
-            }
-            _ => Err(RuntimeError::PropertyNotFound(property.to_string())),
-        }
     }
 
     /// 执行 New 表达式 - 创建类实例（使用缓存的 VbsClass）
