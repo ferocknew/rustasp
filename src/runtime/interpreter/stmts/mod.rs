@@ -92,7 +92,7 @@ impl Interpreter {
             crate::utils::normalize_identifier(name),
             Function {
                 name: name.to_string(),
-                params: params.iter().map(|p| p.name.clone()).collect(),
+                params: params.to_vec(),
                 body: body.to_vec(),
             },
         );
