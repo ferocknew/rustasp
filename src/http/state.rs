@@ -25,6 +25,12 @@ pub struct Config {
     pub asp_ext: Vec<String>,
     /// Runtime 目录路径（用于 Session、缓存等硬盘存储）
     pub runtime_dir: PathBuf,
+    /// Now 函数日期时间格式
+    pub now_format: String,
+    /// Date 函数日期格式
+    pub date_format: String,
+    /// Time 函数时间格式
+    pub time_format: String,
 }
 
 impl Default for Config {
@@ -40,6 +46,9 @@ impl Default for Config {
             error_page: None,
             asp_ext: vec!["asp".to_string(), "asa".to_string()],
             runtime_dir: PathBuf::from("./runtime"),
+            now_format: "YYYY/MM/DD HH:MM:SS".to_string(),
+            date_format: "YYYY/MM/DD".to_string(),
+            time_format: "HH:MM:SS".to_string(),
         }
     }
 }
@@ -84,6 +93,12 @@ impl Config {
             runtime_dir: PathBuf::from(
                 std::env::var("RUNTIME_DIR").unwrap_or_else(|_| "./runtime".to_string()),
             ),
+            now_format: std::env::var("NOW_FORMAT")
+                .unwrap_or_else(|_| "YYYY/MM/DD HH:MM:SS".to_string()),
+            date_format: std::env::var("DATE_FORMAT")
+                .unwrap_or_else(|_| "YYYY/MM/DD".to_string()),
+            time_format: std::env::var("TIME_FORMAT")
+                .unwrap_or_else(|_| "HH:MM:SS".to_string()),
         }
     }
 

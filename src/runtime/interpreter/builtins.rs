@@ -4,6 +4,36 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 
+/// 获取配置的日期格式字符串
+fn get_datetime_format() -> (String, String, String) {
+    // 从环境变量读取配置，使用默认值
+    let now_format = std::env::var("NOW_FORMAT")
+        .unwrap_or_else(|_| "YYYY/MM/DD HH:MM:SS".to_string());
+    let date_format = std::env::var("DATE_FORMAT")
+        .unwrap_or_else(|_| "YYYY/MM/DD".to_string());
+    let time_format = std::env::var("TIME_FORMAT")
+        .unwrap_or_else(|_| "HH:MM:SS".to_string());
+
+    // 转换格式字符串：YYYY/MM/DD HH:MM:SS -> %Y/%m/%d %H:%M:%S
+    let now_format_str = convert_vbscript_format(&now_format);
+    let date_format_str = convert_vbscript_format(&date_format);
+    let time_format_str = convert_vbscript_format(&time_format);
+
+    (now_format_str, date_format_str, time_format_str)
+}
+
+/// 将 VBScript 日期格式转换为 strftime 格式
+fn convert_vbscript_format(format: &str) -> String {
+    format
+        .replace("YYYY", "%Y")
+        .replace("YY", "%y")
+        .replace("MM", "%m")
+        .replace("DD", "%d")
+        .replace("HH", "%H")
+        .replace("MM", "%M")  // 分钟，注意会与月份冲突，需要先替换月份
+        .replace("SS", "%S")
+}
+
 /// 调用内置函数（多参数版本）
 pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
     let name_lower = name.to_lowercase();
@@ -12,15 +42,18 @@ pub fn call_builtin_function_multi(name: &str, args: &[Value]) -> Option<Result<
         // 日期时间函数（无参数）
         "now" => {
             let now = chrono::Local::now();
-            Some(Ok(Value::String(now.format("%Y-%m-%d %H:%M:%S").to_string())))
+            let (now_format, _, _) = get_datetime_format();
+            Some(Ok(Value::String(now.format(&now_format).to_string())))
         }
         "date" => {
             let now = chrono::Local::now();
-            Some(Ok(Value::String(now.format("%Y-%m-%d").to_string())))
+            let (_, date_format, _) = get_datetime_format();
+            Some(Ok(Value::String(now.format(&date_format).to_string())))
         }
         "time" => {
             let now = chrono::Local::now();
-            Some(Ok(Value::String(now.format("%H:%M:%S").to_string())))
+            let (_, _, time_format) = get_datetime_format();
+            Some(Ok(Value::String(now.format(&time_format).to_string())))
         }
         // 字符串函数 - 多参数
         "left" => {
