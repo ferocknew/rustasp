@@ -82,6 +82,21 @@ impl Context {
         self.global.get(name)
     }
 
+    /// 获取变量（可变引用）
+    pub fn get_var_mut(&mut self, name: &str) -> Option<&mut Value> {
+        let name_lower = name.to_lowercase();
+        if let Some(scope) = self.scope_stack.last_mut() {
+            if scope.contains(&name_lower) {
+                return scope.get_mut(name);
+            }
+        }
+        if self.global.contains(&name_lower) {
+            self.global.get_mut(name)
+        } else {
+            None
+        }
+    }
+
     /// 设置变量
     pub fn set_var(&mut self, name: String, value: Value) {
         let name_lower = name.to_lowercase();

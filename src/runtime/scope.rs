@@ -37,6 +37,12 @@ impl Scope {
             .or_else(|| self.parent.as_ref().and_then(|p| p.get(&name_lower)))
     }
 
+    /// 获取变量（可变引用）- 仅限当前作用域
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
+        let name_lower = name.to_lowercase();
+        self.variables.get_mut(&name_lower)
+    }
+
     /// 设置变量
     pub fn set(&mut self, name: String, value: Value) {
         let name_lower = name.to_lowercase();
