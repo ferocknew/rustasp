@@ -66,8 +66,21 @@ fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
 
     let clean_str = clean_str.trim();
 
-    // 尝试各种日期格式
-    let formats = [
+    // 优先尝试解析带时间的格式
+    let datetime_formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ];
+
+    for format in &datetime_formats {
+        if let Ok(dt) = NaiveDateTime::parse_from_str(clean_str, format) {
+            return Some(dt);
+        }
+    }
+
+    // 尝试各种纯日期格式
+    let date_formats = [
         // ISO 格式
         "%Y-%m-%d",
         "%Y/%m/%d",
@@ -77,28 +90,13 @@ fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
         // 短年份格式
         "%y-%m-%d",
         "%y/%m/%d",
-        // 带时间的格式
-        "%Y-%m-%d %H:%M:%S",
-        "%Y/%m/%d %H:%M:%S",
-        "%m/%d/%Y %H:%M:%S",
     ];
 
-    for format in &formats {
+    for format in &date_formats {
         if let Ok(date) = NaiveDate::parse_from_str(clean_str, format) {
             return Some(date.and_hms_opt(0, 0, 0).unwrap_or_else(|| {
                 NaiveDateTime::new(date, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap())
             }));
-        }
-    }
-
-    // 尝试解析日期时间格式（包含时间部分）
-    for format in &[
-        "%Y-%m-%d %H:%M:%S",
-        "%Y/%m/%d %H:%M:%S",
-        "%m/%d/%Y %H:%M:%S",
-    ] {
-        if let Ok(dt) = NaiveDateTime::parse_from_str(clean_str, format) {
-            return Some(dt);
         }
     }
 
