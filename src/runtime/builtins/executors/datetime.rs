@@ -236,28 +236,86 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             Value::String(now.format(&time_format).to_string())
         }
         BuiltinToken::Year => {
-            let now = chrono::Local::now();
-            Value::Number(now.year() as f64)
+            // Year(date) - 返回年份，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let date_str = ValueConversion::to_string(&args[0]);
+                parse_vbscript_date(&date_str).unwrap_or_else(|| chrono::Local::now().naive_local())
+            };
+            Value::Number(dt.year() as f64)
         }
         BuiltinToken::Month => {
-            let now = chrono::Local::now();
-            Value::Number(now.month() as f64)
+            // Month(date) - 返回月份，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let date_str = ValueConversion::to_string(&args[0]);
+                parse_vbscript_date(&date_str).unwrap_or_else(|| chrono::Local::now().naive_local())
+            };
+            Value::Number(dt.month() as f64)
         }
         BuiltinToken::Day => {
-            let now = chrono::Local::now();
-            Value::Number(now.day() as f64)
+            // Day(date) - 返回日期，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let date_str = ValueConversion::to_string(&args[0]);
+                parse_vbscript_date(&date_str).unwrap_or_else(|| chrono::Local::now().naive_local())
+            };
+            Value::Number(dt.day() as f64)
         }
         BuiltinToken::Hour => {
-            let now = chrono::Local::now();
-            Value::Number(now.hour() as f64)
+            // Hour(time) - 返回小时，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let time_str = ValueConversion::to_string(&args[0]);
+                // 尝试解析为日期时间
+                if let Some(dt) = parse_vbscript_date(&time_str) {
+                    dt
+                } else if let Some(t) = parse_vbscript_time(&time_str) {
+                    // 如果只是时间，构造一个带时间的日期
+                    chrono::Local::now().naive_local().date().and_time(t)
+                } else {
+                    chrono::Local::now().naive_local()
+                }
+            };
+            Value::Number(dt.hour() as f64)
         }
         BuiltinToken::Minute => {
-            let now = chrono::Local::now();
-            Value::Number(now.minute() as f64)
+            // Minute(time) - 返回分钟，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let time_str = ValueConversion::to_string(&args[0]);
+                // 尝试解析为日期时间
+                if let Some(dt) = parse_vbscript_date(&time_str) {
+                    dt
+                } else if let Some(t) = parse_vbscript_time(&time_str) {
+                    chrono::Local::now().naive_local().date().and_time(t)
+                } else {
+                    chrono::Local::now().naive_local()
+                }
+            };
+            Value::Number(dt.minute() as f64)
         }
         BuiltinToken::Second => {
-            let now = chrono::Local::now();
-            Value::Number(now.second() as f64)
+            // Second(time) - 返回秒数，可选参数
+            let dt = if args.is_empty() {
+                chrono::Local::now().naive_local()
+            } else {
+                let time_str = ValueConversion::to_string(&args[0]);
+                // 尝试解析为日期时间
+                if let Some(dt) = parse_vbscript_date(&time_str) {
+                    dt
+                } else if let Some(t) = parse_vbscript_time(&time_str) {
+                    chrono::Local::now().naive_local().date().and_time(t)
+                } else {
+                    chrono::Local::now().naive_local()
+                }
+            };
+            Value::Number(dt.second() as f64)
         }
         BuiltinToken::WeekDay => {
             let now = chrono::Local::now();
@@ -454,6 +512,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
         }
         BuiltinToken::DateSerial => {
             // DateSerial(year, month, day) - 根据年月日生成日期
+            // 支持月份和日期的溢出处理
             if args.len() < 3 {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
@@ -461,11 +520,22 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let month = ValueConversion::to_number(&args[1]) as i32;
             let day = ValueConversion::to_number(&args[2]) as i32;
 
-            // 处理月份溢出（如 month=13 表示下一年的1月）
-            let adjusted_year = year + (month - 1) / 12;
-            let adjusted_month = ((month - 1) % 12 + 12) % 12 + 1;
+            // 处理月份溢出（支持 month=0, month=-1, month=13 等）
+            // month=0 -> 上一年12月，month=13 -> 下一年1月
+            let month_offset = month - 1;  // 转换为 0-based (0=1月)
+            let year_offset = month_offset / 12;
+            let adjusted_month = month_offset % 12;
 
-            // 尝试创建日期
+            // 处理负数月份
+            let (adjusted_year, adjusted_month) = if adjusted_month < 0 {
+                (year + year_offset - 1, adjusted_month + 12)
+            } else {
+                (year + year_offset, adjusted_month)
+            };
+
+            let adjusted_month = adjusted_month + 1;  // 转换回 1-based (1=1月)
+
+            // 尝试创建日期（chrono会自动处理日期溢出，如2月30日会返回None）
             if let Some(date) = NaiveDate::from_ymd_opt(adjusted_year, adjusted_month as u32, day as u32) {
                 let (_, date_format, _) = get_datetime_format();
                 Value::String(date.format(&date_format).to_string())
