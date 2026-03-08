@@ -30,7 +30,7 @@ impl Parser {
         loop {
             self.skip_newlines();
             if self.check(&Token::Eof) {
-                return Err(ParseError::UnexpectedEof("expected End Class".to_string()));
+                return Err(ParseError::UnexpectedEnd);
             }
             // 检查是否是 "End Class" (两个关键字)
             if self.check_keyword(Keyword::End) {
@@ -222,7 +222,7 @@ impl Parser {
                 }
                 Token::Eof => {
                     // 未闭合的方法定义
-                    break;
+                    return Err(ParseError::UnexpectedEnd);
                 }
                 Token::Newline => {
                     self.advance();
@@ -304,7 +304,8 @@ impl Parser {
                     }
                 }
                 Token::Eof => {
-                    break;
+                    // 未闭合的属性定义
+                    return Err(ParseError::UnexpectedEnd);
                 }
                 Token::Newline => {
                     self.advance();
