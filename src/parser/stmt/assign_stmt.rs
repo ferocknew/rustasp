@@ -136,13 +136,11 @@ impl Parser {
                     self.expect(Token::RParen)?;
 
                     // 在赋值左侧，括号总是表示索引访问
-                    // 支持多维数组: arr(0,0) 被解析为嵌套索引 ((arr(0))(0))
-                    for arg in args {
-                        expr = Expr::Index {
-                            object: Box::new(expr),
-                            index: Box::new(arg),
-                        };
-                    }
+                    // 支持多维数组: arr(0,0)
+                    expr = Expr::Index {
+                        object: Box::new(expr),
+                        indices: args,
+                    };
                 }
 
                 // 属性访问: obj.property

@@ -19,7 +19,7 @@ pub use std::rc::Rc;
 pub use error::{ControlFlow, RuntimeError};
 pub use interpreter::Interpreter;
 pub use scope::Scope;
-pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps};
+pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps, VbsArray};
 
 use std::sync::{Arc, Mutex};
 

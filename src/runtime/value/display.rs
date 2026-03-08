@@ -20,8 +20,7 @@ impl fmt::Display for Value {
             Value::String(s) => write!(f, "{}", s),
             Value::Array(arr) => {
                 let locked_arr = arr.lock().unwrap();
-                let items: Vec<String> = locked_arr.iter().map(|v| v.to_string()).collect();
-                write!(f, "[{}]", items.join(", "))
+                write!(f, "{}", locked_arr)
             }
             Value::Object(obj) => {
                 // 尝试作为字典显示

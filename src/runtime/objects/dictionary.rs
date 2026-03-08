@@ -140,10 +140,10 @@ impl BuiltinObject for Dictionary {
             }
             "keys" => {
                 let keys: Vec<Value> = self.data.keys().map(|k| Value::String(k.clone())).collect();
-                Ok(Value::Array(Arc::new(Mutex::new(keys))))
+                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(keys)))))
             }
             "items" => {
-                Ok(Value::Array(Arc::new(Mutex::new(self.data.values().cloned().collect()))))
+                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect())))))
             }
             "item" => {
                 if args.is_empty() {

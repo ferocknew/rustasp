@@ -41,7 +41,7 @@ impl Interpreter {
             Expr::Call { name, args } => self.eval_call_expr(name, args),
             Expr::Property { object, property } => self.eval_property(object, property),
             Expr::Method { object, method, args } => self.eval_method(object, method, args),
-            Expr::Index { object, index } => self.eval_index(object, index),
+            Expr::Index { object, indices } => self.eval_index(object, indices),
 
             // 其他
             Expr::Array(elements) => self.eval_array(elements),
@@ -73,6 +73,6 @@ impl Interpreter {
     fn eval_array(&mut self, elements: &[Expr]) -> Result<Value, RuntimeError> {
         let values: Result<Vec<Value>, _> =
             elements.iter().map(|e| self.eval_expr(e)).collect();
-        Ok(Value::Array(Arc::new(Mutex::new(values?))))
+        Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(values?)))))
     }
 }

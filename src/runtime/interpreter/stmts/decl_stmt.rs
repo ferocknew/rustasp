@@ -3,7 +3,7 @@
 //! 处理 Dim、Const、ReDim 等变量声明语句
 
 use crate::ast::Expr;
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value, VbsArray};
 use std::sync::{Arc, Mutex};
 
 use super::Interpreter;
@@ -21,11 +21,11 @@ impl Interpreter {
         let value = if is_array {
             // 创建数组
             // VBScript: ReDim arr(n) 创建索引 0 到 n 的数组，大小为 n+1
-            let mut size = 0;
+            let mut dims = vec![];
             for dim_expr in sizes {
                 let dim_val = self.eval_expr(dim_expr)?;
                 let dim = match dim_val {
-                    Value::Number(n) => n as usize,
+                    Value::Number(n) => n as usize + 1,  // +1 因为 0-based
                     _ => {
                         return Err(RuntimeError::Generic(format!(
                             "Array size must be a number, got {:?}",
@@ -33,25 +33,21 @@ impl Interpreter {
                         )))
                     }
                 };
-                // ReDim arr(n) 表示最大索引是 n，所以大小是 n+1
-                if size == 0 {
-                    size = dim + 1;
-                } else {
-                    size *= dim + 1;
-                }
+                dims.push(dim);
             }
 
-            // 创建指定大小的空数组
-            let mut arr = vec![Value::Empty; size];
+            // 创建 VbsArray
+            let mut vbs_arr = VbsArray::new(dims);
+
             // 如果有初始化值，填充第一个元素
             if let Some(init_expr) = init {
                 let init_val = self.eval_expr(init_expr)?;
-                if !arr.is_empty() {
-                    arr[0] = init_val;
+                if !vbs_arr.data.is_empty() {
+                    vbs_arr.data[0] = init_val;
                 }
             }
 
-            Value::Array(Arc::new(Mutex::new(arr)))
+            Value::Array(Arc::new(Mutex::new(vbs_arr)))
         } else if let Some(expr) = init {
             self.eval_expr(expr)?
         } else {
@@ -76,13 +72,13 @@ impl Interpreter {
         sizes: &[Expr],
         preserve: bool,
     ) -> Result<Value, RuntimeError> {
-        // 计算新数组大小
+        // 计算新数组维度
         // VBScript: ReDim arr(n) 创建索引 0 到 n 的数组，大小为 n+1
-        let mut new_size = 0;
+        let mut new_dims = vec![];
         for dim_expr in sizes {
             let dim_val = self.eval_expr(dim_expr)?;
             let dim = match dim_val {
-                Value::Number(n) => n as usize,
+                Value::Number(n) => n as usize + 1,  // +1 因为 0-based
                 _ => {
                     return Err(RuntimeError::Generic(format!(
                         "Array size must be a number, got {:?}",
@@ -90,35 +86,21 @@ impl Interpreter {
                     )))
                 }
             };
-            // ReDim arr(n) 表示最大索引是 n，所以大小是 n+1
-            if new_size == 0 {
-                new_size = dim + 1;
-            } else {
-                new_size *= dim + 1;
-            }
+            new_dims.push(dim);
         }
 
-        // 获取旧数组（如果需要 preserve）
-        let old_arr = if preserve {
-            self.context.get_var(name).cloned()
+        // 检查变量是否存在
+        if let Some(Value::Array(ref arr_ref)) = self.context.get_var(name) {
+            // 使用 VbsArray::redim 方法
+            let mut arr = arr_ref.lock()
+                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+            arr.redim(new_dims, preserve);
+            Ok(Value::Empty)
         } else {
-            None
-        };
-
-        // 创建新数组
-        let mut new_arr = vec![Value::Empty; new_size];
-
-        // 如果需要 preserve，复制旧数据
-        if let Some(Value::Array(ref old_arr)) = old_arr {
-            let locked_old = old_arr.lock().unwrap();
-            let copy_len = locked_old.len().min(new_arr.len());
-            for i in 0..copy_len {
-                new_arr[i] = locked_old[i].clone();
-            }
+            // 数组不存在，创建新数组
+            let vbs_arr = VbsArray::new(new_dims);
+            self.context.set_var(name.to_string(), Value::Array(Arc::new(Mutex::new(vbs_arr))));
+            Ok(Value::Empty)
         }
-
-        // 设置新数组
-        self.context.set_var(name.to_string(), Value::Array(Arc::new(Mutex::new(new_arr))));
-        Ok(Value::Empty)
     }
 }

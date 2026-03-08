@@ -82,7 +82,7 @@ impl ValueConversion for Value {
             Value::Nothing => "Nothing".to_string(),
             Value::Array(arr) => {
                 let locked_arr = arr.lock().unwrap();
-                let items: Vec<String> = locked_arr.iter().map(|v| ValueConversion::to_string(v)).collect();
+                let items: Vec<String> = locked_arr.data.iter().map(|v| ValueConversion::to_string(v)).collect();
                 items.join(", ")
             }
             Value::Object(_) => "[object]".to_string(),

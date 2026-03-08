@@ -41,8 +41,8 @@ pub enum Expr {
     },
     /// 属性访问
     Property { object: Box<Expr>, property: String },
-    /// 索引访问
-    Index { object: Box<Expr>, index: Box<Expr> },
+    /// 索引访问（支持多维索引）
+    Index { object: Box<Expr>, indices: Vec<Expr> },
     /// 数组字面量
     Array(Vec<Expr>),
     /// New 表达式

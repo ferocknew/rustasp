@@ -345,7 +345,7 @@ impl crate::runtime::BuiltinObject for Response {
                 match &args[0] {
                     Value::Array(ref arr) => {
                         let locked_arr = arr.lock().unwrap();
-                        let bytes: Vec<u8> = locked_arr.iter()
+                        let bytes: Vec<u8> = locked_arr.data.iter()
                             .map(|v| ValueConversion::to_number(v) as u8)
                             .collect();
                         self.binary_write(&bytes);

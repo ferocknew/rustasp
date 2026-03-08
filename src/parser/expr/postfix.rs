@@ -50,16 +50,10 @@ impl Parser {
                         },
                         Expr::Variable(name) => Expr::Call { name, args },
                         _ => {
-                            // 其他情况作为索引处理
-                            if args.len() == 1 {
-                                Expr::Index {
-                                    object: Box::new(lhs),
-                                    index: Box::new(args.into_iter().next().unwrap()),
-                                }
-                            } else {
-                                return Err(ParseError::ParserError(
-                                    "Invalid index expression".to_string(),
-                                ));
+                            // 其他情况作为索引处理（支持多维索引）
+                            Expr::Index {
+                                object: Box::new(lhs),
+                                indices: args,
                             }
                         }
                     };

@@ -5,7 +5,7 @@ use crate::runtime::error::RuntimeError;
 
 /// 值索引 trait
 pub trait ValueIndex {
-    /// 索引访问（ASP 索引从 1 开始）
+    /// 索引访问（0-based）
     fn index(&self, index: &Value) -> Result<Value, RuntimeError>;
 }
 
@@ -15,14 +15,17 @@ impl ValueIndex for Value {
             Value::Array(arr) => {
                 if let Value::Number(i) = index {
                     let i = *i as usize;
-                    // VBScript 数组是 0-based
+                    // 使用 flat_index 计算索引（一维数组）
                     let locked_arr = arr.lock()
                         .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
-                    if i < locked_arr.len() {
-                        return Ok(locked_arr[i].clone());
+
+                    match locked_arr.flat_index(&[i]) {
+                        Some(flat_idx) => Ok(locked_arr.data[flat_idx].clone()),
+                        None => Ok(Value::Empty),
                     }
+                } else {
+                    Ok(Value::Empty)
                 }
-                Ok(Value::Empty)
             }
             Value::String(s) => {
                 // ASP 中字符串的索引访问：对于单值，(1) 返回字符串本身

@@ -23,7 +23,7 @@ impl Interpreter {
                 self.context.set_var(name.clone(), val);
                 Ok(Value::Empty)
             }
-            Expr::Index { object, index } => self.eval_index_assignment(object, index, val),
+            Expr::Index { object, indices } => self.eval_index_assignment(object, indices, val),
             Expr::Property { object, property } => {
                 self.eval_property_assignment(object, property, val)
             }
@@ -36,166 +36,88 @@ impl Interpreter {
         self.eval_assignment(target, value)
     }
 
-    /// 执行索引赋值（如 arr(i) = value 或 Session("key") = value）
+    /// 执行索引赋值（如 arr(i) = value 或 arr(i,j) = value）
     fn eval_index_assignment(
         &mut self,
         object: &Expr,
-        index: &Expr,
+        indices: &[Expr],
         val: Value,
     ) -> Result<Value, RuntimeError> {
-        // 处理多维数组索引，例如 arr2D(0)(0) = value
-        if let Expr::Index { .. } = object {
-            return self.eval_nested_index_assignment(object, index, val);
-        }
-
-        let idx = self.eval_expr(index)?;
+        // 求值所有索引
+        let index_vals: Result<Vec<Value>, RuntimeError> = indices
+            .iter()
+            .map(|idx| self.eval_expr(idx))
+            .collect();
+        let index_vals = index_vals?;
 
         match object {
             Expr::Variable(name) => {
                 // 先尝试从变量表获取对象
                 if let Some(obj_val) = self.context.get_var(name) {
                     // 如果是对象，使用 trait 的 set_index 方法
-                    // Arc<Mutex<dyn BuiltinObject>> 会直接修改共享对象，无需写回
                     if let Value::Object(ref obj) = obj_val {
-                        let result = obj.lock()
-                            .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
-                            .set_index(&idx, val.clone());
-                        return result.map(|_| Value::Empty);
+                        if indices.len() == 1 {
+                            let result = obj.lock()
+                                .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                                .set_index(&index_vals[0], val.clone());
+                            return result.map(|_| Value::Empty);
+                        }
                     }
                 }
 
-                // 处理数组索引
-                if let Value::Number(i) = idx {
-                    let i = i as usize;
-                    match self.context.get_var(name) {
-                        Some(Value::Array(ref arr)) => {
-                            let mut locked_arr = arr.lock()
-                                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
-                            if i >= locked_arr.len() {
-                                locked_arr.resize(i + 1, Value::Empty);
+                // 处理数组索引赋值
+                let idx: Result<Vec<usize>, RuntimeError> = index_vals
+                    .iter()
+                    .map(|v| match v {
+                        Value::Number(n) => Ok(*n as usize),
+                        _ => Err(RuntimeError::Generic(format!(
+                            "Array index must be a number, got {:?}",
+                            v
+                        ))),
+                    })
+                    .collect();
+
+                let idx = idx?;
+
+                match self.context.get_var(name) {
+                    Some(Value::Array(ref arr)) => {
+                        let mut locked_arr = arr.lock()
+                            .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+
+                        // 使用 flat_index 计算索引
+                        match locked_arr.flat_index(&idx) {
+                            Some(flat_idx) => {
+                                locked_arr.data[flat_idx] = val;
+                                Ok(Value::Empty)
                             }
-                            locked_arr[i] = val;
-                            // 由于是通过引用修改，不需要 set_var
-                            Ok(Value::Empty)
-                        }
-                        Some(Value::Empty) => {
-                            let new_arr = Arc::new(Mutex::new(vec![Value::Empty; i + 1]));
-                            new_arr.lock().unwrap()[i] = val;
-                            self.context.set_var(name.clone(), Value::Array(new_arr));
-                            Ok(Value::Empty)
-                        }
-                        _ => {
-                            let new_arr = Arc::new(Mutex::new(vec![Value::Empty; i + 1]));
-                            new_arr.lock().unwrap()[i] = val;
-                            self.context.set_var(name.clone(), Value::Array(new_arr));
-                            Ok(Value::Empty)
+                            None => Err(RuntimeError::Generic(format!(
+                                "Array index out of bounds: {:?}", idx
+                            ))),
                         }
                     }
-                } else {
-                    Err(RuntimeError::Generic(format!(
-                        "Array index must be a number, got {:?}",
-                        idx
-                    )))
+                    Some(Value::Empty) => {
+                        // 动态创建数组
+                        use crate::runtime::VbsArray;
+                        let mut vbs_arr = VbsArray::new(vec![idx[0] + 1]);
+                        if idx.len() == 1 && idx[0] < vbs_arr.data.len() {
+                            vbs_arr.data[idx[0]] = val;
+                        }
+                        self.context.set_var(name.clone(), Value::Array(Arc::new(Mutex::new(vbs_arr))));
+                        Ok(Value::Empty)
+                    }
+                    _ => {
+                        // 变量不是数组，创建新数组
+                        use crate::runtime::VbsArray;
+                        let mut vbs_arr = VbsArray::new(vec![idx[0] + 1]);
+                        if idx.len() == 1 && idx[0] < vbs_arr.data.len() {
+                            vbs_arr.data[idx[0]] = val;
+                        }
+                        self.context.set_var(name.clone(), Value::Array(Arc::new(Mutex::new(vbs_arr))));
+                        Ok(Value::Empty)
+                    }
                 }
             }
             _ => Err(RuntimeError::InvalidAssignment),
-        }
-    }
-
-    /// 执行嵌套索引赋值（多维数组）
-    fn eval_nested_index_assignment(
-        &mut self,
-        object: &Expr,
-        index: &Expr,
-        val: Value,
-    ) -> Result<Value, RuntimeError> {
-        let (var_name, mut indices) = self.flatten_index_expression(object, index)?;
-        indices.reverse();
-
-        // 获取数组
-        let arr_ref = match self.context.get_var(&var_name) {
-            Some(Value::Array(ref arr)) => Some(arr),
-            Some(Value::Empty) => None,
-            _ => {
-                return Err(RuntimeError::Generic(format!(
-                    "'{}' is not an array",
-                    var_name
-                )))
-            }
-        };
-
-        // 如果数组不存在，创建新数组
-        let arr_ref = if let Some(ref arr) = arr_ref {
-            arr
-        } else {
-            let new_arr = Arc::new(Mutex::new(vec![]));
-            self.context.set_var(var_name.clone(), Value::Array(new_arr.clone()));
-            return self.eval_nested_index_assignment(object, index, val);
-        };
-
-        // 计算扁平索引
-        let flat_index = if indices.len() == 1 {
-            match &indices[0] {
-                Value::Number(i) => *i as usize,
-                _ => {
-                    return Err(RuntimeError::Generic(
-                        "Array index must be a number".to_string(),
-                    ))
-                }
-            }
-        } else {
-            let mut result: usize = 0;
-            for idx in &indices {
-                match idx {
-                    Value::Number(n) => {
-                        result = result * 3 + (*n as usize);
-                    }
-                    _ => {
-                        return Err(RuntimeError::Generic(
-                            "Array index must be a number".to_string(),
-                        ))
-                    }
-                }
-            }
-            result
-        };
-
-        // 扩展数组并赋值
-        {
-            let mut locked_arr = arr_ref.lock()
-                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
-            if flat_index >= locked_arr.len() {
-                locked_arr.resize(flat_index + 1, Value::Empty);
-            }
-            locked_arr[flat_index] = val;
-        }
-        Ok(Value::Empty)
-    }
-
-    /// 展平索引表达式
-    fn flatten_index_expression(
-        &mut self,
-        object: &Expr,
-        index: &Expr,
-    ) -> Result<(String, Vec<Value>), RuntimeError> {
-        let mut indices = vec![];
-        let mut current_expr = object;
-        indices.push(self.eval_expr(index)?);
-
-        loop {
-            match current_expr {
-                Expr::Index {
-                    object: inner_object,
-                    index: inner_index,
-                } => {
-                    indices.push(self.eval_expr(inner_index)?);
-                    current_expr = inner_object;
-                }
-                Expr::Variable(name) => {
-                    return Ok((name.clone(), indices));
-                }
-                _ => return Err(RuntimeError::InvalidAssignment),
-            }
         }
     }
 

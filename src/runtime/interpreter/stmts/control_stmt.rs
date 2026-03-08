@@ -162,7 +162,7 @@ impl Interpreter {
             Value::Array(ref arr) => {
                 let locked_arr = arr.lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
-                locked_arr.clone()
+                locked_arr.data.clone()
             }
             Value::Object(ref obj) => {
                 // 尝试作为字典处理
@@ -181,7 +181,7 @@ impl Interpreter {
                         Ok(Value::Array(ref arr)) => {
                             let locked_arr = arr.lock()
                                 .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
-                            locked_arr.clone()
+                            locked_arr.data.clone()
                         }
                         _ => {
                             return Err(RuntimeError::Generic(

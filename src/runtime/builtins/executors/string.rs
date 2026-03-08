@@ -229,7 +229,8 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 string.split(&delimiter).map(|s| Value::String(s.to_string())).collect()
             };
 
-            Value::Array(Arc::new(Mutex::new(parts)))
+            use crate::runtime::VbsArray;
+            Value::Array(Arc::new(Mutex::new(VbsArray::from_vec(parts))))
         }
         BuiltinToken::Join => {
             // Join(array[, delimiter])
@@ -240,7 +241,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 Value::Array(ref arr) => {
                     let delimiter = args.get(1).map(|v| ValueConversion::to_string(v)).unwrap_or(" ".to_string());
                     let locked_arr = arr.lock().unwrap();
-                    Value::String(locked_arr.iter().map(|v| ValueConversion::to_string(v)).collect::<Vec<_>>().join(&delimiter))
+                    Value::String(locked_arr.data.iter().map(|v| ValueConversion::to_string(v)).collect::<Vec<_>>().join(&delimiter))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }

@@ -111,11 +111,31 @@ impl Interpreter {
         }
 
         // 回退到数组索引访问（需要 eval args）
-        if args.len() == 1 {
-            let index = self.eval_expr(&args[0])?;
-            // 处理数组索引访问：arr(0)
-            if let Some(value) = self.context.get_var(name).cloned() {
-                return value.index(&index);
+        if args.len() >= 1 {
+            // 先尝试作为数组索引访问
+            let value_opt = self.context.get_var(name).cloned();
+            if let Some(value) = value_opt {
+                match value {
+                    Value::Array(_) => {
+                        // 是数组，执行索引访问
+                        let index_vals: Result<Vec<Value>, RuntimeError> = args.iter()
+                            .map(|e| self.eval_expr(e))
+                            .collect();
+                        let index_vals = index_vals?;
+                        return self.eval_value_index_for_array(value, &index_vals);
+                    }
+                    _ => {
+                        // 不是数组，继续作为函数调用
+                    }
+                }
+            }
+
+            // 单索引：尝试索引访问
+            if args.len() == 1 {
+                let index = self.eval_expr(&args[0])?;
+                if let Some(value) = self.context.get_var(name).cloned() {
+                    return value.index(&index);
+                }
             }
         }
 
@@ -125,5 +145,36 @@ impl Interpreter {
     /// 尝试调用内置函数
     pub fn call_builtin(&mut self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
         self.builtin_registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
+    }
+
+    /// 对数组执行多索引访问
+    fn eval_value_index_for_array(&self, value: Value, indices: &[Value]) -> Result<Value, RuntimeError> {
+        match value {
+            Value::Array(ref arr) => {
+                // 将索引转换为 usize
+                let idx: Result<Vec<usize>, RuntimeError> = indices
+                    .iter()
+                    .map(|v| match v {
+                        Value::Number(n) => Ok(*n as usize),
+                        _ => Err(RuntimeError::Generic(format!(
+                            "Array index must be a number, got {:?}",
+                            v
+                        ))),
+                    })
+                    .collect();
+
+                let idx = idx?;
+
+                // 使用 flat_index 计算扁平索引
+                let locked_arr = arr.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+
+                match locked_arr.flat_index(&idx) {
+                    Some(flat_idx) => Ok(locked_arr.data[flat_idx].clone()),
+                    None => Ok(Value::Empty),
+                }
+            }
+            _ => Err(RuntimeError::InvalidIndex),
+        }
     }
 }

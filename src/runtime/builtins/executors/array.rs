@@ -1,6 +1,6 @@
 //! 数组函数执行器
 
-use crate::runtime::{RuntimeError, Value, ValueConversion};
+use crate::runtime::{RuntimeError, Value, ValueConversion, VbsArray};
 use super::super::token::BuiltinToken;
 use std::sync::{Arc, Mutex};
 
@@ -13,15 +13,20 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             match &args[0] {
                 Value::Array(ref arr) => {
                     let locked_arr = arr.lock().unwrap();
-                    Value::Number((locked_arr.len().saturating_sub(1)) as f64)
+                    // 对于一维数组，返回最大索引（dims[0] - 1）
+                    let ubound = locked_arr.dims.first()
+                        .map(|d: &usize| d.saturating_sub(1))
+                        .unwrap_or(0);
+                    Value::Number(ubound as f64)
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
         }
         BuiltinToken::LBound => Value::Number(0.0),
         BuiltinToken::Array => {
-            // Array 函数：将参数转换为数组
-            Value::Array(Arc::new(Mutex::new(args.to_vec())))
+            // Array 函数：将参数转换为一维数组
+            let vbs_arr = VbsArray::from_vec(args.to_vec());
+            Value::Array(Arc::new(Mutex::new(vbs_arr)))
         }
         BuiltinToken::Filter => {
             if args.len() < 2 {
@@ -32,13 +37,14 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                     let locked_arr = arr.lock().unwrap();
                     let criteria = ValueConversion::to_string(&args[1]);
                     let include = args.get(2).map(|v| ValueConversion::to_bool(v)).unwrap_or(true);
-                    Value::Array(Arc::new(Mutex::new(locked_arr.iter()
+                    let filtered: Vec<Value> = locked_arr.data.iter()
                         .filter(|v| {
-                            let s = ValueConversion::to_string(&**v);
+                            let s = ValueConversion::to_string(*v);
                             if include { s.contains(&criteria) } else { !s.contains(&criteria) }
                         })
                         .cloned()
-                        .collect())))
+                        .collect();
+                    Value::Array(Arc::new(Mutex::new(VbsArray::from_vec(filtered))))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
@@ -51,17 +57,17 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
         }
         BuiltinToken::Erase => {
             // Erase - 清除数组元素，将其设置为 Empty
-            // 注意：VBScript 中 Erase 是语句，但这里作为函数实现
-            // 对于固定大小数组，将每个元素设置为 Empty
-            // 对于动态数组，重新分配内存
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             match &args[0] {
                 Value::Array(ref arr) => {
                     let locked_arr = arr.lock().unwrap();
-                    // 创建一个新数组，所有元素设置为 Empty
-                    let erased = vec![Value::Empty; locked_arr.len()];
+                    // 创建一个新数组，保持相同维度，所有元素设置为 Empty
+                    let erased = VbsArray {
+                        dims: locked_arr.dims.clone(),
+                        data: vec![Value::Empty; locked_arr.data.len()],
+                    };
                     Value::Array(Arc::new(Mutex::new(erased)))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),

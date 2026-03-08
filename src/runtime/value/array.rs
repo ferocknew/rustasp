@@ -2,7 +2,7 @@
 //!
 //! 支持多维数组，使用扁平存储
 
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::Value;
 use std::fmt;
 
 /// VBScript 数组（支持多维）
