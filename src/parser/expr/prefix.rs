@@ -78,7 +78,7 @@ impl Parser {
                 self.parse_postfix(expr)
             }
 
-            _ => Err(ParseError::ParserError(format!(
+            _ => Err(self.error_with_context(format!(
                 "Unexpected token in expression: {:?}",
                 token
             ))),

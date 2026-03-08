@@ -18,4 +18,23 @@ pub enum ParseError {
 
     #[error("Invalid syntax: {0}")]
     InvalidSyntax(String),
+
+    /// 带上下文的解析错误
+    #[error("Parser error at position {pos}: {message}\n\nToken context:\n{context}")]
+    ParserErrorWithContext {
+        pos: usize,
+        message: String,
+        context: String,
+    },
+}
+
+impl ParseError {
+    /// 创建带上下文的错误
+    pub fn with_context(message: String, pos: usize, context: String) -> Self {
+        ParseError::ParserErrorWithContext {
+            pos,
+            message,
+            context,
+        }
+    }
 }

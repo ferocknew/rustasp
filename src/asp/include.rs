@@ -134,7 +134,12 @@ pub fn process_includes(
             result.push_str(&format!("' === Included from: {} ===\n",
                 relative_path.display()));
             result.push_str(&processed_include);
-            result.push('\n');
+
+            // 确保内容以换行符结束，避免与后续代码连在一起
+            // 特别处理 <!--#include ... --><% 这种紧挨着的写法
+            if !processed_include.ends_with('\n') {
+                result.push('\n');
+            }
         } else {
             // 普通行，直接添加
             result.push_str(line);

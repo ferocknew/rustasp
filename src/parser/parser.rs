@@ -135,4 +135,67 @@ impl Parser {
     pub fn pos(&self) -> usize {
         self.pos
     }
+
+    /// 创建带上下文的错误
+    pub fn error_with_context(&self, message: String) -> ParseError {
+        let context = self.get_token_context(3); // 前后各3个token
+        ParseError::with_context(message, self.pos, context)
+    }
+
+    /// 获取当前 token 的上下文（前后各 context_count 个 token）
+    pub fn get_token_context(&self, context_count: usize) -> String {
+        let start = self.pos.saturating_sub(context_count);
+        let end = (self.pos + context_count + 1).min(self.tokens.len());
+
+        let mut result = String::new();
+
+        for i in start..end {
+            let token = &self.tokens[i];
+            let is_current = i == self.pos;
+
+            // 格式化 token
+            let token_str = self.format_token(token);
+            let prefix = if is_current { ">>> " } else { "    " };
+
+            result.push_str(&format!("{}[{}] {}\n", prefix, i, token_str));
+        }
+
+        result
+    }
+
+    /// 格式化 token 为可读字符串
+    fn format_token(&self, token: &Token) -> String {
+        match token {
+            Token::Number(n) => format!("Number({})", n),
+            Token::String(s) => format!("String(\"{}\")", s),
+            Token::Boolean(b) => format!("Boolean({})", b),
+            Token::Ident(s) => format!("Ident({})", s),
+            Token::Keyword(kw) => format!("Keyword({})", kw.as_str()),
+            Token::Eof => "EOF".to_string(),
+            Token::Newline => "Newline".to_string(),
+            Token::Colon => ":".to_string(),
+            Token::Comma => ",".to_string(),
+            Token::LParen => "(".to_string(),
+            Token::RParen => ")".to_string(),
+            Token::Dot => ".".to_string(),
+            Token::Eq => "=".to_string(),
+            Token::Plus => "+".to_string(),
+            Token::Minus => "-".to_string(),
+            Token::Star => "*".to_string(),
+            Token::Slash => "/".to_string(),
+            Token::Backslash => "\\".to_string(),
+            Token::Caret => "^".to_string(),
+            Token::Ampersand => "&".to_string(),
+            Token::Ne => "<>".to_string(),
+            Token::Lt => "<".to_string(),
+            Token::Le => "<=".to_string(),
+            Token::Gt => ">".to_string(),
+            Token::Ge => ">=".to_string(),
+            Token::Empty => "Empty".to_string(),
+            Token::Null => "Null".to_string(),
+            Token::Date(s) => format!("Date({})", s),
+            Token::LeftBracket => "[".to_string(),
+            Token::RightBracket => "]".to_string(),
+        }
+    }
 }

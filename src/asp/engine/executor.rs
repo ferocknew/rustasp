@@ -68,9 +68,10 @@ impl Engine {
         // 4. 语法分析
         let mut parser = Parser::new(tokens);
         let stmts = parser.parse_program().map_err(|e| {
-            let error_msg = format!("Parser error: {}", e);
-            eprintln!("❌ ASP Error: {}\n", error_msg);
-            error_msg
+            // 格式化错误信息，显示上下文
+            let formatted_error = Self::format_parser_error(&e);
+            eprintln!("❌ ASP Error:\n{}\n", formatted_error);
+            format!("Parser error: {}", e)
         })?;
 
         // 5. 创建解释器
@@ -408,6 +409,45 @@ impl Engine {
         }
 
         Ok(program)
+    }
+
+    /// 格式化解析器错误
+    fn format_parser_error(error: &vbscript::parser::ParseError) -> String {
+        use vbscript::parser::ParseError;
+
+        match error {
+            ParseError::ParserErrorWithContext { pos, message, context } => {
+                let mut result = String::new();
+
+                // ANSI 颜色代码
+                const RED: &str = "\x1b[31m";
+                const RESET: &str = "\x1b[0m";
+
+                // 错误类型和消息
+                result.push_str(&format!("📝 语法分析错误 (位置 {})\n", pos));
+                result.push_str(&format!("{}\n\n", message));
+                result.push_str("Token 上下文:\n");
+                result.push_str(&format!("{}━{}\n", "━", "━".repeat(60)));
+
+                // 处理上下文，把当前 token 标红
+                for line in context.lines() {
+                    if line.starts_with(">>>") {
+                        // 当前的错误 token，标红
+                        let rest = &line[4..]; // 跳过 ">>>"
+                        result.push_str(&format!("{}{}{}\n", RED, rest, RESET));
+                    } else {
+                        result.push_str(line);
+                        result.push('\n');
+                    }
+                }
+
+                result
+            }
+            _ => {
+                // 其他错误，使用默认格式
+                format!("{}", error)
+            }
+        }
     }
 }
 

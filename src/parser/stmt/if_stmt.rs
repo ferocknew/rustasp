@@ -23,14 +23,63 @@ impl Parser {
         self.skip_newlines();  // 跳过 Then 后的换行
 
         if !is_multiline && !self.is_at_end() && !self.check_keyword(Keyword::End) {
-            // 单行 If - 只解析一条语句
-            let stmt = self.parse_stmt()?;
-            let body = stmt.map_or(vec![], |s| vec![s]);
+            // 单行 If - 支持冒号分隔的多条语句
+            // 例如: If x > 0 Then Response.Write "yes" : Response.Write "<br>"
+            let mut body = vec![];
+
+            // 解析第一条语句
+            if let Some(stmt) = self.parse_stmt()? {
+                body.push(stmt);
+
+                // 处理冒号分隔的后续语句（VBScript 语法糖）
+                while self.match_token(&Token::Colon) {
+                    // 跳过冒号后的空白
+                    self.skip_newlines();
+
+                    // 检查是否到达行尾或文件结束
+                    if self.is_at_end()
+                        || self.check(&Token::Newline)
+                        || self.check_keyword(Keyword::Else)
+                        || self.check_keyword(Keyword::End)
+                        || self.check_keyword(Keyword::ElseIf)
+                    {
+                        break;
+                    }
+
+                    // 解析下一条语句
+                    if let Some(next_stmt) = self.parse_stmt()? {
+                        body.push(next_stmt);
+                    }
+                }
+            }
 
             // 检查是否有 Else
             let else_block = if self.match_keyword(Keyword::Else) {
-                let else_stmt = self.parse_stmt()?;
-                Some(else_stmt.map_or(vec![], |s| vec![s]))
+                let mut else_body = vec![];
+
+                // 解析 Else 后的第一条语句
+                if let Some(stmt) = self.parse_stmt()? {
+                    else_body.push(stmt);
+
+                    // 处理冒号分隔的后续语句
+                    while self.match_token(&Token::Colon) {
+                        self.skip_newlines();
+
+                        if self.is_at_end() || self.check(&Token::Newline) {
+                            break;
+                        }
+
+                        if let Some(next_stmt) = self.parse_stmt()? {
+                            else_body.push(next_stmt);
+                        }
+                    }
+                }
+
+                if else_body.is_empty() {
+                    None
+                } else {
+                    Some(else_body)
+                }
             } else {
                 None
             };
