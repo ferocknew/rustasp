@@ -72,6 +72,12 @@ impl Parser {
                 Ok(Expr::Boolean(false))
             }
 
+            // Nothing 关键字
+            Token::Keyword(Keyword::Nothing) => {
+                self.advance();
+                Ok(Expr::Null)
+            }
+
             // New 关键字
             Token::Keyword(Keyword::New) => {
                 self.advance();
