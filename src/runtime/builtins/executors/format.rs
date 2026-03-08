@@ -99,6 +99,19 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 Err(_) => Value::String(s), // 解码失败返回原字符串
             }
         }
+        BuiltinToken::IIf => {
+            // IIf(expression, truepart, falsepart) - 立即条件函数
+            // 类似三元运算符，但两个分支都会被求值
+            if args.len() < 3 {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let condition = ValueConversion::to_bool(&args[0]);
+            if condition {
+                args[1].clone()
+            } else {
+                args[2].clone()
+            }
+        }
         _ => return Ok(None),
     };
     Ok(Some(result))
