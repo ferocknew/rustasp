@@ -87,8 +87,8 @@ impl Interpreter {
                             ErrorMode::ResumeNext => {
                                 // 设置变量为 Nothing (Null)
                                 self.context.set_var(name.clone(), Value::Null);
-                                // 返回错误，由外层处理
-                                Err(e)
+                                // 返回成功，避免外层再次处理错误
+                                Ok(Value::Empty)
                             }
                         }
                     }
