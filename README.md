@@ -251,6 +251,15 @@ DEBUG=true cargo run
 📋 Directory listing: true
 ```
 
+## 测试环境
+
+### IIS 对比测试服务器
+
+用于对比 VBScript 解析结果和 IIS 行为：
+
+- **地址**: http://10.0.0.217/www/rust_vbs_test/
+- **路径**: `/Volumes/Users/Administrator/Documents/www/rust_vbs_test`
+
 ## 技术栈
 
 - Rust 2021 Edition
