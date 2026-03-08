@@ -1,7 +1,7 @@
 //! 方法调用表达式求值
 
 use crate::ast::Expr;
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value, BuiltinObject};
 use crate::runtime::objects::Response;
 
 use super::super::Interpreter;
@@ -21,19 +21,28 @@ impl Interpreter {
 
         let method_lower = method.to_lowercase();
 
-        // 统一 trait dispatch：eval object 并调用方法
+        // 先计算对象表达式以获取对象名称
         let obj_val = self.eval_expr(object)?;
 
-        if let Value::Object(mut obj) = obj_val {
-            let result = obj.call_method(&method_lower, arg_values);
-
-            // 特殊处理：Response.End 需要设置退出标志
+        // 特殊处理：如果是 Response 对象，直接操作 Context 中的原始对象
+        // 避免克隆导致的修改丢失问题
+        if let Value::Object(ref obj) = obj_val {
             if obj.as_any().downcast_ref::<Response>().is_some() {
-                if obj.as_any().downcast_ref::<Response>().unwrap().is_ended() {
+                // 直接调用 Context 中的 Response 对象方法
+                let result = self.context.response_mut().call_method(&method_lower, arg_values);
+
+                // 检查是否需要设置退出标志（Response.End）
+                if self.context.response().is_ended() {
                     self.context.should_exit = true;
                 }
-            }
 
+                return result;
+            }
+        }
+
+        // 通用对象方法调用处理
+        if let Value::Object(mut obj) = obj_val {
+            let result = obj.call_method(&method_lower, arg_values);
             return result;
         }
 
