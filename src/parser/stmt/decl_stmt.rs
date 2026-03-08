@@ -57,8 +57,7 @@ impl Parser {
                         // 跳过初始化（如果有）
                         if self.match_token(&Token::Eq) {
                             // 跳过初始化表达式
-                            while !self.check(&Token::Comma) && !self.check(&Token::Colon)
-                                && !self.is_at_end() && !self.check(&Token::Newline) {
+                            while !self.check(&Token::Comma) && !self.is_at_end() && !self.check(&Token::Newline) {
                                 self.advance();
                             }
                         }
@@ -72,8 +71,7 @@ impl Parser {
             }
         }
 
-        // 跳过语句分隔符
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::Dim {
@@ -91,8 +89,7 @@ impl Parser {
         self.expect(Token::Eq)?;
         let value = self.parse_expr(0)?;
 
-        // 跳过冒号（语句分隔符）
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::Const { name, value }))
@@ -103,8 +100,7 @@ impl Parser {
         self.expect_keyword(Keyword::Option)?;
         self.expect_keyword(Keyword::Explicit)?;
 
-        // 跳过冒号（语句分隔符）
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::OptionExplicit))
@@ -129,8 +125,7 @@ impl Parser {
         }
         self.expect(Token::RParen)?;
 
-        // 跳过冒号（语句分隔符）
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::ReDim {

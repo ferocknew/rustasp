@@ -28,9 +28,13 @@ impl Parser {
 
         // 解析类成员直到 EndClass
         while !self.check_keyword(Keyword::EndClass) && !self.check(&Token::Eof) {
-            if let Some(member) = self.parse_class_member()? {
-                members.push(member);
+            // 跳过换行符
+            self.skip_newlines();
+            if self.check_keyword(Keyword::EndClass) || self.check(&Token::Eof) {
+                break;
             }
+            let new_members = self.parse_class_member()?;
+            members.extend(new_members);
         }
 
         self.expect_keyword(Keyword::EndClass)?;
@@ -39,7 +43,12 @@ impl Parser {
     }
 
     /// 解析类成员
-    fn parse_class_member(&mut self) -> Result<Option<ClassMember>, ParseError> {
+    fn parse_class_member(&mut self) -> Result<Vec<ClassMember>, ParseError> {
+        // 先检查是否到达 End Class
+        if self.check_keyword(Keyword::End) {
+            return Ok(vec![]);  // 返回空，让 parse_class 处理 End Class
+        }
+
         // 解析可见性修饰符（Public/Private）
         let visibility = self.parse_visibility();
 
@@ -47,35 +56,35 @@ impl Parser {
             // Function 或 Sub - 方法成员
             Token::Keyword(Keyword::Function) => {
                 let method = self.parse_method(visibility)?;
-                Ok(Some(ClassMember::Method(method)))
+                Ok(vec![ClassMember::Method(method)])
             }
             Token::Keyword(Keyword::Sub) => {
                 let method = self.parse_method(visibility)?;
-                Ok(Some(ClassMember::Method(method)))
+                Ok(vec![ClassMember::Method(method)])
             }
 
             // Property Get/Let/Set - 属性成员
             Token::Keyword(Keyword::Property) => {
                 let property = self.parse_property(visibility)?;
-                Ok(Some(ClassMember::Property(property)))
+                Ok(vec![ClassMember::Property(property)])
             }
 
             // Dim 或 标识符 - 字段成员
             Token::Keyword(Keyword::Dim) => {
-                let field = self.parse_field(visibility)?;
-                Ok(Some(ClassMember::Field(field)))
+                let fields = self.parse_field(visibility)?;
+                Ok(fields.into_iter().map(ClassMember::Field).collect())
             }
 
             // 标识符 - 简写字段声明（没有 Dim）
             Token::Ident(_) => {
-                let field = self.parse_field(visibility)?;
-                Ok(Some(ClassMember::Field(field)))
+                let fields = self.parse_field(visibility)?;
+                Ok(fields.into_iter().map(ClassMember::Field).collect())
             }
 
             // 跳过空行
             Token::Newline => {
                 self.advance();
-                Ok(None)
+                Ok(vec![])
             }
 
             _ => {
@@ -109,22 +118,37 @@ impl Parser {
     /// Public Name
     /// Private age
     /// Dim count
+    /// Public Lang, [Error], Str, Var  ' 支持逗号分隔的多字段声明
     /// ```
-    fn parse_field(&mut self, visibility: Visibility) -> Result<FieldDecl, ParseError> {
+    fn parse_field(&mut self, visibility: Visibility) -> Result<Vec<FieldDecl>, ParseError> {
         // 跳过 Dim 关键字（如果有）
         if self.check_keyword(Keyword::Dim) {
             self.advance();
         }
 
-        let name = self.expect_ident()?;
+        let mut fields = Vec::new();
 
-        // VBScript 类字段不支持初始化和数组维度
-        // 所以这里只需要读取名称
+        // 解析第一个字段名
+        let name = self.expect_ident()?;
+        fields.push(FieldDecl {
+            name,
+            visibility: visibility.clone(),
+        });
+
+        // 检查是否有逗号分隔的更多字段
+        while self.check(&Token::Comma) {
+            self.advance(); // 消耗逗号
+            let name = self.expect_ident()?;
+            fields.push(FieldDecl {
+                name,
+                visibility: visibility.clone(),
+            });
+        }
 
         // 消耗换行符
         self.skip_newlines();
 
-        Ok(FieldDecl { name, visibility })
+        Ok(fields)
     }
 
     /// 解析方法声明（Function 或 Sub）

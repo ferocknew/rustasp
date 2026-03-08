@@ -107,8 +107,7 @@ impl Parser {
         // 解析右侧（完整表达式）
         let value = self.parse_expr(0)?;
 
-        // 跳过冒号（语句分隔符）
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::Assignment { target, value }))
@@ -239,8 +238,7 @@ impl Parser {
         self.expect(Token::Eq)?;
         let value = self.parse_expr(0)?;
 
-        // 跳过冒号（语句分隔符）
-        self.match_token(&Token::Colon);
+        // 注意：不再跳过冒号，由 parse_program 处理冒号语句分隔符
         self.skip_newlines();
 
         Ok(Some(Stmt::Set { target, value }))
