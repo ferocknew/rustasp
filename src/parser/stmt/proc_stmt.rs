@@ -21,6 +21,10 @@ impl Parser {
             if self.is_at_end() || self.check_keyword(Keyword::End) {
                 break;
             }
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                continue;
+            }
             match self.parse_stmt()? {
                 Some(stmt) => body.push(stmt),
                 None => break,
@@ -46,6 +50,10 @@ impl Parser {
         loop {
             if self.is_at_end() || self.check_keyword(Keyword::End) {
                 break;
+            }
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                continue;
             }
             match self.parse_stmt()? {
                 Some(stmt) => body.push(stmt),
