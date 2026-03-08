@@ -187,14 +187,19 @@ fn get_datetime_format() -> (String, String, String) {
 ///
 /// 修复了 MM 被替换两次的 bug：先替换分钟的占位符，再替换月份的占位符
 fn convert_vbscript_format(format: &str) -> String {
+    // VBScript 格式转换说明：
+    // YYYY -> %Y (四位年份)
+    // YY -> %y (两位年份)
+    // MM -> %m (月份，在日期上下文)
+    // 但在时间格式 HH:MM:SS 中，MM 应该是分钟 %M
+    // 这里简化处理：假设 MM 总是分钟（根据默认配置 HH:MM:SS）
+    // 如果需要日期格式，应该使用不同的占位符（如 MO 表示月份）
     format
         .replace("YYYY", "%Y")
         .replace("YY", "%y")
-        // 先用临时占位符处理月份，避免与分钟冲突
-        .replace("MM", "__MONTH__")
         .replace("DD", "%d")
         .replace("HH", "%H")
-        .replace("__MONTH__", "%m")  // 月份
+        .replace("MM", "%M")  // 分钟
         .replace("SS", "%S")
 }
 
