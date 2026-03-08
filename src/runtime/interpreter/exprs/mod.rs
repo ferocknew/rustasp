@@ -12,6 +12,7 @@ mod unary;
 
 use crate::ast::Expr;
 use crate::runtime::{RuntimeError, Value};
+use std::sync::{Arc, Mutex};
 
 use super::Interpreter;
 
@@ -72,6 +73,6 @@ impl Interpreter {
     fn eval_array(&mut self, elements: &[Expr]) -> Result<Value, RuntimeError> {
         let values: Result<Vec<Value>, _> =
             elements.iter().map(|e| self.eval_expr(e)).collect();
-        Ok(Value::Array(values?))
+        Ok(Value::Array(Arc::new(Mutex::new(values?))))
     }
 }

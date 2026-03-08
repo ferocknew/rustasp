@@ -23,6 +23,22 @@ pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps};
 
 use std::sync::{Arc, Mutex};
 
+/// 数组引用类型（共享单例）
+///
+/// 使用 Arc<Mutex<VbsArray>> 实现共享所有权：
+/// - Arc：允许多个 Value 引用同一个数组（引用计数共享）
+/// - Mutex：提供内部可变性（数组修改需要 &mut self）
+/// - VbsArray：支持多维数组的扁平存储
+///
+/// 这样数组赋值会共享同一个数组，而不是复制：
+/// ```vbscript
+/// arr1 = Array(1, 2, 3)
+/// arr2 = arr1  ' arr2 指向同一个数组
+/// arr2(0) = 99
+/// Response.Write arr1(0)  ' 输出 99
+/// ```
+pub type ArrayRef = Arc<Mutex<VbsArray>>;
+
 /// 内置对象引用类型（共享单例）
 ///
 /// 使用 Arc<Mutex<>> 实现共享所有权：

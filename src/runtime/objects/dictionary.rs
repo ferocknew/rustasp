@@ -2,6 +2,7 @@
 
 use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Dictionary 对象
 #[derive(Debug, Clone)]
@@ -139,10 +140,10 @@ impl BuiltinObject for Dictionary {
             }
             "keys" => {
                 let keys: Vec<Value> = self.data.keys().map(|k| Value::String(k.clone())).collect();
-                Ok(Value::Array(keys))
+                Ok(Value::Array(Arc::new(Mutex::new(keys))))
             }
             "items" => {
-                Ok(Value::Array(self.data.values().cloned().collect()))
+                Ok(Value::Array(Arc::new(Mutex::new(self.data.values().cloned().collect()))))
             }
             "item" => {
                 if args.is_empty() {

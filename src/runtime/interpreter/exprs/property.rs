@@ -32,7 +32,10 @@ impl Interpreter {
     /// 获取 Count 属性值
     fn get_count_value(value: &Value) -> Value {
         match value {
-            Value::Array(arr) => Value::Number(arr.len() as f64),
+            Value::Array(arr) => {
+                let locked_arr = arr.lock().unwrap();
+                Value::Number(locked_arr.len() as f64)
+            }
             Value::Object(obj) => {
                 obj.lock()
                     .ok()

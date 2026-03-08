@@ -4,6 +4,7 @@
 
 use crate::ast::Expr;
 use crate::runtime::{RuntimeError, Value};
+use std::sync::{Arc, Mutex};
 
 use super::Interpreter;
 
@@ -66,25 +67,27 @@ impl Interpreter {
                 // 处理数组索引
                 if let Value::Number(i) = idx {
                     let i = i as usize;
-                    match self.context.get_var(name).cloned() {
-                        Some(Value::Array(mut arr)) => {
-                            if i >= arr.len() {
-                                arr.resize(i + 1, Value::Empty);
+                    match self.context.get_var(name) {
+                        Some(Value::Array(ref arr)) => {
+                            let mut locked_arr = arr.lock()
+                                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+                            if i >= locked_arr.len() {
+                                locked_arr.resize(i + 1, Value::Empty);
                             }
-                            arr[i] = val;
-                            self.context.set_var(name.clone(), Value::Array(arr));
+                            locked_arr[i] = val;
+                            // 由于是通过引用修改，不需要 set_var
                             Ok(Value::Empty)
                         }
                         Some(Value::Empty) => {
-                            let mut arr = vec![Value::Empty; i + 1];
-                            arr[i] = val;
-                            self.context.set_var(name.clone(), Value::Array(arr));
+                            let new_arr = Arc::new(Mutex::new(vec![Value::Empty; i + 1]));
+                            new_arr.lock().unwrap()[i] = val;
+                            self.context.set_var(name.clone(), Value::Array(new_arr));
                             Ok(Value::Empty)
                         }
                         _ => {
-                            let mut arr = vec![Value::Empty; i + 1];
-                            arr[i] = val;
-                            self.context.set_var(name.clone(), Value::Array(arr));
+                            let new_arr = Arc::new(Mutex::new(vec![Value::Empty; i + 1]));
+                            new_arr.lock().unwrap()[i] = val;
+                            self.context.set_var(name.clone(), Value::Array(new_arr));
                             Ok(Value::Empty)
                         }
                     }
@@ -110,15 +113,24 @@ impl Interpreter {
         indices.reverse();
 
         // 获取数组
-        let mut arr = match self.context.get_var(&var_name).cloned() {
-            Some(Value::Array(arr)) => arr,
-            Some(Value::Empty) => vec![],
+        let arr_ref = match self.context.get_var(&var_name) {
+            Some(Value::Array(ref arr)) => Some(arr),
+            Some(Value::Empty) => None,
             _ => {
                 return Err(RuntimeError::Generic(format!(
                     "'{}' is not an array",
                     var_name
                 )))
             }
+        };
+
+        // 如果数组不存在，创建新数组
+        let arr_ref = if let Some(ref arr) = arr_ref {
+            arr
+        } else {
+            let new_arr = Arc::new(Mutex::new(vec![]));
+            self.context.set_var(var_name.clone(), Value::Array(new_arr.clone()));
+            return self.eval_nested_index_assignment(object, index, val);
         };
 
         // 计算扁平索引
@@ -149,11 +161,14 @@ impl Interpreter {
         };
 
         // 扩展数组并赋值
-        if flat_index >= arr.len() {
-            arr.resize(flat_index + 1, Value::Empty);
+        {
+            let mut locked_arr = arr_ref.lock()
+                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+            if flat_index >= locked_arr.len() {
+                locked_arr.resize(flat_index + 1, Value::Empty);
+            }
+            locked_arr[flat_index] = val;
         }
-        arr[flat_index] = val;
-        self.context.set_var(var_name.clone(), Value::Array(arr));
         Ok(Value::Empty)
     }
 

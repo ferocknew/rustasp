@@ -2,6 +2,7 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
+use std::sync::{Arc, Mutex};
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
     let result = match token {
@@ -228,7 +229,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 string.split(&delimiter).map(|s| Value::String(s.to_string())).collect()
             };
 
-            Value::Array(parts)
+            Value::Array(Arc::new(Mutex::new(parts)))
         }
         BuiltinToken::Join => {
             // Join(array[, delimiter])
@@ -236,9 +237,10 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             match &args[0] {
-                Value::Array(arr) => {
+                Value::Array(ref arr) => {
                     let delimiter = args.get(1).map(|v| ValueConversion::to_string(v)).unwrap_or(" ".to_string());
-                    Value::String(arr.iter().map(|v| ValueConversion::to_string(v)).collect::<Vec<_>>().join(&delimiter))
+                    let locked_arr = arr.lock().unwrap();
+                    Value::String(locked_arr.iter().map(|v| ValueConversion::to_string(v)).collect::<Vec<_>>().join(&delimiter))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }

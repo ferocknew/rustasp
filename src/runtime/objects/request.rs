@@ -2,6 +2,7 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Request 对象
 #[derive(Debug, Clone)]
@@ -169,7 +170,7 @@ impl crate::runtime::BuiltinObject for Request {
                             .into_iter()
                             .map(|b| Value::Number(b as f64))
                             .collect();
-                        Ok(Value::Array(array_values))
+                        Ok(Value::Array(Arc::new(Mutex::new(array_values))))
                     }
                     Err(e) => Err(e),
                 }
@@ -183,7 +184,7 @@ impl crate::runtime::BuiltinObject for Request {
                     Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
                     Some(values) => {
                         let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-                        Ok(Value::Array(arr))
+                        Ok(Value::Array(Arc::new(Mutex::new(arr))))
                     }
                     None => Ok(Value::Empty),
                 }
@@ -197,7 +198,7 @@ impl crate::runtime::BuiltinObject for Request {
                     Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
                     Some(values) => {
                         let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-                        Ok(Value::Array(arr))
+                        Ok(Value::Array(Arc::new(Mutex::new(arr))))
                     }
                     None => Ok(Value::Empty),
                 }
@@ -236,14 +237,14 @@ impl crate::runtime::BuiltinObject for Request {
                 return Ok(Value::String(values[0].clone()));
             }
             let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-            return Ok(Value::Array(arr));
+            return Ok(Value::Array(Arc::new(Mutex::new(arr))));
         }
         if let Some(values) = self.form.get(&key_str) {
             if values.len() == 1 {
                 return Ok(Value::String(values[0].clone()));
             }
             let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-            return Ok(Value::Array(arr));
+            return Ok(Value::Array(Arc::new(Mutex::new(arr))));
         }
         Ok(Value::Empty)
     }

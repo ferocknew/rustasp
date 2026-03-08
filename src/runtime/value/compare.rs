@@ -2,6 +2,7 @@
 
 use super::{Value, ValueConversion};
 use crate::ast::BinaryOp;
+use std::sync::Arc;
 
 /// 值比较 trait
 pub trait ValueCompare {
@@ -58,7 +59,7 @@ impl Value {
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Number(a), Value::Number(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
-            (Value::Array(a), Value::Array(b)) => a == b,
+            (Value::Array(a), Value::Array(b)) => Arc::ptr_eq(a, b),
             // 对象比较：只比较是否同一类型，不比较内容
             (Value::Object(_), Value::Object(_)) => false,
             // 弱类型比较

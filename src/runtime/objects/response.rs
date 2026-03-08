@@ -343,8 +343,9 @@ impl crate::runtime::BuiltinObject for Response {
                 }
                 // 尝试将参数作为字节数组处理
                 match &args[0] {
-                    Value::Array(arr) => {
-                        let bytes: Vec<u8> = arr.iter()
+                    Value::Array(ref arr) => {
+                        let locked_arr = arr.lock().unwrap();
+                        let bytes: Vec<u8> = locked_arr.iter()
                             .map(|v| ValueConversion::to_number(v) as u8)
                             .collect();
                         self.binary_write(&bytes);

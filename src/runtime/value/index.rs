@@ -15,9 +15,11 @@ impl ValueIndex for Value {
             Value::Array(arr) => {
                 if let Value::Number(i) = index {
                     let i = *i as usize;
-                    // ASP 索引从 1 开始
-                    if i >= 1 && i <= arr.len() {
-                        return Ok(arr[i - 1].clone());
+                    // VBScript 数组是 0-based
+                    let locked_arr = arr.lock()
+                        .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+                    if i < locked_arr.len() {
+                        return Ok(locked_arr[i].clone());
                     }
                 }
                 Ok(Value::Empty)

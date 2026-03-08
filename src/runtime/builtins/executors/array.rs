@@ -2,6 +2,7 @@
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
+use std::sync::{Arc, Mutex};
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
     let result = match token {
@@ -10,30 +11,34 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             match &args[0] {
-                Value::Array(arr) => Value::Number((arr.len().saturating_sub(1)) as f64),
+                Value::Array(ref arr) => {
+                    let locked_arr = arr.lock().unwrap();
+                    Value::Number((locked_arr.len().saturating_sub(1)) as f64)
+                }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
         }
         BuiltinToken::LBound => Value::Number(0.0),
         BuiltinToken::Array => {
             // Array 函数：将参数转换为数组
-            Value::Array(args.to_vec())
+            Value::Array(Arc::new(Mutex::new(args.to_vec())))
         }
         BuiltinToken::Filter => {
             if args.len() < 2 {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             match &args[0] {
-                Value::Array(arr) => {
+                Value::Array(ref arr) => {
+                    let locked_arr = arr.lock().unwrap();
                     let criteria = ValueConversion::to_string(&args[1]);
                     let include = args.get(2).map(|v| ValueConversion::to_bool(v)).unwrap_or(true);
-                    Value::Array(arr.iter()
+                    Value::Array(Arc::new(Mutex::new(locked_arr.iter()
                         .filter(|v| {
                             let s = ValueConversion::to_string(&**v);
                             if include { s.contains(&criteria) } else { !s.contains(&criteria) }
                         })
                         .cloned()
-                        .collect())
+                        .collect())))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
@@ -53,10 +58,11 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             match &args[0] {
-                Value::Array(arr) => {
+                Value::Array(ref arr) => {
+                    let locked_arr = arr.lock().unwrap();
                     // 创建一个新数组，所有元素设置为 Empty
-                    let erased = vec![Value::Empty; arr.len()];
-                    Value::Array(erased)
+                    let erased = vec![Value::Empty; locked_arr.len()];
+                    Value::Array(Arc::new(Mutex::new(erased)))
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }

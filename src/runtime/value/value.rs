@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use super::super::{objects::Dictionary, ObjectRef};
+use super::super::{objects::Dictionary, ArrayRef, ObjectRef};
 
 /// VBScript 值类型
 #[derive(Debug)]
@@ -20,8 +20,21 @@ pub enum Value {
     Number(f64),
     /// 字符串
     String(String),
-    /// 数组
-    Array(Vec<Value>),
+    /// 数组（共享引用）
+    ///
+    /// 使用 Arc<Mutex<VbsArray>> 实现共享所有权：
+    /// - clone() 只是增加 Arc 引用计数，不复制底层数组
+    /// - Mutex 提供内部可变性（数组修改需要 &mut self）
+    /// - VbsArray 支持多维数组（使用扁平存储）
+    ///
+    /// 这样数组赋值会共享同一个数组，符合 VBScript 引用语义：
+    /// ```vbscript
+    /// arr1 = Array(1, 2, 3)
+    /// arr2 = arr1  ' arr2 指向同一个数组
+    /// arr2(0) = 99
+    /// Response.Write arr1(0)  ' 输出 99
+    /// ```
+    Array(ArrayRef),
     /// 对象（包括内置对象和字典）
     ///
     /// 使用 Arc<Mutex<dyn BuiltinObject>> 实现共享所有权：
@@ -39,7 +52,10 @@ impl PartialEq for Value {
             (Value::Boolean(a), Value::Boolean(b)) => a == b,
             (Value::Number(a), Value::Number(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
-            (Value::Array(a), Value::Array(b)) => a == b,
+            // 数组比较：通过 Arc::ptr_eq 比较是否同一个数组
+            (Value::Array(a), Value::Array(b)) => {
+                Arc::ptr_eq(a, b)
+            }
             // 对象比较：通过 Arc::ptr_eq 比较是否同一个对象
             (Value::Object(a), Value::Object(b)) => {
                 Arc::ptr_eq(a, b)
@@ -58,7 +74,8 @@ impl Clone for Value {
             Value::Boolean(v) => Value::Boolean(*v),
             Value::Number(v) => Value::Number(*v),
             Value::String(v) => Value::String(v.clone()),
-            Value::Array(v) => Value::Array(v.clone()),
+            // Array: Arc::clone 只增加引用计数，不复制底层数组
+            Value::Array(arr) => Value::Array(Arc::clone(arr)),
             // Object: Arc::clone 只增加引用计数，不复制底层对象
             Value::Object(obj) => Value::Object(Arc::clone(obj)),
         }

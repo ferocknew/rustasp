@@ -19,7 +19,8 @@ impl fmt::Display for Value {
             }
             Value::String(s) => write!(f, "{}", s),
             Value::Array(arr) => {
-                let items: Vec<String> = arr.iter().map(|v| v.to_string()).collect();
+                let locked_arr = arr.lock().unwrap();
+                let items: Vec<String> = locked_arr.iter().map(|v| v.to_string()).collect();
                 write!(f, "[{}]", items.join(", "))
             }
             Value::Object(obj) => {

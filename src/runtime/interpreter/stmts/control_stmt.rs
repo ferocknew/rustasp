@@ -159,7 +159,11 @@ impl Interpreter {
         let collection_val = self.eval_expr(collection)?;
 
         let elements = match collection_val {
-            Value::Array(arr) => arr,
+            Value::Array(ref arr) => {
+                let locked_arr = arr.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+                locked_arr.clone()
+            }
             Value::Object(ref obj) => {
                 // 尝试作为字典处理
                 use crate::runtime::objects::Dictionary;
@@ -174,7 +178,11 @@ impl Interpreter {
                     match obj.lock()
                         .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
                         .call_method("items", vec![]) {
-                        Ok(Value::Array(arr)) => arr,
+                        Ok(Value::Array(ref arr)) => {
+                            let locked_arr = arr.lock()
+                                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+                            locked_arr.clone()
+                        }
                         _ => {
                             return Err(RuntimeError::Generic(
                                 "For Each requires an iterable object".to_string(),
