@@ -23,6 +23,9 @@ impl Parser {
             Token::Keyword(Keyword::Select) => self.parse_select(),
             Token::Keyword(Keyword::Do) => self.parse_do(),
 
+            // 错误处理语句
+            Token::Keyword(Keyword::On) => self.parse_on_error(),
+
             // 类定义
             Token::Keyword(Keyword::Class) => self.parse_class(),
 
@@ -50,6 +53,44 @@ impl Parser {
 
             // 其他情况当作表达式语句
             _ => self.parse_expr_stmt(),
+        }
+    }
+
+    /// 解析 On Error 语句
+    fn parse_on_error(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.expect_keyword(Keyword::On)?;
+
+        // 检查是否是 Error 关键字
+        if !self.match_keyword(Keyword::Error) {
+            return Err(ParseError::ParserError("Expected 'Error' keyword".to_string()));
+        }
+
+        // 检查下一个关键字
+        match self.peek() {
+            Token::Keyword(Keyword::Resume) => {
+                self.expect_keyword(Keyword::Resume)?;
+
+                // 检查是否是 Next
+                match self.peek() {
+                    Token::Keyword(Keyword::Next) => {
+                        self.expect_keyword(Keyword::Next)?;
+                        Ok(Some(Stmt::OnErrorResumeNext))
+                    }
+                    _ => Err(ParseError::ParserError("Expected 'Next' keyword".to_string())),
+                }
+            }
+            Token::Ident(ident) if ident.eq_ignore_ascii_case("goto") => {
+                self.advance(); // 消耗 goto
+                // 检查是否是 0
+                match self.peek() {
+                    Token::Number(n) if *n == 0.0 => {
+                        self.advance();
+                        Ok(Some(Stmt::OnErrorGoto0))
+                    }
+                    _ => Err(ParseError::ParserError("Expected '0'".to_string())),
+                }
+            }
+            _ => Err(ParseError::ParserError("Expected 'Resume' or 'Goto'".to_string())),
         }
     }
 }

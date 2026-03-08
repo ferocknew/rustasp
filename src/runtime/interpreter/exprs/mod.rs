@@ -51,6 +51,15 @@ impl Interpreter {
 
     /// 求值变量
     fn eval_variable(&mut self, name: &str) -> Result<Value, RuntimeError> {
+        let name_lower = name.to_lowercase();
+
+        // 特殊处理：Err 对象
+        if name_lower == "err" {
+            // Err 对象不需要实际返回值，它通过属性访问来工作
+            // 我们返回一个特殊的标记，然后在属性访问中处理
+            return Ok(Value::String("[ERR_OBJECT]".to_string()));
+        }
+
         // 首先尝试从上下文中获取变量
         if let Some(value) = self.context.get_var(name).cloned() {
             return Ok(value);

@@ -10,6 +10,13 @@ impl Interpreter {
     pub fn eval_property(&mut self, object: &Expr, property: &str) -> Result<Value, RuntimeError> {
         let property_lower = property.to_lowercase();
 
+        // 特殊处理：Err 对象属性访问
+        if let Expr::Variable(name) = object {
+            if name.to_lowercase() == "err" {
+                return self.eval_err_property(&property_lower);
+            }
+        }
+
         // 统一 trait dispatch：eval object 并访问属性
         let obj_value = self.eval_expr(object)?;
 
@@ -27,6 +34,20 @@ impl Interpreter {
         }
 
         Err(RuntimeError::PropertyNotFound(property.to_string()))
+    }
+
+    /// 处理 Err 对象的属性访问
+    fn eval_err_property(&mut self, property: &str) -> Result<Value, RuntimeError> {
+        match property {
+            "number" => Ok(Value::Number(self.context.err.get_number() as f64)),
+            "description" => Ok(Value::String(self.context.err.get_description().to_string())),
+            "clear" => {
+                // VBScript 允许不带括号调用方法
+                self.context.err.clear();
+                Ok(Value::Empty)
+            }
+            _ => Err(RuntimeError::PropertyNotFound(format!("Err.{}", property))),
+        }
     }
 
     /// 获取 Count 属性值

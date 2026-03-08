@@ -5,6 +5,8 @@
 mod class;
 mod context;
 mod error;
+mod error_mode;
+mod err_object;
 mod interpreter;
 mod scope;
 
@@ -17,6 +19,8 @@ pub use context::{ClassDef, Context, Function};
 // 重新导出 Rc 供其他模块使用
 pub use std::rc::Rc;
 pub use error::{ControlFlow, RuntimeError};
+pub use error_mode::ErrorMode;
+pub use err_object::{ErrObject, vb_error};
 pub use interpreter::Interpreter;
 pub use scope::Scope;
 pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps, VbsArray};

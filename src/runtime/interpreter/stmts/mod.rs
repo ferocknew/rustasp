@@ -7,16 +7,52 @@ mod assign_stmt;
 mod control_stmt;
 
 use crate::ast::{Param, Stmt};
-use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass};
+use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass, ErrorMode, vb_error};
 use std::rc::Rc;
 
 use super::Interpreter;
 
 /// 语句执行器
 impl Interpreter {
-    /// 执行语句（调度）
+    /// 执行语句（调度）- 支持错误处理
     pub fn eval_stmt(&mut self, stmt: &Stmt) -> Result<Value, RuntimeError> {
+        // 获取当前错误模式
+        let error_mode = self.context.current_scope().get_error_mode();
+
+        // 执行语句
+        let result = self.eval_stmt_inner(stmt);
+
+        // 根据错误模式处理错误
+        match result {
+            Ok(value) => Ok(value),
+            Err(e) => {
+                match error_mode {
+                    ErrorMode::Stop => Err(e),
+                    ErrorMode::ResumeNext => {
+                        // 记录错误到 Err 对象
+                        let (number, description) = self.extract_error_info(&e);
+                        self.context.err.set(number, description);
+                        // 继续执行
+                        Ok(Value::Empty)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 执行语句（内部实现）- 不处理错误
+    fn eval_stmt_inner(&mut self, stmt: &Stmt) -> Result<Value, RuntimeError> {
         match stmt {
+            // 错误处理语句
+            Stmt::OnErrorResumeNext => {
+                self.context.current_scope_mut().set_error_mode(ErrorMode::ResumeNext);
+                Ok(Value::Empty)
+            }
+            Stmt::OnErrorGoto0 => {
+                self.context.current_scope_mut().set_error_mode(ErrorMode::Stop);
+                Ok(Value::Empty)
+            }
+
             // 声明语句
             Stmt::Dim { name, init, is_array, sizes } => {
                 self.eval_dim(name, init.as_ref(), *is_array, sizes)
@@ -76,6 +112,28 @@ impl Interpreter {
             }
             Stmt::Expr(expr) => self.eval_expr(expr),
             _ => Err(RuntimeError::Generic(format!("Unimplemented: {:?}", stmt))),
+        }
+    }
+
+    /// 从 RuntimeError 中提取错误信息
+    fn extract_error_info(&self, error: &RuntimeError) -> (i32, String) {
+        match error {
+            RuntimeError::DivisionByZero => {
+                (vb_error::DIVISION_BY_ZERO, "Division by zero".to_string())
+            }
+            RuntimeError::TypeMismatch(msg) => {
+                (vb_error::TYPE_MISMATCH, format!("Type mismatch: {}", msg))
+            }
+            RuntimeError::ObjectRequired => {
+                (vb_error::OBJECT_REQUIRED, "Object required".to_string())
+            }
+            RuntimeError::UndefinedFunction(name) => {
+                (vb_error::UNDEFINED_FUNCTION, format!("Undefined function: {}", name))
+            }
+            RuntimeError::IndexOutOfBounds(_) => {
+                (vb_error::SUBSCRIPT_OUT_OF_RANGE, "Subscript out of range".to_string())
+            }
+            _ => (0, format!("{:?}", error)),
         }
     }
 

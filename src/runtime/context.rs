@@ -4,6 +4,7 @@ use super::Scope;
 use super::Value;
 use super::objects::Response;
 use super::VbsClass;
+use super::ErrObject;
 use crate::ast::Param;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -37,6 +38,8 @@ pub struct Context {
     pub request_data: HashMap<String, Vec<String>>,
     /// Response 对象
     response: Option<Response>,
+    /// Err 对象（全局错误信息）
+    pub err: ErrObject,
 }
 
 /// 类定义
@@ -59,6 +62,7 @@ impl Context {
             should_exit: false,
             request_data: HashMap::new(),
             response: None,
+            err: ErrObject::new(),
         }
     }
 

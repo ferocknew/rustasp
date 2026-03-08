@@ -3,7 +3,7 @@
 //! 处理 Assignment、Set 及索引/属性赋值
 
 use crate::ast::Expr;
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value, ErrorMode};
 use std::sync::{Arc, Mutex};
 
 use super::Interpreter;
@@ -16,24 +16,86 @@ impl Interpreter {
         target: &Expr,
         value: &Expr,
     ) -> Result<Value, RuntimeError> {
-        let val = self.eval_expr(value)?;
+        // 获取当前错误模式
+        let error_mode = self.context.current_scope().get_error_mode();
 
-        match target {
-            Expr::Variable(name) => {
-                self.context.set_var(name.clone(), val);
-                Ok(Value::Empty)
+        // 尝试计算值
+        let val_result = self.eval_expr(value);
+
+        // 处理结果
+        match val_result {
+            Ok(val) => {
+                match target {
+                    Expr::Variable(name) => {
+                        self.context.set_var(name.clone(), val);
+                        Ok(Value::Empty)
+                    }
+                    Expr::Index { object, indices } => self.eval_index_assignment(object, indices, val),
+                    Expr::Property { object, property } => {
+                        self.eval_property_assignment(object, property, val)
+                    }
+                    _ => Err(RuntimeError::InvalidAssignment),
+                }
             }
-            Expr::Index { object, indices } => self.eval_index_assignment(object, indices, val),
-            Expr::Property { object, property } => {
-                self.eval_property_assignment(object, property, val)
+            Err(e) => {
+                match target {
+                    Expr::Variable(name) => {
+                        match error_mode {
+                            ErrorMode::Stop => Err(e),
+                            ErrorMode::ResumeNext => {
+                                // 设置变量为 Empty
+                                self.context.set_var(name.clone(), Value::Empty);
+                                // 返回错误，由外层处理
+                                Err(e)
+                            }
+                        }
+                    }
+                    _ => Err(e),
+                }
             }
-            _ => Err(RuntimeError::InvalidAssignment),
         }
     }
 
     /// 执行 Set 语句
     pub fn eval_set(&mut self, target: &Expr, value: &Expr) -> Result<Value, RuntimeError> {
-        self.eval_assignment(target, value)
+        // 获取当前错误模式
+        let error_mode = self.context.current_scope().get_error_mode();
+
+        // 尝试计算值
+        let val_result = self.eval_expr(value);
+
+        // 处理结果
+        match val_result {
+            Ok(val) => {
+                match target {
+                    Expr::Variable(name) => {
+                        self.context.set_var(name.clone(), val);
+                        Ok(Value::Empty)
+                    }
+                    Expr::Index { object, indices } => self.eval_index_assignment(object, indices, val),
+                    Expr::Property { object, property } => {
+                        self.eval_property_assignment(object, property, val)
+                    }
+                    _ => Err(RuntimeError::InvalidAssignment),
+                }
+            }
+            Err(e) => {
+                match target {
+                    Expr::Variable(name) => {
+                        match error_mode {
+                            ErrorMode::Stop => Err(e),
+                            ErrorMode::ResumeNext => {
+                                // 设置变量为 Nothing (Null)
+                                self.context.set_var(name.clone(), Value::Null);
+                                // 返回错误，由外层处理
+                                Err(e)
+                            }
+                        }
+                    }
+                    _ => Err(e),
+                }
+            }
+        }
     }
 
     /// 执行索引赋值（如 arr(i) = value 或 arr(i,j) = value）

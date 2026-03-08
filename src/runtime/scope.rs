@@ -1,6 +1,7 @@
 //! 变量作用域
 
 use super::Value;
+use super::ErrorMode;
 use std::collections::HashMap;
 
 /// 作用域
@@ -10,6 +11,8 @@ pub struct Scope {
     pub variables: HashMap<String, Value>,
     /// 父作用域
     pub parent: Option<Box<Scope>>,
+    /// 错误处理模式
+    pub error_mode: ErrorMode,
 }
 
 impl Scope {
@@ -18,6 +21,7 @@ impl Scope {
         Scope {
             variables: HashMap::new(),
             parent: None,
+            error_mode: ErrorMode::default(),
         }
     }
 
@@ -26,6 +30,7 @@ impl Scope {
         Scope {
             variables: HashMap::new(),
             parent: Some(Box::new(parent)),
+            error_mode: ErrorMode::default(),
         }
     }
 
@@ -63,6 +68,16 @@ impl Scope {
     pub fn define(&mut self, name: String, value: Value) {
         let name_lower = name.to_lowercase();
         self.variables.insert(name_lower, value);
+    }
+
+    /// 设置错误模式
+    pub fn set_error_mode(&mut self, mode: ErrorMode) {
+        self.error_mode = mode;
+    }
+
+    /// 获取错误模式
+    pub fn get_error_mode(&self) -> ErrorMode {
+        self.error_mode
     }
 }
 

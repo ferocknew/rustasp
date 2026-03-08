@@ -20,6 +20,13 @@ impl Interpreter {
 
         let method_lower = method.to_lowercase();
 
+        // 特殊处理：Err 对象方法调用
+        if let Expr::Variable(name) = object {
+            if name.to_lowercase() == "err" {
+                return self.eval_err_method(&method_lower);
+            }
+        }
+
         // 先计算对象表达式
         let obj_val = self.eval_expr(object)?;
 
@@ -34,5 +41,16 @@ impl Interpreter {
         }
 
         Ok(Value::Empty)
+    }
+
+    /// 处理 Err 对象的方法调用
+    fn eval_err_method(&mut self, method: &str) -> Result<Value, RuntimeError> {
+        match method {
+            "clear" => {
+                self.context.err.clear();
+                Ok(Value::Empty)
+            }
+            _ => Err(RuntimeError::MethodNotFound(format!("Err.{}", method))),
+        }
     }
 }
