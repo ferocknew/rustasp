@@ -2,28 +2,42 @@
 //!
 //! 只包含 Parser struct 和基础工具方法
 
-use crate::parser::keyword::Keyword;
-use crate::parser::lexer::Token;
+use crate::parser::Keyword;
+use crate::parser::lexer::{SpannedToken, Token};
 use crate::parser::ParseError;
 
 /// 解析器
 pub struct Parser {
-    tokens: Vec<Token>,
+    spanned_tokens: Vec<SpannedToken>,
+    source: String,
     pos: usize,
 }
 
 impl Parser {
     /// 创建新的解析器
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, pos: 0 }
+    pub fn new(spanned_tokens: Vec<SpannedToken>) -> Self {
+        Parser {
+            spanned_tokens,
+            source: String::new(),
+            pos: 0,
+        }
+    }
+
+    /// 创建新的解析器（带源代码）
+    pub fn with_source(spanned_tokens: Vec<SpannedToken>, source: String) -> Self {
+        Parser {
+            spanned_tokens,
+            source,
+            pos: 0,
+        }
     }
 
     // ==================== 核心工具方法 ====================
 
     /// 查看当前 token
     pub fn peek(&self) -> &Token {
-        if self.pos < self.tokens.len() {
-            &self.tokens[self.pos]
+        if self.pos < self.spanned_tokens.len() {
+            &self.spanned_tokens[self.pos].token
         } else {
             &Token::Eof
         }
@@ -32,8 +46,8 @@ impl Parser {
     /// 查看后面的 token（用于 lookahead）
     pub fn peek_ahead(&self, offset: usize) -> &Token {
         let pos = self.pos + offset;
-        if pos < self.tokens.len() {
-            &self.tokens[pos]
+        if pos < self.spanned_tokens.len() {
+            &self.spanned_tokens[pos].token
         } else {
             &Token::Eof
         }
@@ -41,8 +55,8 @@ impl Parser {
 
     /// 前进一个位置并返回 token
     pub fn advance(&mut self) -> &Token {
-        if self.pos < self.tokens.len() {
-            let token = &self.tokens[self.pos];
+        if self.pos < self.spanned_tokens.len() {
+            let token = &self.spanned_tokens[self.pos].token;
             self.pos += 1;
             token
         } else {
@@ -52,7 +66,7 @@ impl Parser {
 
     /// 是否到达末尾
     pub fn is_at_end(&self) -> bool {
-        self.pos >= self.tokens.len() || matches!(self.tokens[self.pos], Token::Eof)
+        self.pos >= self.spanned_tokens.len() || matches!(self.spanned_tokens[self.pos].token, Token::Eof)
     }
 
     /// 检查当前 token 是否匹配
@@ -145,22 +159,84 @@ impl Parser {
     /// 获取当前 token 的上下文（前后各 context_count 个 token）
     pub fn get_token_context(&self, context_count: usize) -> String {
         let start = self.pos.saturating_sub(context_count);
-        let end = (self.pos + context_count + 1).min(self.tokens.len());
+        let end = (self.pos + context_count + 1).min(self.spanned_tokens.len());
 
         let mut result = String::new();
 
-        for i in start..end {
-            let token = &self.tokens[i];
-            let is_current = i == self.pos;
+        if self.source.is_empty() {
+            // 如果没有源代码，回退到原来的显示方式
+            for i in start..end {
+                let spanned_token = &self.spanned_tokens[i];
+                let is_current = i == self.pos;
 
-            // 格式化 token
-            let token_str = self.format_token(token);
-            let prefix = if is_current { ">>> " } else { "    " };
+                let token_str = self.format_token(&spanned_token.token);
+                let prefix = if is_current { ">>> " } else { "    " };
 
-            result.push_str(&format!("{}[{}] {}\n", prefix, i, token_str));
+                result.push_str(&format!("{}[{}] {}\n", prefix, i, token_str));
+            }
+        } else {
+            // 显示源代码内容
+            let source_lines: Vec<&str> = self.source.lines().collect();
+
+            for i in start..end {
+                let spanned_token = &self.spanned_tokens[i];
+                let is_current = i == self.pos;
+
+                // 获取 token 所在的源代码行
+                let line_num = spanned_token.line.saturating_sub(1); // 转为 0-indexed
+                let source_line = if line_num < source_lines.len() {
+                    source_lines[line_num]
+                } else {
+                    "<unknown line>"
+                };
+
+                let prefix = if is_current { ">>> " } else { "    " };
+                let token_repr = self.format_token_repr(&spanned_token.token);
+
+                result.push_str(&format!(
+                    "{}{}:{}:{}\t{}\n",
+                    prefix, spanned_token.line, spanned_token.column, token_repr, source_line
+                ));
+            }
         }
 
         result
+    }
+
+    /// 格式化 token 为简短表示（用于源代码行显示）
+    fn format_token_repr(&self, token: &Token) -> String {
+        match token {
+            Token::Ident(s) => s.clone(),
+            Token::String(s) => format!("\"{}\"", if s.len() > 30 { &s[..30] } else { s }),
+            Token::Number(n) => n.to_string(),
+            Token::Boolean(b) => b.to_string(),
+            Token::Keyword(kw) => kw.as_str().to_string(),
+            Token::Newline => "<newline>".to_string(),
+            Token::Colon => ":".to_string(),
+            Token::Comma => ",".to_string(),
+            Token::LParen => "(".to_string(),
+            Token::RParen => ")".to_string(),
+            Token::Dot => ".".to_string(),
+            Token::Eq => "=".to_string(),
+            Token::Plus => "+".to_string(),
+            Token::Minus => "-".to_string(),
+            Token::Star => "*".to_string(),
+            Token::Slash => "/".to_string(),
+            Token::Backslash => "\\".to_string(),
+            Token::Caret => "^".to_string(),
+            Token::Ampersand => "&".to_string(),
+            Token::Ne => "<>".to_string(),
+            Token::Lt => "<".to_string(),
+            Token::Le => "<=".to_string(),
+            Token::Gt => ">".to_string(),
+            Token::Ge => ">=".to_string(),
+            Token::Empty => "Empty".to_string(),
+            Token::Null => "Null".to_string(),
+            Token::Date(s) => format!("#{}#", s),
+            Token::Eof => "<eof>".to_string(),
+            Token::LeftBracket => "[".to_string(),
+            Token::RightBracket => "]".to_string(),
+        }
     }
 
     /// 格式化 token 为可读字符串

@@ -1,7 +1,7 @@
 //! 声明语句解析 - Dim / Const / Option / ReDim
 
 use crate::ast::Stmt;
-use crate::parser::keyword::Keyword;
+use crate::parser::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::ParseError;
 use crate::parser::Parser;

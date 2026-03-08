@@ -4,8 +4,11 @@
 //! - Parser: 统一解析器（表达式用 Pratt，语句用递归下降）
 
 mod error;
-pub mod keyword;
+
+// Lexer 子模块
 pub mod lexer;
+pub use lexer::token::{Token, SpannedToken};
+pub use lexer::keyword::Keyword;
 
 // Parser 核心
 mod class_parser;
@@ -17,21 +20,20 @@ mod expr;
 mod stmt;
 
 pub use error::ParseError;
-pub use keyword::Keyword;
-pub use lexer::{tokenize, Lexer, Token};
+pub use lexer::{tokenize, Lexer};
 pub use parser::Parser;
 
 /// 解析表达式（便捷函数）
 pub fn parse_expr(source: &str) -> Result<crate::ast::Expr, ParseError> {
-    let tokens = tokenize(source)?;
-    let mut parser = Parser::new(tokens);
+    let spanned_tokens = tokenize(source)?;
+    let mut parser = Parser::with_source(spanned_tokens, source.to_string());
     parser.parse_expr(0)
 }
 
 /// 解析程序（便捷函数）
 pub fn parse(source: &str) -> Result<crate::ast::Program, ParseError> {
-    let tokens = tokenize(source)?;
-    let mut parser = Parser::new(tokens);
+    let spanned_tokens = tokenize(source)?;
+    let mut parser = Parser::with_source(spanned_tokens, source.to_string());
     Ok(crate::ast::Program {
         statements: parser.parse_program()?,
     })

@@ -7,8 +7,7 @@ use crate::http::RequestContext;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use vbscript::ast::Program;
-use vbscript::parser::tokenize;
-use vbscript::parser::Parser;
+use vbscript::parser::{tokenize, Parser};
 use vbscript::runtime::Value;
 use vbscript::runtime::objects::{Session, SessionManager};
 
@@ -59,14 +58,14 @@ impl Engine {
         let full_program = self.build_full_program(&segments_with_pos)?;
 
         // 3. 词法分析
-        let tokens = tokenize(&full_program).map_err(|e| {
+        let spanned_tokens = tokenize(&full_program).map_err(|e| {
             let error_msg = format!("Lexer error: {}", e);
             eprintln!("❌ ASP Error: {}\n", error_msg);
             error_msg
         })?;
 
         // 4. 语法分析
-        let mut parser = Parser::new(tokens);
+        let mut parser = Parser::with_source(spanned_tokens, full_program);
         let stmts = parser.parse_program().map_err(|e| {
             // 格式化错误信息，显示上下文
             let formatted_error = Self::format_parser_error(&e);

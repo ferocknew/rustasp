@@ -1,7 +1,7 @@
 //! 中缀运算符解析
 
 use crate::ast::BinaryOp;
-use crate::parser::keyword::Keyword;
+use crate::parser::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::{ParseError, Parser};
 

@@ -1,7 +1,7 @@
 //! Class 类解析器
 
 use crate::ast::{ClassMember, FieldDecl, MethodDecl, PropertyDecl, PropertyType, Stmt, Visibility};
-use crate::parser::keyword::Keyword;
+use crate::parser::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::ParseError;
 use crate::parser::Parser;

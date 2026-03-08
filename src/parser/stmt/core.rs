@@ -1,7 +1,7 @@
 //! 语句解析核心 - parse_stmt 分发器
 
 use crate::ast::Stmt;
-use crate::parser::keyword::Keyword;
+use crate::parser::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::ParseError;
 use crate::parser::Parser;

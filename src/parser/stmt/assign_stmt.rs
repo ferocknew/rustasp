@@ -2,6 +2,7 @@
 
 use crate::ast::{Expr, Stmt};
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -233,7 +234,7 @@ impl Parser {
 
     /// 解析 Set 语句
     pub fn parse_set(&mut self) -> Result<Option<Stmt>, ParseError> {
-        self.expect_keyword(crate::parser::keyword::Keyword::Set)?;
+        self.expect_keyword(Keyword::Set)?;
         let target = self.parse_lhs()?;
         self.expect(Token::Eq)?;
         let value = self.parse_expr(0)?;
