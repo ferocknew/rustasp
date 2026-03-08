@@ -21,11 +21,19 @@ pub use interpreter::Interpreter;
 pub use scope::Scope;
 pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps};
 
+use std::sync::{Arc, Mutex};
+
+/// 内置对象引用类型（共享单例）
+///
+/// 使用 Arc<Mutex<>> 实现共享所有权：
+/// - Arc：允许多个 Value 引用同一个对象（引用计数共享）
+/// - Mutex：提供内部可变性（call_method 需要 &mut self）
+///
+/// 这样 Response.Write 和 context.response 操作的是同一个对象。
+pub type ObjectRef = Arc<Mutex<dyn BuiltinObject>>;
+
 /// 内置对象 trait
 pub trait BuiltinObject: Send + Sync + std::fmt::Debug {
-    /// 克隆对象
-    fn clone_box(&self) -> Box<dyn BuiltinObject>;
-
     /// 获取属性
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError>;
 
@@ -54,10 +62,4 @@ pub trait BuiltinObject: Send + Sync + std::fmt::Debug {
 
     /// 向下转型支持（可变）
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-impl Clone for Box<dyn BuiltinObject> {
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
 }

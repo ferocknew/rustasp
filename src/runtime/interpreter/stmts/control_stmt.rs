@@ -160,14 +160,20 @@ impl Interpreter {
 
         let elements = match collection_val {
             Value::Array(arr) => arr,
-            Value::Object(mut obj) => {
+            Value::Object(ref obj) => {
                 // 尝试作为字典处理
                 use crate::runtime::objects::Dictionary;
-                if let Some(dict) = obj.as_any().downcast_ref::<Dictionary>() {
-                    dict.values()
+                let locked_obj = obj.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
+
+                if let Some(dict) = locked_obj.as_any().downcast_ref::<Dictionary>() {
+                    dict.values().to_vec()
                 } else {
                     // 对于其他对象，尝试调用 items 方法
-                    match obj.call_method("items", vec![]) {
+                    drop(locked_obj);
+                    match obj.lock()
+                        .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                        .call_method("items", vec![]) {
                         Ok(Value::Array(arr)) => arr,
                         _ => {
                             return Err(RuntimeError::Generic(

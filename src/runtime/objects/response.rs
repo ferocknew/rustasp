@@ -208,10 +208,6 @@ impl Response {
 }
 
 impl crate::runtime::BuiltinObject for Response {
-    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
-        Box::new(self.clone())
-    }
-
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }

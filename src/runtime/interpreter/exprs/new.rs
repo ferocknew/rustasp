@@ -2,6 +2,7 @@
 
 use crate::runtime::{RuntimeError, Value};
 use crate::runtime::objects::Dictionary;
+use std::sync::{Arc, Mutex};
 
 use super::super::Interpreter;
 
@@ -35,7 +36,7 @@ impl Interpreter {
         match class_name {
             // Scripting.Dictionary 对象
             "dictionary" | "scripting.dictionary" => {
-                Some(Value::Object(Box::new(Dictionary::new())))
+                Some(Value::Object(Arc::new(Mutex::new(Dictionary::new()))))
             }
             // 其他内置对象可以在这里添加
             // 例如: "filesystemobject" | "scripting.filesystemobject" => ...

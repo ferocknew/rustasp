@@ -52,13 +52,14 @@ impl Interpreter {
         match object {
             Expr::Variable(name) => {
                 // 先尝试从变量表获取对象
-                if let Some(obj_val) = self.context.get_var(name).cloned() {
+                if let Some(obj_val) = self.context.get_var(name) {
                     // 如果是对象，使用 trait 的 set_index 方法
-                    if let Value::Object(mut obj) = obj_val {
-                        obj.set_index(&idx, val.clone())?;
-                        // 更新变量表中的对象（某些对象可能需要写回）
-                        self.context.set_var(name.clone(), Value::Object(obj));
-                        return Ok(Value::Empty);
+                    // Arc<Mutex<dyn BuiltinObject>> 会直接修改共享对象，无需写回
+                    if let Value::Object(ref obj) = obj_val {
+                        let result = obj.lock()
+                            .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                            .set_index(&idx, val.clone());
+                        return result.map(|_| Value::Empty);
                     }
                 }
 
@@ -195,12 +196,13 @@ impl Interpreter {
         match object {
             Expr::Variable(var_name) => {
                 // 从变量表获取对象
-                if let Some(obj_val) = self.context.get_var(var_name).cloned() {
-                    if let Value::Object(mut obj) = obj_val {
-                        obj.set_property(property, val)?;
-                        // 更新变量表中的对象（某些对象可能需要写回）
-                        self.context.set_var(var_name.clone(), Value::Object(obj));
-                        return Ok(Value::Empty);
+                if let Some(obj_val) = self.context.get_var(var_name) {
+                    if let Value::Object(ref obj) = obj_val {
+                        // Arc<Mutex<dyn BuiltinObject>> 会直接修改共享对象，无需写回
+                        let result = obj.lock()
+                            .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                            .set_property(property, val);
+                        return result.map(|_| Value::Empty);
                     }
                 }
                 Err(RuntimeError::PropertyNotFound(format!(
@@ -211,9 +213,11 @@ impl Interpreter {
             _ => {
                 // 对于非变量的对象表达式（如 obj.prop.subprop），先求值
                 let obj_val = self.eval_expr(object)?;
-                if let Value::Object(mut obj) = obj_val {
-                    obj.set_property(property, val)?;
-                    return Ok(Value::Empty);
+                if let Value::Object(ref obj) = obj_val {
+                    let result = obj.lock()
+                        .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                        .set_property(property, val);
+                    return result.map(|_| Value::Empty);
                 }
                 Err(RuntimeError::InvalidAssignment)
             }

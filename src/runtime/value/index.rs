@@ -33,7 +33,9 @@ impl ValueIndex for Value {
             }
             Value::Object(obj) => {
                 // 使用 BuiltinObject trait 的 index 方法
-                match obj.index(index) {
+                match obj.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                    .index(index) {
                     Ok(value) => Ok(value),
                     Err(_) => Ok(Value::Empty),
                 }

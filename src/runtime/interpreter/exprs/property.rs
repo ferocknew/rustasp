@@ -20,7 +20,10 @@ impl Interpreter {
 
         // 处理对象的属性访问
         if let Value::Object(obj) = obj_value {
-            return obj.get_property(&property_lower);
+            let result = obj.lock()
+                .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
+                .get_property(&property_lower);
+            return result;
         }
 
         Err(RuntimeError::PropertyNotFound(property.to_string()))
@@ -30,7 +33,12 @@ impl Interpreter {
     fn get_count_value(value: &Value) -> Value {
         match value {
             Value::Array(arr) => Value::Number(arr.len() as f64),
-            Value::Object(obj) => obj.get_property("count").unwrap_or(Value::Number(0.0)),
+            Value::Object(obj) => {
+                obj.lock()
+                    .ok()
+                    .and_then(|o| o.get_property("count").ok())
+                    .unwrap_or(Value::Number(0.0))
+            }
             Value::String(_) | Value::Number(_) | Value::Boolean(_)
             | Value::Empty | Value::Null | Value::Nothing => Value::Number(1.0),
         }

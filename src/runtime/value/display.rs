@@ -24,7 +24,8 @@ impl fmt::Display for Value {
             }
             Value::Object(obj) => {
                 // 尝试作为字典显示
-                if let Some(dict) = obj.as_any().downcast_ref::<super::super::objects::Dictionary>() {
+                let locked_obj = obj.lock().unwrap();
+                if let Some(dict) = locked_obj.as_any().downcast_ref::<super::super::objects::Dictionary>() {
                     let items: Vec<String> = dict.as_hashmap()
                         .iter()
                         .map(|(k, v)| format!("{}: {}", k, v))

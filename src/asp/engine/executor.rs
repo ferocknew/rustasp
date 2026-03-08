@@ -5,6 +5,7 @@
 use super::super::segmenter::{Segment, SegmentWithPos, segment_with_pos};
 use crate::http::RequestContext;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use vbscript::ast::Program;
 use vbscript::parser::tokenize;
 use vbscript::parser::Parser;
@@ -79,7 +80,7 @@ impl Engine {
         let response = vbscript::runtime::objects::Response::new();
         interpreter.context_mut().define_var(
             "Response".to_string(),
-            Value::Object(Box::new(response)),
+            Value::Object(Arc::new(Mutex::new(response))),
         );
 
         // 5.2 初始化 Session
@@ -125,7 +126,7 @@ impl Engine {
         // 将 Session 对象作为 BuiltinObject 存储
         interpreter.context_mut().define_var(
             "Session".to_string(),
-            Value::Object(Box::new(session)),
+            Value::Object(Arc::new(Mutex::new(session))),
         );
 
         // 5.2 定义 VBScript 内置常量
@@ -172,7 +173,7 @@ impl Engine {
             // 将 Request 对象作为变量存储
             context.define_var(
                 "Request".to_string(),
-                vbscript::runtime::Value::Object(Box::new(request)),
+                vbscript::runtime::Value::Object(Arc::new(Mutex::new(request))),
             );
 
             // 设置请求数据（用于兼容性）
@@ -188,23 +189,25 @@ impl Engine {
         })?;
 
         // 7.5 保存 Session 数据（如果在执行过程中被修改）
-        if let Some(Value::Object(session_obj)) = interpreter.context().get_var("Session") {
+        if let Some(Value::Object(ref session_obj)) = interpreter.context().get_var("Session") {
             // 从 BuiltinObject 中获取 Session 对象
             #[allow(unused_imports)]
             use vbscript::runtime::BuiltinObject;
-            if let Some(session) = session_obj.as_any().downcast_ref::<Session>() {
-                // 创建 SessionData 并保存
-                match session.to_session_data() {
-                    Ok(session_data) => {
-                        // 保存到 SessionManager
-                        if let Some(ref mut manager) = self.session_manager {
-                            if let Err(e) = manager.save_session_data(&session_data) {
-                                eprintln!("警告: 无法保存 Session: {}", e);
+            if let Ok(session_guard) = session_obj.lock() {
+                if let Some(session) = session_guard.as_any().downcast_ref::<Session>() {
+                    // 创建 SessionData 并保存
+                    match session.to_session_data() {
+                        Ok(session_data) => {
+                            // 保存到 SessionManager
+                            if let Some(ref mut manager) = self.session_manager {
+                                if let Err(e) = manager.save_session_data(&session_data) {
+                                    eprintln!("警告: 无法保存 Session: {}", e);
+                                }
                             }
                         }
-                    }
-                    Err(e) => {
-                        eprintln!("警告: 无法序列化 Session: {}", e);
+                        Err(e) => {
+                            eprintln!("警告: 无法序列化 Session: {}", e);
+                        }
                     }
                 }
             }
@@ -212,12 +215,16 @@ impl Engine {
 
         // 8. 收集输出和 Response 对象
         // 从变量表中获取 Response 对象
-        let mut response = if let Some(Value::Object(response_obj)) = interpreter.context().get_var("Response") {
+        let mut response = if let Some(Value::Object(ref response_obj)) = interpreter.context().get_var("Response") {
             // 从 BuiltinObject 中获取 Response
             #[allow(unused_imports)]
             use vbscript::runtime::BuiltinObject;
-            if let Some(resp) = response_obj.as_any().downcast_ref::<vbscript::runtime::objects::Response>() {
-                resp.clone()
+            if let Ok(resp_guard) = response_obj.lock() {
+                if let Some(resp) = resp_guard.as_any().downcast_ref::<vbscript::runtime::objects::Response>() {
+                    resp.clone()
+                } else {
+                    vbscript::runtime::objects::Response::new()
+                }
             } else {
                 vbscript::runtime::objects::Response::new()
             }

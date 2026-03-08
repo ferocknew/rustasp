@@ -3,6 +3,7 @@
 //! 实现 VbsClass（类定义）和 VbsInstance（类实例）
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use crate::ast::{ClassMember, FieldDecl, MethodDecl, PropertyDecl, PropertyType, Visibility};
 use crate::runtime::{BuiltinObject, RuntimeError, Value};
@@ -136,20 +137,12 @@ impl VbsInstance {
 
     /// 转换为 Value
     pub fn to_value(self) -> Value {
-        Value::Object(Box::new(self))
+        Value::Object(Arc::new(Mutex::new(self)))
     }
 }
 
 /// 为 BuiltinObject trait 实现
 impl BuiltinObject for VbsInstance {
-    fn clone_box(&self) -> Box<dyn BuiltinObject> {
-        // VBScript 对象是引用类型，克隆返回同一个引用
-        Box::new(VbsInstance {
-            class_name: self.class_name.clone(),
-            fields: self.fields.clone(),
-        })
-    }
-
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match self.get_field(name) {
             Some(value) => Ok(value.clone()),

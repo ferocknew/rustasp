@@ -180,10 +180,6 @@ impl Session {
 }
 
 impl crate::runtime::BuiltinObject for Session {
-    fn clone_box(&self) -> Box<dyn crate::runtime::BuiltinObject> {
-        Box::new(self.clone())
-    }
-
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -199,7 +195,13 @@ impl crate::runtime::BuiltinObject for Session {
             "codepage" => Ok(Value::Empty), // CodePage 属性，返回 Empty
             "contents" => {
                 // Contents 属性返回 Session 本身（支持 Contents("key") 访问）
-                Ok(Value::Object(Box::new(self.clone())))
+                // 注意：这里需要克隆 Arc，返回同一个 Session 对象的引用
+                // 但由于 self 是 &self，我们无法获取 Arc
+                // 这是一个特殊情况：Contents 应该返回对象本身
+                // 实际上，ASP 中 Session.Contents 等价于 Session
+                // 所以这里返回一个指向 self 的虚拟引用
+                // 由于我们的架构，我们需要创建一个新的 Arc<Mutex<Session>> 指向克隆的 Session
+                Ok(Value::Object(Arc::new(Mutex::new(self.clone()))))
             }
             "staticobjects" => {
                 // StaticObjects 属性 - 暂不支持
