@@ -37,7 +37,26 @@ impl Parser {
                         break;
                     }
                     match self.parse_stmt()? {
-                        Some(stmt) => body.push(stmt),
+                        Some(stmt) => {
+                            body.push(stmt);
+
+                            // 处理冒号分隔的后续语句
+                            while self.match_token(&Token::Colon) {
+                                self.skip_newlines();
+
+                                if self.is_at_end()
+                                    || self.check(&Token::Newline)
+                                    || self.check_keyword(Keyword::End)
+                                    || self.check_keyword(Keyword::Case)
+                                {
+                                    break;
+                                }
+
+                                if let Some(next_stmt) = self.parse_stmt()? {
+                                    body.push(next_stmt);
+                                }
+                            }
+                        }
                         None => break,
                     }
                     self.skip_newlines();
@@ -65,7 +84,26 @@ impl Parser {
                         break;
                     }
                     match self.parse_stmt()? {
-                        Some(stmt) => body.push(stmt),
+                        Some(stmt) => {
+                            body.push(stmt);
+
+                            // 处理冒号分隔的后续语句
+                            while self.match_token(&Token::Colon) {
+                                self.skip_newlines();
+
+                                if self.is_at_end()
+                                    || self.check(&Token::Newline)
+                                    || self.check_keyword(Keyword::End)
+                                    || self.check_keyword(Keyword::Case)
+                                {
+                                    break;
+                                }
+
+                                if let Some(next_stmt) = self.parse_stmt()? {
+                                    body.push(next_stmt);
+                                }
+                            }
+                        }
                         None => break,
                     }
                     self.skip_newlines();

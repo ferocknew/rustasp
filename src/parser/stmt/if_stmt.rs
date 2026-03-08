@@ -112,7 +112,27 @@ impl Parser {
             }
 
             match self.parse_stmt()? {
-                Some(stmt) => branches[0].body.push(stmt),
+                Some(stmt) => {
+                    branches[0].body.push(stmt);
+
+                    // 处理冒号分隔的后续语句（VBScript 语法糖）
+                    while self.match_token(&Token::Colon) {
+                        self.skip_newlines();
+
+                        if self.is_at_end()
+                            || self.check(&Token::Newline)
+                            || self.check_keyword(Keyword::End)
+                            || self.check_keyword(Keyword::Else)
+                            || self.check_keyword(Keyword::ElseIf)
+                        {
+                            break;
+                        }
+
+                        if let Some(next_stmt) = self.parse_stmt()? {
+                            branches[0].body.push(next_stmt);
+                        }
+                    }
+                }
                 None => break,  // 如果没有解析到语句，退出循环
             }
         }
@@ -137,7 +157,27 @@ impl Parser {
                         break;
                     }
                     match self.parse_stmt()? {
-                        Some(stmt) => body.push(stmt),
+                        Some(stmt) => {
+                            body.push(stmt);
+
+                            // 处理冒号分隔的后续语句
+                            while self.match_token(&Token::Colon) {
+                                self.skip_newlines();
+
+                                if self.is_at_end()
+                                    || self.check(&Token::Newline)
+                                    || self.check_keyword(Keyword::End)
+                                    || self.check_keyword(Keyword::Else)
+                                    || self.check_keyword(Keyword::ElseIf)
+                                {
+                                    break;
+                                }
+
+                                if let Some(next_stmt) = self.parse_stmt()? {
+                                    body.push(next_stmt);
+                                }
+                            }
+                        }
                         None => break,
                     }
                 }
@@ -152,7 +192,25 @@ impl Parser {
                         break;
                     }
                     match self.parse_stmt()? {
-                        Some(stmt) => body.push(stmt),
+                        Some(stmt) => {
+                            body.push(stmt);
+
+                            // 处理冒号分隔的后续语句
+                            while self.match_token(&Token::Colon) {
+                                self.skip_newlines();
+
+                                if self.is_at_end()
+                                    || self.check(&Token::Newline)
+                                    || self.check_keyword(Keyword::End)
+                                {
+                                    break;
+                                }
+
+                                if let Some(next_stmt) = self.parse_stmt()? {
+                                    body.push(next_stmt);
+                                }
+                            }
+                        }
                         None => break,
                     }
                 }
