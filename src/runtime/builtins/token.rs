@@ -124,6 +124,7 @@ pub enum BuiltinToken {
     Erase = 283,
     Escape = 284,
     Unescape = 285,
+    IIf = 286,
 
     // 未知函数
     #[allow(dead_code)]
@@ -245,4 +246,5 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("erase", BuiltinToken::Erase),
     ("escape", BuiltinToken::Escape),
     ("unescape", BuiltinToken::Unescape),
+    ("iif", BuiltinToken::IIf),
 ];
