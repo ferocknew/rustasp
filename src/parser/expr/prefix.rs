@@ -62,6 +62,16 @@ impl Parser {
                 })
             }
 
+            // True 和 False 关键字作为布尔值
+            Token::Keyword(Keyword::True) => {
+                self.advance();
+                Ok(Expr::Boolean(true))
+            }
+            Token::Keyword(Keyword::False) => {
+                self.advance();
+                Ok(Expr::Boolean(false))
+            }
+
             // New 关键字
             Token::Keyword(Keyword::New) => {
                 self.advance();
