@@ -190,17 +190,34 @@ fn convert_vbscript_format(format: &str) -> String {
     // VBScript 格式转换说明：
     // YYYY -> %Y (四位年份)
     // YY -> %y (两位年份)
-    // MM -> %m (月份，在日期上下文)
-    // 但在时间格式 HH:MM:SS 中，MM 应该是分钟 %M
-    // 这里简化处理：假设 MM 总是分钟（根据默认配置 HH:MM:SS）
-    // 如果需要日期格式，应该使用不同的占位符（如 MO 表示月份）
-    format
-        .replace("YYYY", "%Y")
-        .replace("YY", "%y")
-        .replace("DD", "%d")
-        .replace("HH", "%H")
-        .replace("MM", "%M")  // 分钟
-        .replace("SS", "%S")
+    // DD -> %d (日期)
+    // HH -> %H (小时，24小时制)
+    // MM -> 上下文相关：
+    //   - 在日期格式中 (如 YYYY/MM/DD) -> %m (月份)
+    //   - 在时间格式中 (如 HH:MM:SS) -> %M (分钟)
+    // SS -> %S (秒)
+
+    // 判断是日期格式还是时间格式：如果包含 HH 则是时间格式
+    let is_time_format = format.contains("HH");
+
+    if is_time_format {
+        // 时间格式：MM 是分钟
+        format
+            .replace("YYYY", "%Y")
+            .replace("YY", "%y")
+            .replace("DD", "%d")
+            .replace("HH", "%H")
+            .replace("MM", "%M")  // 分钟
+            .replace("SS", "%S")
+    } else {
+        // 日期格式：MM 是月份
+        format
+            .replace("YYYY", "%Y")
+            .replace("YY", "%y")
+            .replace("DD", "%d")
+            .replace("MM", "%m")  // 月份
+            .replace("SS", "%S")
+    }
 }
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
