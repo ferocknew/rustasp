@@ -67,6 +67,24 @@ impl Interpreter {
         // 处理结果
         match val_result {
             Ok(val) => {
+                // Set 语句要求右边必须是对象、Nothing 或 Empty
+                // 如果是 Empty，视为错误（Object required）
+                if matches!(val, Value::Empty) {
+                    match target {
+                        Expr::Variable(name) => {
+                            match error_mode {
+                                ErrorMode::Stop => return Err(RuntimeError::ObjectRequired),
+                                ErrorMode::ResumeNext => {
+                                    // 设置变量为 Nothing (Null)
+                                    self.context.set_var(name.clone(), Value::Null);
+                                    return Ok(Value::Empty);
+                                }
+                            }
+                        }
+                        _ => return Err(RuntimeError::ObjectRequired),
+                    }
+                }
+
                 match target {
                     Expr::Variable(name) => {
                         self.context.set_var(name.clone(), val);
