@@ -141,7 +141,7 @@ src/
 |------|------|------|
 | Response | HTTP 响应 | 基础功能完成，Buffer、ContentType、Redirect 待完善 |
 | Request | HTTP 请求 | QueryString、Form 数据解析完成 |
-| Server | 服务端方法 | CreateMap、Execute 等部分方法实现 |
+| Server | 服务端方法 | MapPath、URLEncode、HTMLEncode、ScriptTimeout 已实现<br>**暂未支持**: Execute、Transfer、GetLastError |
 
 ### ❌ 待实现
 
