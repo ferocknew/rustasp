@@ -152,9 +152,27 @@ impl Parser {
                 break;
             }
 
-            // 检查是否遇到终止关键字
+            // 检查是否遇到终止关键字（特殊处理 End 关键字）
             if end_keywords.iter().any(|k| self.check_keyword(*k)) {
-                break;
+                // 如果遇到 End 关键字，需要向前看检查是否是真正的终止条件
+                if self.check_keyword(Keyword::End) {
+                    let pos = self.pos();
+                    self.advance(); // 消耗 End
+
+                    // 检查是否是 End Select（如果 Select 在终止关键字列表中）
+                    if end_keywords.contains(&Keyword::Select) && self.check_keyword(Keyword::Select) {
+                        // 这是 End Select，回退并停止
+                        self.seek_to(pos);
+                        break;
+                    } else {
+                        // 这是其他 End 语句（如 End If, End Function 等）
+                        // 回退，让 parse_stmt 正常处理
+                        self.seek_to(pos);
+                    }
+                } else {
+                    // 其他终止关键字（Case, Else 等），直接停止
+                    break;
+                }
             }
 
             // 解析一条语句
@@ -171,9 +189,27 @@ impl Parser {
                 continue;
             }
 
-            // 检查是否遇到终止关键字
+            // 检查是否遇到终止关键字（特殊处理 End 关键字）
             if end_keywords.iter().any(|k| self.check_keyword(*k)) {
-                break;
+                // 如果遇到 End 关键字，需要向前看检查是否是真正的终止条件
+                if self.check_keyword(Keyword::End) {
+                    let pos = self.pos();
+                    self.advance(); // 消耗 End
+
+                    // 检查是否是 End Select（如果 Select 在终止关键字列表中）
+                    if end_keywords.contains(&Keyword::Select) && self.check_keyword(Keyword::Select) {
+                        // 这是 End Select，回退并停止
+                        self.seek_to(pos);
+                        break;
+                    } else {
+                        // 这是其他 End 语句（如 End If, End Function 等）
+                        // 回退，让 parse_stmt 正常处理
+                        self.seek_to(pos);
+                    }
+                } else {
+                    // 其他终止关键字（Case, Else 等），直接停止
+                    break;
+                }
             }
 
             // 如果不是冒号，检查是否有换行符
