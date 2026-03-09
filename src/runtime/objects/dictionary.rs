@@ -93,6 +93,13 @@ impl BuiltinObject for Dictionary {
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
             "count" => Ok(Value::Number(self.data.len() as f64)),
+            "keys" => {
+                let keys: Vec<Value> = self.data.keys().map(|k| Value::String(k.clone())).collect();
+                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(keys)))))
+            }
+            "items" => {
+                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect())))))
+            }
             "key" | "item" => {
                 // 这些属性需要参数，返回 Empty
                 Ok(Value::Empty)

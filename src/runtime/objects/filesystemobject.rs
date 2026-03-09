@@ -98,10 +98,10 @@ impl FileSystemObject {
             let entry_path = entry.path();
             if entry_path.is_file() {
                 if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
-                    let metadata = entry.metadata().unwrap_or_default();
+                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
                     files.push(FileInfo {
                         name: name.to_string(),
-                        size: metadata.len(),
+                        size,
                     });
                 }
             } else if entry_path.is_dir() {

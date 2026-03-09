@@ -10,6 +10,7 @@ mod server;
 mod session;
 mod session_manager;
 mod session_store;
+mod xmlhttp;
 
 // 重导出 Dictionary 对象
 pub use dictionary::Dictionary;
@@ -27,3 +28,5 @@ pub use server::Server;
 pub use session_manager::SessionManager;
 // 重导出 Session 存储相关
 pub use session_store::{SessionStore, MemoryStore, JsonFileStore, create_store};
+// 重导出 XmlHttp 对象
+pub use xmlhttp::XmlHttp;

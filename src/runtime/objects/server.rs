@@ -138,12 +138,52 @@ impl crate::runtime::BuiltinObject for Server {
                 Ok(Value::String(self.html_encode(&s)))
             }
             "createobject" => {
-                // Server.CreateObject - 不支持 COM 对象
-                // 返回错误提示，而不是 Empty
-                Err(RuntimeError::Generic(format!(
-                    "Server.CreateObject is not supported. COM objects are not available in this Rust-based ASP runtime. \
-                    Consider using built-in objects like Dictionary instead."
-                )))
+                // Server.CreateObject - 仅支持白名单中的对象
+                if args.is_empty() {
+                    return Err(RuntimeError::Generic(
+                        "Server.CreateObject 需要 ProgID 参数".to_string()
+                    ));
+                }
+                let prog_id = crate::utils::normalize_identifier(&ValueConversion::to_string(&args[0]));
+
+                // 检查白名单
+                const WHITELIST: &[&str] = &[
+                    "scripting.dictionary",
+                    "scripting.filesystemobject",
+                    "msxml2.xmlhttp",
+                ];
+
+                let is_whitelisted = WHITELIST.iter().any(|&allowed| {
+                    prog_id.eq_ignore_ascii_case(allowed)
+                });
+
+                if !is_whitelisted {
+                    return Err(RuntimeError::Generic(format!(
+                        "Server.CreateObject: '{}' 不在白名单中。出于安全考虑，只允许创建以下对象: {}",
+                        ValueConversion::to_string(&args[0]),
+                        WHITELIST.join(", ")
+                    )));
+                }
+
+                // 创建对象
+                use crate::runtime::objects::{Dictionary, FileSystemObject, XmlHttp};
+                use std::sync::{Arc, Mutex};
+
+                match prog_id.as_str() {
+                    "dictionary" | "scripting.dictionary" => {
+                        Ok(Value::Object(Arc::new(Mutex::new(Dictionary::new()))))
+                    }
+                    "filesystemobject" | "scripting.filesystemobject" => {
+                        Ok(Value::Object(Arc::new(Mutex::new(FileSystemObject::new()))))
+                    }
+                    "xmlhttp" | "msxml2.xmlhttp" | "microsoft.xmlhttp" => {
+                        Ok(Value::Object(Arc::new(Mutex::new(XmlHttp::new()))))
+                    }
+                    _ => Err(RuntimeError::Generic(format!(
+                        "Server.CreateObject: 无法创建对象 '{}'",
+                        ValueConversion::to_string(&args[0])
+                    )))
+                }
             }
             "execute" => {
                 // Server.Execute - 暂不支持

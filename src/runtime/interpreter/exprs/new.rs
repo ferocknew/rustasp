@@ -1,7 +1,7 @@
 //! New 表达式求值（类实例化）
 
 use crate::runtime::{RuntimeError, Value};
-use crate::runtime::objects::{Dictionary, FileSystemObject};
+use crate::runtime::objects::{Dictionary, FileSystemObject, XmlHttp};
 use std::sync::{Arc, Mutex};
 
 use super::super::Interpreter;
@@ -11,6 +11,7 @@ use super::super::Interpreter;
 const CREATE_OBJECT_WHITELIST: &[&str] = &[
     "scripting.dictionary",
     "scripting.filesystemobject",
+    "msxml2.xmlhttp",
 ];
 
 impl Interpreter {
@@ -58,6 +59,10 @@ impl Interpreter {
             // Scripting.FileSystemObject 对象
             "filesystemobject" | "scripting.filesystemobject" => {
                 Some(Value::Object(Arc::new(Mutex::new(FileSystemObject::new()))))
+            }
+            // MSXML2.XMLHTTP 对象
+            "xmlhttp" | "msxml2.xmlhttp" | "microsoft.xmlhttp" => {
+                Some(Value::Object(Arc::new(Mutex::new(XmlHttp::new()))))
             }
             _ => None,
         }
