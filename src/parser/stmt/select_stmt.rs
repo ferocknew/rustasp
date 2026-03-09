@@ -20,13 +20,20 @@ impl Parser {
         let mut else_block = None;
 
         // 循环解析每个 Case 分支
-        while !self.check_keyword(Keyword::End) && !self.is_at_end() {
-            // 期望 Case 关键字
-            if !self.match_keyword(Keyword::Case) {
-                return Err(ParseError::ParserError(
-                    "Expected 'Case' keyword in Select Case".to_string()
-                ));
+        loop {
+            self.skip_newlines();
+
+            // 检查是否到达 End Select
+            if self.check_keyword(Keyword::End) {
+                break;
             }
+
+            if self.is_at_end() {
+                return Err(ParseError::ParserError("Unexpected end of file in Select Case".to_string()));
+            }
+
+            // 期望 Case 关键字
+            self.expect_keyword(Keyword::Case)?;
 
             // 检查是否是 Case Else
             if self.match_keyword(Keyword::Else) {
@@ -56,12 +63,6 @@ impl Parser {
                 values: Some(values),
                 body,
             });
-
-            // 如果遇到 Case（下一个 Case 分支），跳过换行符准备下一次循环
-            if self.check_keyword(Keyword::Case) {
-                // 不消耗，让下一次循环的 match_keyword 处理
-                continue;
-            }
         }
 
         self.expect_keyword(Keyword::End)?;
