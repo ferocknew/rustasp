@@ -101,9 +101,18 @@ pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) ->
 
     // 处理目录
     if file_path.is_dir() {
-        let index_path = file_path.join(&state.config.index_file);
-        if index_path.exists() {
-            return handle_asp(uri, state, request).await.into_response();
+        // 尝试索引文件（仅在启用时）
+        if state.config.index_file_enable {
+            for index_name in state.config.index_file.split(',') {
+                let index_name = index_name.trim();
+                if index_name.is_empty() {
+                    continue;
+                }
+                let index_path = file_path.join(index_name);
+                if index_path.exists() {
+                    return handle_asp(uri, state, request).await.into_response();
+                }
+            }
         }
         if state.config.directory_listing {
             return generate_directory_listing(&file_path, uri.path()).await;
@@ -157,10 +166,19 @@ async fn handle_directory(
     request_ctx: &RequestContext,
     error_gen: &ErrorPageGenerator,
 ) -> AxumResponse {
-    // 尝试索引文件
-    let index_path = dir_path.join(&state.config.index_file);
-    if index_path.exists() {
-        return execute_asp_file(&index_path, uri_str, state, request_ctx, error_gen).await;
+    // 尝试索引文件（仅在启用时）
+    if state.config.index_file_enable {
+        // 支持多个索引文件（逗号分隔）
+        for index_name in state.config.index_file.split(',') {
+            let index_name = index_name.trim();
+            if index_name.is_empty() {
+                continue;
+            }
+            let index_path = dir_path.join(index_name);
+            if index_path.exists() {
+                return execute_asp_file(&index_path, uri_str, state, request_ctx, error_gen).await;
+            }
+        }
     }
 
     // 目录列表

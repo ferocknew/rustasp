@@ -23,6 +23,8 @@ pub struct Config {
     pub error_page: Option<String>,
     /// ASP 文件扩展名（逗号分隔）
     pub asp_ext: Vec<String>,
+    /// 索引文件功能开关
+    pub index_file_enable: bool,
     /// Runtime 目录路径（用于 Session、缓存等硬盘存储）
     pub runtime_dir: PathBuf,
     /// Now 函数日期时间格式
@@ -48,6 +50,7 @@ impl Default for Config {
             detailed_error: false,
             error_page: None,
             asp_ext: vec!["asp".to_string(), "asa".to_string()],
+            index_file_enable: true,
             runtime_dir: PathBuf::from("./runtime"),
             now_format: "YYYY/MM/DD HH:MM:SS".to_string(),
             date_format: "YYYY/MM/DD".to_string(),
@@ -93,6 +96,10 @@ impl Config {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect(),
+            index_file_enable: std::env::var("INDEX_FILE_ENABLE")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
             runtime_dir: PathBuf::from(
                 std::env::var("RUNTIME_DIR").unwrap_or_else(|_| "./runtime".to_string()),
             ),
