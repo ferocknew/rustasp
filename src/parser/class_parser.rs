@@ -24,6 +24,18 @@ impl Parser {
 
         let name = self.expect_ident()?;
 
+        // 检查是否是单行空类定义: Class Name : End Class
+        let is_single_line = self.check(&Token::Colon);
+        if is_single_line {
+            self.expect(Token::Colon)?;
+            self.expect_keyword(Keyword::End)?;
+            self.expect_keyword(Keyword::Class)?;
+            return Ok(Some(Stmt::Class {
+                name,
+                members: vec![],
+            }));
+        }
+
         let mut members = Vec::new();
 
         // 解析类成员直到 End Class

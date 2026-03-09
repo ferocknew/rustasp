@@ -226,7 +226,7 @@ impl Interpreter {
                     }
                 }
             }
-            Expr::Property { object: prop_obj, property } => {
+            Expr::Property { object: prop_obj, property: _ } => {
                 // 处理属性访问后的索引赋值，如 Easp.Lang("key") = value
                 // 先求值属性访问表达式，得到对象
                 let obj_val = if let Expr::Variable(var_name) = prop_obj.as_ref() {
@@ -241,7 +241,7 @@ impl Interpreter {
 
                 // 获取属性值（应该是一个对象）
                 if let Value::Object(ref obj) = obj_val {
-                    let obj_guard = obj.lock()
+                    let mut obj_guard = obj.lock()
                         .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
 
                     // 对对象进行索引赋值

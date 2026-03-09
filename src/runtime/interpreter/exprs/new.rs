@@ -19,7 +19,29 @@ impl Interpreter {
         if let Some(vbs_class) = self.context.classes.get(&normalized_name) {
             // 直接使用缓存的类创建实例（避免重复构建）
             let instance = vbs_class.new_instance();
-            return Ok(instance.to_value());
+            let instance_value = instance.to_value();
+
+            // 克隆构造函数体（需要在借用 vbs_class 之前完成）
+            let init_body = vbs_class.get_method("class_initialize").map(|m| m.body.clone());
+
+            // 调用构造函数 Class_Initialize（如果存在）
+            if let Some(body) = init_body {
+                for stmt in &body {
+                    // 需要创建一个临时作用域，让 'Me' 指向当前实例
+                    self.context.push_scope();
+
+                    // 设置 Me 变量指向当前实例
+                    self.context.set_var("Me".to_string(), instance_value.clone());
+
+                    // 执行构造函数体（暂时忽略错误，因为构造函数不应该有返回值）
+                    let _ = self.eval_stmt(stmt);
+
+                    // 恢复作用域
+                    self.context.pop_scope();
+                }
+            }
+
+            return Ok(instance_value);
         }
 
         Err(RuntimeError::Generic(format!(

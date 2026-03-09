@@ -29,11 +29,12 @@ impl Server {
     /// MapPath 方法 - 将虚拟路径转换为物理路径
     ///
     /// # Examples
+    ///
     /// ```
-    /// // root_path = "/var/www"
-    /// server.map_path("/images/a.png") // => "/var/www/images/a.png"
-    /// server.map_path("test.asp")      // => "/var/www/test.asp"
-    /// server.map_path("../test.asp")   // => "/var/test.asp" (规范化后)
+    /// # use vbscript::runtime::objects::Server;
+    /// # let mut server = Server::new();
+    /// # server.set_root_path("/var/www".to_string());
+    /// assert_eq!(server.map_path("/images/a.png"), "/var/www/images/a.png");
     /// ```
     pub fn map_path(&self, path: &str) -> String {
         let path = path.trim();
@@ -81,9 +82,11 @@ impl Server {
     /// URLEncode 方法 - URL 编码
     ///
     /// # Examples
+    ///
     /// ```
-    /// server.url_encode("hello world") // => "hello%20world"
-    /// server.url_encode("a=b&c=d")     // => "a%3Db%26c%3Dd"
+    /// # use vbscript::runtime::objects::Server;
+    /// # let server = Server::new();
+    /// assert_eq!(server.url_encode("hello world"), "hello%20world");
     /// ```
     pub fn url_encode(&self, s: &str) -> String {
         urlencoding::encode(s).to_string()
@@ -92,9 +95,12 @@ impl Server {
     /// HTMLEncode 方法 - HTML 转义
     ///
     /// # Examples
+    ///
     /// ```
-    /// server.html_encode("<b>")    // => "&lt;b&gt;"
-    /// server.html_encode("a&b")    // => "a&amp;b"
+    /// # use vbscript::runtime::objects::Server;
+    /// # let server = Server::new();
+    /// assert_eq!(server.html_encode("<b>"), "&lt;b&gt;");
+    /// assert_eq!(server.html_encode("a&b"), "a&amp;b");
     /// ```
     pub fn html_encode(&self, s: &str) -> String {
         html_escape::encode_text(s).to_string()

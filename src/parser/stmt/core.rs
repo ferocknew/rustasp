@@ -36,6 +36,10 @@ impl Parser {
             Token::Keyword(Keyword::Exit) => self.parse_exit(),
             Token::Keyword(Keyword::Set) => self.parse_set(),
 
+            // 动态执行语句
+            Token::Keyword(Keyword::Execute) => self.parse_execute(),
+            Token::Keyword(Keyword::ExecuteGlobal) => self.parse_execute_global(),
+
             // 终止符 - 返回 None
             Token::Keyword(Keyword::End)
             | Token::Keyword(Keyword::Next)
@@ -92,5 +96,28 @@ impl Parser {
             }
             _ => Err(ParseError::ParserError("Expected 'Resume' or 'Goto'".to_string())),
         }
+    }
+
+    /// 解析 Execute 语句
+    /// 解析 Execute 语句
+    /// Execute 语句格式: Execute expression
+    fn parse_execute(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.expect_keyword(Keyword::Execute)?;
+
+        // 解析表达式（通常是字符串表达式）
+        let expr = self.parse_expr(0)?;
+
+        Ok(Some(Stmt::Execute(expr)))
+    }
+
+    /// 解析 ExecuteGlobal 语句
+    /// ExecuteGlobal 语句格式: ExecuteGlobal expression
+    fn parse_execute_global(&mut self) -> Result<Option<Stmt>, ParseError> {
+        self.expect_keyword(Keyword::ExecuteGlobal)?;
+
+        // 解析表达式（通常是字符串表达式）
+        let expr = self.parse_expr(0)?;
+
+        Ok(Some(Stmt::ExecuteGlobal(expr)))
     }
 }

@@ -112,7 +112,7 @@ impl BuiltinObject for XmlHttp {
 
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
         match name.to_lowercase().as_str() {
-            "readyState" => Ok(Value::Number(if self.sent { 4.0 } else { 0.0 })),
+            "readystate" => Ok(Value::Number(if self.sent { 4.0 } else { 0.0 })),
             "status" => Ok(Value::Number(self.status as f64)),
             "statustext" => Ok(Value::String(self.status_text.clone())),
             "responsetext" => Ok(Value::String(self.response_text.clone())),
@@ -152,7 +152,7 @@ impl BuiltinObject for XmlHttp {
                 Ok(Value::Empty)
             }
             "send" => {
-                let body = if args.len() > 0 {
+                let body = if !args.is_empty() {
                     Some(ValueConversion::to_string(&args[0]))
                 } else {
                     None

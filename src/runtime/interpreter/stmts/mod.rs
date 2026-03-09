@@ -111,6 +111,11 @@ impl Interpreter {
                 Ok(Value::Empty)
             }
             Stmt::Expr(expr) => self.eval_expr(expr),
+
+            // 动态执行语句
+            Stmt::Execute(expr) => self.eval_execute(expr),
+            Stmt::ExecuteGlobal(expr) => self.eval_execute_global(expr),
+
             _ => Err(RuntimeError::Generic(format!("Unimplemented: {:?}", stmt))),
         }
     }
@@ -149,7 +154,7 @@ impl Interpreter {
     }
 
     /// 注册函数(Sub 或 Function)
-    fn register_function(&mut self, name: &str, params: &[Param], body: &[Stmt]) -> Result<Value, RuntimeError> {
+    pub(crate) fn register_function(&mut self, name: &str, params: &[Param], body: &[Stmt]) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             crate::utils::normalize_identifier(name),
             Function {
@@ -162,7 +167,7 @@ impl Interpreter {
     }
 
     /// 注册类定义（预编译 VbsClass 并缓存）
-    fn register_class(&mut self, name: &str, members: &[crate::ast::ClassMember]) -> Result<Value, RuntimeError> {
+    pub(crate) fn register_class(&mut self, name: &str, members: &[crate::ast::ClassMember]) -> Result<Value, RuntimeError> {
         let normalized_name = crate::utils::normalize_identifier(name);
         
         // 预编译 VbsClass（只构建一次）
@@ -184,5 +189,145 @@ impl Interpreter {
         );
 
         Ok(Value::Empty)
+    }
+
+    /// 执行 Execute 语句
+    /// Execute 在当前作用域中动态执行 VBScript 代码
+    fn eval_execute(&mut self, expr: &crate::ast::Expr) -> Result<Value, RuntimeError> {
+        use crate::parser::Parser;
+        use crate::parser::lexer::tokenize;
+
+        // 1. 计算表达式得到字符串
+        let code_value = self.eval_expr(expr)?;
+        let code_str = match &code_value {
+            Value::String(s) => s.clone(),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(
+                    "Execute argument must be a string".to_string()
+                ));
+            }
+        };
+
+        // 2. 解析代码字符串
+        let spanned_tokens = match tokenize(&code_str) {
+            Ok(tokens) => tokens,
+            Err(e) => {
+                return Err(RuntimeError::Generic(format!(
+                    "Execute tokenization error: {}", e
+                )));
+            }
+        };
+
+        let mut parser = Parser::new(spanned_tokens);
+
+        let mut stmts = Vec::new();
+        loop {
+            // 跳过冒号分隔符
+            while matches!(parser.peek(), crate::parser::lexer::Token::Colon) {
+                parser.advance();
+            }
+
+            match parser.parse_stmt() {
+                Ok(Some(stmt)) => stmts.push(stmt),
+                Ok(None) => break, // 解析完成
+                Err(e) => {
+                    return Err(RuntimeError::Generic(format!(
+                        "Execute parse error: {}", e
+                    )));
+                }
+            }
+        }
+
+        // 3. 预处理：注册类和函数定义
+        let mut decl_only_stmts = Vec::new();
+        let mut exec_stmts = Vec::new();
+        for stmt in &stmts {
+            match stmt {
+                Stmt::Class { .. } | Stmt::Function { .. } | Stmt::Sub { .. } => {
+                    decl_only_stmts.push(stmt);
+                }
+                _ => {
+                    exec_stmts.push(stmt);
+                }
+            }
+        }
+
+        // 先注册所有声明
+        for stmt in &decl_only_stmts {
+            self.eval_stmt(stmt)?;
+        }
+
+        // 然后执行其他语句
+        for stmt in &exec_stmts {
+            self.eval_stmt(stmt)?;
+        }
+
+        Ok(Value::Empty)
+    }
+
+    /// 执行 ExecuteGlobal 语句
+    /// ExecuteGlobal 在全局作用域中动态执行 VBScript 代码
+    fn eval_execute_global(&mut self, expr: &crate::ast::Expr) -> Result<Value, RuntimeError> {
+        use crate::parser::Parser;
+        use crate::parser::lexer::tokenize;
+
+        // 1. 计算表达式得到字符串
+        let code_value = self.eval_expr(expr)?;
+        let code_str = match &code_value {
+            Value::String(s) => s.clone(),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(
+                    "ExecuteGlobal argument must be a string".to_string()
+                ));
+            }
+        };
+
+        // 2. 解析代码字符串
+        let spanned_tokens = match tokenize(&code_str) {
+            Ok(tokens) => tokens,
+            Err(e) => {
+                return Err(RuntimeError::Generic(format!(
+                    "ExecuteGlobal tokenization error: {}", e
+                )));
+            }
+        };
+
+        let mut parser = Parser::new(spanned_tokens);
+
+        let mut stmts = Vec::new();
+        loop {
+            // 跳过冒号分隔符
+            while matches!(parser.peek(), crate::parser::lexer::Token::Colon) {
+                parser.advance();
+            }
+
+            match parser.parse_stmt() {
+                Ok(Some(stmt)) => stmts.push(stmt),
+                Ok(None) => break, // 解析完成
+                Err(e) => {
+                    return Err(RuntimeError::Generic(format!(
+                        "ExecuteGlobal parse error: {}", e
+                    )));
+                }
+            }
+        }
+
+        // 3. 保存当前作用域深度
+        let current_scope_depth = self.context.scope_stack.len();
+
+        // 4. 切换到全局作用域（第0层）
+        while self.context.scope_stack.len() > 1 {
+            self.context.scope_stack.pop();
+        }
+
+        // 5. 在全局作用域执行语句
+        let result = self.exec_block(&stmts);
+
+        // 6. 恢复原来的作用域深度
+        while self.context.scope_stack.len() < current_scope_depth {
+            self.context.push_scope();
+        }
+
+        result
     }
 }
