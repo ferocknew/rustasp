@@ -150,6 +150,11 @@ impl Parser {
         self.pos
     }
 
+    /// 设置当前位置（用于回退）
+    pub fn seek_to(&mut self, pos: usize) {
+        self.pos = pos;
+    }
+
     /// 创建带上下文的错误
     pub fn error_with_context(&self, message: String) -> ParseError {
         let context = self.get_token_context(3); // 前后各3个token

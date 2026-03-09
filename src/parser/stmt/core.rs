@@ -16,6 +16,14 @@ impl Parser {
             Token::Keyword(Keyword::Option) => self.parse_option(),
             Token::Keyword(Keyword::ReDim) => self.parse_redim(),
 
+            // 可见性修饰符（在全局作用域中忽略，继续解析后面的定义）
+            Token::Keyword(Keyword::Public) | Token::Keyword(Keyword::Private) => {
+                // 消耗 Public/Private 关键字
+                self.advance();
+                // 继续解析后面的语句（通常是 Function 或 Sub）
+                self.parse_stmt()
+            }
+
             // 控制流语句
             Token::Keyword(Keyword::If) => self.parse_if(),
             Token::Keyword(Keyword::For) => self.parse_for(),
