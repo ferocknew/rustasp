@@ -136,7 +136,7 @@ impl BuiltinObject for XmlHttp {
                 let method = ValueConversion::to_string(&args[0]);
                 let url = ValueConversion::to_string(&args[1]);
                 let async_flag = if args.len() > 2 {
-                    Some(args[2].to_boolean())
+                    Some(args[2].to_bool())
                 } else {
                     None
                 };
