@@ -1,7 +1,6 @@
 //! MSXML2.XMLHTTP 对象 - HTTP 请求
 
 use crate::runtime::{BuiltinObject, RuntimeError, Value, ValueConversion};
-use std::sync::{Arc, Mutex};
 
 /// XMLHTTP 对象
 #[derive(Debug, Clone)]

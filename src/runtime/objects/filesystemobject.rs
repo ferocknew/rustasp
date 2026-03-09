@@ -82,7 +82,7 @@ impl FileSystemObject {
             return Err(RuntimeError::Generic(format!("文件夹不存在: {}", path)));
         }
 
-        let metadata = fs::metadata(path).map_err(|e| {
+        let _metadata = fs::metadata(path).map_err(|e| {
             RuntimeError::Generic(format!("无法读取文件夹元数据: {}", e))
         })?;
 
@@ -129,8 +129,8 @@ impl FileSystemObject {
             path: path.to_string(),
             name,
             parent,
-            files_count: files.len() as i32,
-            subfolders_count: subfolders.len() as i32,
+            _files_count: files.len() as i32,
+            _subfolders_count: subfolders.len() as i32,
             files,
             subfolders,
         })
@@ -276,8 +276,8 @@ pub struct Folder {
     path: String,
     name: String,
     parent: String,
-    files_count: i32,
-    subfolders_count: i32,
+    _files_count: i32,
+    _subfolders_count: i32,
     files: Vec<FileInfo>,
     subfolders: Vec<FolderInfo>,
 }
