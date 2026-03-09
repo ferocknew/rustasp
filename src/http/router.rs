@@ -23,37 +23,57 @@ async fn root_handler(
     axum::extract::State(state): axum::extract::State<AppState>,
     request: Request<Body>,
 ) -> Response {
-    // 尝试访问索引文件
-    let index_path = state.config.home_dir.join(&state.config.index_file);
-
-    if index_path.exists() {
-        // 检查索引文件是否是 ASP 文件
-        let is_asp = state.config.asp_ext.iter().any(|ext| {
-            state.config.index_file.to_lowercase().ends_with(&format!(".{}", ext.to_lowercase()))
-        });
-
-        let uri = axum::http::Uri::builder()
-            .path_and_query(&format!("/{}", state.config.index_file))
-            .build()
-            .unwrap();
-
-        if is_asp {
-            // ASP 文件执行
-            handler::handle_asp(uri, state, request).await.into_response()
-        } else {
-            // 静态文件直接返回
-            handler::handle_static(uri, state, request).await.into_response()
-        }
-    } else {
-        // 索引文件不存在，显示目录列表或返回 403
+    // 检查是否启用索引文件功能
+    if !state.config.index_file_enable {
+        // 索引文件功能已禁用，显示目录列表或返回 403
         if state.config.directory_listing {
-            handler::generate_directory_listing(&state.config.home_dir, "/").await
+            return handler::generate_directory_listing(&state.config.home_dir, "/").await;
         } else {
-            Response::builder()
+            return Response::builder()
                 .status(403)
                 .body(axum::body::Body::from("Directory listing is disabled"))
-                .unwrap()
+                .unwrap();
         }
+    }
+
+    // 尝试访问索引文件（支持多个索引文件，逗号分隔）
+    for index_name in state.config.index_file.split(',') {
+        let index_name = index_name.trim();
+        if index_name.is_empty() {
+            continue;
+        }
+
+        let index_path = state.config.home_dir.join(index_name);
+
+        if index_path.exists() {
+            // 检查索引文件是否是 ASP 文件
+            let is_asp = state.config.asp_ext.iter().any(|ext| {
+                index_name.to_lowercase().ends_with(&format!(".{}", ext.to_lowercase()))
+            });
+
+            let uri = axum::http::Uri::builder()
+                .path_and_query(&format!("/{}", index_name))
+                .build()
+                .unwrap();
+
+            if is_asp {
+                // ASP 文件执行
+                return handler::handle_asp(uri, state, request).await.into_response();
+            } else {
+                // 静态文件直接返回
+                return handler::handle_static(uri, state, request).await.into_response();
+            }
+        }
+    }
+
+    // 所有索引文件都不存在，显示目录列表或返回 403
+    if state.config.directory_listing {
+        handler::generate_directory_listing(&state.config.home_dir, "/").await
+    } else {
+        Response::builder()
+            .status(403)
+            .body(axum::body::Body::from("Directory listing is disabled"))
+            .unwrap()
     }
 }
 

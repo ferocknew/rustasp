@@ -194,46 +194,97 @@ impl Parser {
 
         let params = self.parse_params()?;
 
+        // 检查是否是单行 Sub/Function（冒号分隔）
+        // 例如: Public Sub Echo(s) : Response.Write s : End Sub
+        let is_single_line = self.check(&Token::Colon);
+
         let mut body = Vec::new();
 
-        // 解析方法体
-        loop {
-            match self.peek() {
-                Token::Keyword(Keyword::End) => {
-                    // 检查是否是 End Function/End Sub/End Class
-                    // 注意：不要先 advance()，要先 peek 下一个 token
-                    if is_function && self.peek_next_is_keyword(Keyword::Function) {
-                        self.advance(); // 消耗 End
-                        self.advance(); // 消耗 Function
+        if is_single_line {
+            // 单行 Sub/Function，解析冒号分隔的语句直到 End Function/End Sub
+            loop {
+                self.skip_newlines();
+
+                // 检查是否到达 End Function/End Sub
+                if self.check_keyword(Keyword::End) {
+                    if (is_function && self.peek_next_is_keyword(Keyword::Function))
+                        || (is_sub && self.peek_next_is_keyword(Keyword::Sub))
+                    {
                         break;
-                    } else if is_sub && self.peek_next_is_keyword(Keyword::Sub) {
-                        self.advance(); // 消耗 End
-                        self.advance(); // 消耗 Sub
-                        break;
-                    } else if self.peek_next_is_keyword(Keyword::Class) {
-                        // 遇到 End Class，方法未闭合，不要消耗 End
-                        break;
-                    } else {
-                        // 不是我们的 End，让 parse_stmt 处理
+                    }
+                }
+
+                // 解析语句
+                if let Some(stmt) = self.parse_stmt()? {
+                    body.push(stmt);
+                }
+
+                // 检查是否有冒号分隔符
+                self.skip_newlines();
+                if !self.match_token(&Token::Colon) {
+                    // 没有冒号了，检查是否是 End Function/End Sub
+                    if self.check_keyword(Keyword::End) {
+                        if (is_function && self.peek_next_is_keyword(Keyword::Function))
+                            || (is_sub && self.peek_next_is_keyword(Keyword::Sub))
+                        {
+                            break;
+                        }
+                    }
+                    // 也没有 End，错误
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "Colon or End Function/End Sub".to_string(),
+                        found: format!("{:?}", self.peek()),
+                    });
+                }
+            }
+
+            // 消耗 End Function/End Sub
+            self.expect_keyword(Keyword::End)?;
+            if is_function {
+                self.expect_keyword(Keyword::Function)?;
+            } else {
+                self.expect_keyword(Keyword::Sub)?;
+            }
+        } else {
+            // 多行 Sub/Function
+            loop {
+                match self.peek() {
+                    Token::Keyword(Keyword::End) => {
+                        // 检查是否是 End Function/End Sub/End Class
+                        // 注意：不要先 advance()，要先 peek 下一个 token
+                        if is_function && self.peek_next_is_keyword(Keyword::Function) {
+                            self.advance(); // 消耗 End
+                            self.advance(); // 消耗 Function
+                            break;
+                        } else if is_sub && self.peek_next_is_keyword(Keyword::Sub) {
+                            self.advance(); // 消耗 End
+                            self.advance(); // 消耗 Sub
+                            break;
+                        } else if self.peek_next_is_keyword(Keyword::Class) {
+                            // 遇到 End Class，方法未闭合，不要消耗 End
+                            break;
+                        } else {
+                            // 不是我们的 End，让 parse_stmt 处理
+                            if let Some(stmt) = self.parse_stmt()? {
+                                body.push(stmt);
+                            }
+                        }
+                    }
+                    Token::Eof => {
+                        // 未闭合的方法定义
+                        return Err(ParseError::UnexpectedEnd);
+                    }
+                    Token::Newline => {
+                        self.advance();
+                    }
+                    Token::Colon => {
+                        // 冒号语句分隔符（多行模式中也允许）
+                        self.advance();
+                    }
+                    _ => {
                         if let Some(stmt) = self.parse_stmt()? {
                             body.push(stmt);
                         }
-                    }
-                }
-                Token::Eof => {
-                    // 未闭合的方法定义
-                    return Err(ParseError::UnexpectedEnd);
-                }
-                Token::Newline => {
-                    self.advance();
-                }
-                Token::Colon => {
-                    // 冒号语句分隔符
-                    self.advance();
-                }
-                _ => {
-                    if let Some(stmt) = self.parse_stmt()? {
-                        body.push(stmt);
                     }
                 }
             }

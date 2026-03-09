@@ -37,6 +37,8 @@ impl Parser {
                     self.skip_newlines();
 
                     // 检查是否到达行尾或文件结束
+                    // 注意：单行 If 语句不能包含 Else 块
+                    // 如果遇到 Else，说明这个 Else 是属于外层的 If 语句，不是当前的单行 If
                     if self.is_at_end()
                         || self.check(&Token::Newline)
                         || self.check_keyword(Keyword::Else)
@@ -53,40 +55,12 @@ impl Parser {
                 }
             }
 
-            // 检查是否有 Else
-            let else_block = if self.match_keyword(Keyword::Else) {
-                let mut else_body = vec![];
-
-                // 解析 Else 后的第一条语句
-                if let Some(stmt) = self.parse_stmt()? {
-                    else_body.push(stmt);
-
-                    // 处理冒号分隔的后续语句
-                    while self.match_token(&Token::Colon) {
-                        self.skip_newlines();
-
-                        if self.is_at_end() || self.check(&Token::Newline) {
-                            break;
-                        }
-
-                        if let Some(next_stmt) = self.parse_stmt()? {
-                            else_body.push(next_stmt);
-                        }
-                    }
-                }
-
-                if else_body.is_empty() {
-                    None
-                } else {
-                    Some(else_body)
-                }
-            } else {
-                None
-            };
-
+            // 单行 If 语句不支持 Else 块
+            // 在 VBScript 中，如果要使用 Else，必须使用多行 If 语句
+            // 如果在这里遇到 Else，说明这个 Else 是属于外层的，不应该被消费
             return Ok(Some(Stmt::If {
                 branches: vec![IfBranch { cond, body }],
-                else_block,
+                else_block: None,
             }));
         }
 
