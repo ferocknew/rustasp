@@ -3,6 +3,7 @@
 //! 包含所有 ASP 内置对象的实现：Request, Response, Session, Server
 
 mod dictionary;
+mod factory;
 mod filesystemobject;
 mod request;
 mod response;
@@ -14,6 +15,8 @@ mod xmlhttp;
 
 // 重导出 Dictionary 对象
 pub use dictionary::Dictionary;
+// 重导出对象工厂
+pub use factory::{create_object, is_whitelisted, get_supported_objects};
 // 重导出 FileSystemObject 对象
 pub use filesystemobject::FileSystemObject;
 // 重导出 Request 对象

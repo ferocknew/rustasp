@@ -121,15 +121,17 @@ impl crate::runtime::BuiltinObject for Server {
     }
 
     fn get_property(&self, name: &str) -> Result<Value, RuntimeError> {
-        match name.to_lowercase().as_str() {
-            "scripttimeout" => Ok(Value::Number(self.script_timeout as f64)),
+        match name {
+            "ScriptTimeout" | "scripttimeout" | "SCRIPTTIMEOUT" | "scriptTimeout" => {
+                Ok(Value::Number(self.script_timeout as f64))
+            }
             _ => Err(RuntimeError::PropertyNotFound(name.to_string())),
         }
     }
 
     fn set_property(&mut self, name: &str, value: Value) -> Result<(), RuntimeError> {
-        match name.to_lowercase().as_str() {
-            "scripttimeout" => {
+        match name {
+            "ScriptTimeout" | "scripttimeout" | "SCRIPTTIMEOUT" | "scriptTimeout" => {
                 self.script_timeout = value.to_number() as u64;
                 Ok(())
             }
@@ -138,89 +140,69 @@ impl crate::runtime::BuiltinObject for Server {
     }
 
     fn call_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
-        match name.to_lowercase().as_str() {
-            "mappath" => {
+        // 使用模式匹配，支持大小写不敏感的方法名
+        match name {
+            "MapPath" | "mappath" | "MAPPATH" | "mapPath" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
                 let path = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.map_path(&path)))
             }
-            "urlencode" => {
+            "URLEncode" | "urlencode" | "URLENCODE" | "urlEncode" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
                 let s = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.url_encode(&s)))
             }
-            "htmlencode" => {
+            "HTMLEncode" | "htmlencode" | "HTML_ENCODE" | "htmlEncode" => {
                 if args.len() != 1 {
                     return Err(RuntimeError::ArgumentCountMismatch);
                 }
                 let s = ValueConversion::to_string(&args[0]);
                 Ok(Value::String(self.html_encode(&s)))
             }
-            "createobject" => {
+            "CreateObject" | "createobject" | "CREATEOBJECT" | "createObject" => {
                 // Server.CreateObject - 仅支持白名单中的对象
                 if args.is_empty() {
                     return Err(RuntimeError::Generic(
                         "Server.CreateObject 需要 ProgID 参数".to_string()
                     ));
                 }
-                let prog_id = ValueConversion::to_string(&args[0]).to_lowercase();
 
-                // 检查白名单
-                const WHITELIST: &[&str] = &[
-                    "scripting.dictionary",
-                    "scripting.filesystemobject",
-                    "msxml2.xmlhttp",
-                ];
+                let prog_id = ValueConversion::to_string(&args[0]);
 
-                let is_whitelisted = WHITELIST.iter().any(|&allowed| {
-                    prog_id.eq_ignore_ascii_case(allowed)
-                });
+                // 使用对象工厂创建
+                use crate::runtime::objects::{create_object, get_supported_objects};
 
-                if !is_whitelisted {
-                    return Err(RuntimeError::CreateObjectFailed(format!(
-                        " '{}' 不在白名单中。出于安全考虑，只允许创建以下对象: {}",
-                        ValueConversion::to_string(&args[0]),
-                        WHITELIST.join(", ")
-                    )));
-                }
-
-                // 创建对象
-                use crate::runtime::objects::{Dictionary, FileSystemObject, XmlHttp};
-                use std::sync::{Arc, Mutex};
-
-                match prog_id.as_str() {
-                    "scripting.dictionary" | "dictionary" => {
-                        Ok(Value::Object(Arc::new(Mutex::new(Dictionary::new()))))
+                match create_object(&prog_id) {
+                    Ok(Some(obj)) => Ok(obj),
+                    Ok(None) => {
+                        // 不在白名单中
+                        let supported = get_supported_objects().join(", ");
+                        Err(RuntimeError::CreateObjectFailed(format!(
+                            "'{}' 不在白名单中。支持的对象: {}",
+                            prog_id,
+                            supported
+                        )))
                     }
-                    "scripting.filesystemobject" | "filesystemobject" => {
-                        Ok(Value::Object(Arc::new(Mutex::new(FileSystemObject::new()))))
-                    }
-                    "msxml2.xmlhttp" | "microsoft.xmlhttp" | "xmlhttp" => {
-                        Ok(Value::Object(Arc::new(Mutex::new(XmlHttp::new()))))
-                    }
-                    _ => Err(RuntimeError::CreateObjectFailed(format!(
-                        "无法创建对象 '{}'",
-                        ValueConversion::to_string(&args[0])
-                    )))
+                    Err(e) => Err(e),
                 }
             }
-            "execute" => {
+            "Execute" | "execute" | "EXECUTE" => {
                 // Server.Execute - 暂不支持
                 Err(RuntimeError::Generic(
                     "Server.Execute is not yet implemented.".to_string()
                 ))
             }
-            "transfer" => {
+            "Transfer" | "transfer" | "TRANSFER" => {
                 // Server.Transfer - 暂不支持
                 Err(RuntimeError::Generic(
                     "Server.Transfer is not yet implemented.".to_string()
                 ))
             }
-            "getlasterror" => {
+            "GetLastError" | "getlasterror" | "GETLASTERROR" | "getLastError" => {
                 // Server.GetLastError - 暂不支持
                 Err(RuntimeError::Generic(
                     "Server.GetLastError is not yet implemented.".to_string()

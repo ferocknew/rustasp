@@ -67,26 +67,8 @@ impl ValueConversion for Value {
     }
 
     fn to_string(&self) -> String {
-        match self {
-            Value::String(s) => s.clone(),
-            Value::Number(n) => {
-                if n.fract() == 0.0 {
-                    format!("{}", *n as i64)
-                } else {
-                    format!("{}", n)
-                }
-            }
-            Value::Boolean(b) => if *b { "True" } else { "False" }.to_string(),
-            Value::Empty => String::new(),
-            Value::Null => "Null".to_string(),
-            Value::Nothing => "Nothing".to_string(),
-            Value::Array(arr) => {
-                let locked_arr = arr.lock().unwrap();
-                let items: Vec<String> = locked_arr.data.iter().map(|v| ValueConversion::to_string(v)).collect();
-                items.join(", ")
-            }
-            Value::Object(_) => "[object]".to_string(),
-        }
+        // 直接使用 Display trait，保持逻辑统一
+        format!("{}", self)
     }
 
     fn is_truthy(&self) -> bool {
