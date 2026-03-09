@@ -114,11 +114,17 @@ impl Parser {
                     // 检查是否遇到冒号
                     if !self.match_token(&Token::Colon) {
                         // 没有冒号了，检查其他结束条件
+                        // 注意：遇到 Else 时不要 break，让第69行处理
                         if self.is_at_end()
                             || self.check(&Token::Newline)
                             || self.check_keyword(Keyword::ElseIf)
+                            || self.check_keyword(Keyword::End)
                         {
                             break;
+                        }
+                        // 如果遇到 Else，继续循环让第69行处理
+                        if self.check_keyword(Keyword::Else) {
+                            continue;
                         }
                         continue;
                     }
@@ -127,9 +133,9 @@ impl Parser {
                     self.skip_newlines();
 
                     // 检查是否到达行尾或文件结束
+                    // 注意：不检查 Else，因为第69行会处理 Else
                     if self.is_at_end()
                         || self.check(&Token::Newline)
-                        || self.check_keyword(Keyword::Else)
                         || self.check_keyword(Keyword::End)
                         || self.check_keyword(Keyword::ElseIf)
                     {

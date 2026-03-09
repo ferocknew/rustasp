@@ -1,7 +1,7 @@
 //! 属性访问表达式求值
 
 use crate::ast::Expr;
-use crate::runtime::{RuntimeError, Value};
+use crate::runtime::{RuntimeError, Value, VbsInstance};
 
 use super::super::Interpreter;
 
@@ -27,10 +27,53 @@ impl Interpreter {
 
         // 处理对象的属性访问
         if let Value::Object(obj) = obj_value {
-            let result = obj.lock()
+            // 尝试获取属性
+            let prop_result = obj.lock()
                 .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
                 .get_property(&property_lower);
-            return result;
+
+            match prop_result {
+                Ok(value) => return Ok(value),
+                Err(_) => {
+                    // 属性未找到，检查是否是类实例的无参数方法
+                    let locked = obj.lock()
+                        .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
+
+                    if let Some(instance) = locked.as_any().downcast_ref::<VbsInstance>() {
+                        // 获取类名
+                        let class_name = instance.class_name.clone();
+                        let normalized_class = crate::utils::normalize_identifier(&class_name);
+
+                        // 释放锁后再获取类定义
+                        drop(locked);
+
+                        // 从上下文获取类定义并查找方法
+                        if let Some(vbs_class) = self.context.classes.get(&normalized_class) {
+                            // 查找方法（大小写不敏感）
+                            let method_decl = vbs_class.methods.iter()
+                                .find(|(name, _)| crate::utils::normalize_identifier(name) == property_lower)
+                                .map(|(_, decl)| decl.clone());
+
+                            if let Some(method_decl) = method_decl {
+                                // 找到方法，执行无参数调用
+                                let instance_fields = {
+                                    let locked = obj.lock()
+                                        .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
+                                    if let Some(inst) = locked.as_any().downcast_ref::<VbsInstance>() {
+                                        inst.fields.clone()
+                                    } else {
+                                        return Err(RuntimeError::Generic("Invalid instance".to_string()));
+                                    }
+                                };
+
+                                // 调用 method.rs 中定义的 execute_class_method
+                                return self.execute_class_method(&method_decl, &[], instance_fields, obj.clone());
+                            }
+                        }
+                    }
+                    return prop_result;
+                }
+            }
         }
 
         Err(RuntimeError::PropertyNotFound(property.to_string()))
