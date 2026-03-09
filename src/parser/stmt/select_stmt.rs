@@ -56,6 +56,12 @@ impl Parser {
                 values: Some(values),
                 body,
             });
+
+            // 如果遇到 Case（下一个 Case 分支），跳过换行符准备下一次循环
+            if self.check_keyword(Keyword::Case) {
+                // 不消耗，让下一次循环的 match_keyword 处理
+                continue;
+            }
         }
 
         self.expect_keyword(Keyword::End)?;
