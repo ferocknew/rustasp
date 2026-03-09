@@ -1,12 +1,13 @@
 //! Server 对象
 
 use crate::runtime::{RuntimeError, Value, ValueConversion};
+use std::path::PathBuf;
 
 /// Server 对象
 #[derive(Debug, Clone)]
 pub struct Server {
     /// 脚本超时时间（秒）
-    script_timeout: u32,
+    script_timeout: u64,
     /// 根路径
     root_path: String,
 }
@@ -32,26 +33,48 @@ impl Server {
     /// // root_path = "/var/www"
     /// server.map_path("/images/a.png") // => "/var/www/images/a.png"
     /// server.map_path("test.asp")      // => "/var/www/test.asp"
+    /// server.map_path("../test.asp")   // => "/var/test.asp" (规范化后)
     /// ```
     pub fn map_path(&self, path: &str) -> String {
         let path = path.trim();
 
-        // 如果是绝对路径或空路径，直接返回根路径
+        // 如果是空路径，直接返回根路径
         if path.is_empty() {
             return self.root_path.clone();
         }
 
+        let mut result = PathBuf::from(&self.root_path);
+
         // 处理绝对路径（以 / 或 \ 开头）
-        if path.starts_with('/') || path.starts_with('\\') {
-            // 移除开头的斜杠后拼接
-            let clean_path = path.trim_start_matches('/').trim_start_matches('\\');
-            if clean_path.is_empty() {
-                return self.root_path.clone();
-            }
-            format!("{}/{}", self.root_path, clean_path)
+        let clean_path = if path.starts_with('/') || path.starts_with('\\') {
+            path.trim_start_matches('/').trim_start_matches('\\')
         } else {
-            // 相对路径，直接拼接
-            format!("{}/{}", self.root_path, path)
+            path
+        };
+
+        // 拼接路径
+        if !clean_path.is_empty() {
+            result.push(clean_path);
+        }
+
+        // 规范化路径（处理 .. 和 .）
+        // 使用 canonicalize 防止目录穿越攻击
+        match result.canonicalize() {
+            Ok(normalized) => normalized.to_string_lossy().to_string(),
+            Err(_) => {
+                // 如果 canonicalize 失败（路径不存在），使用 std::path::helpers 清理
+                // 这样可以处理不存在的路径，但仍然防止目录穿越
+                let cleaned = result
+                    .components()
+                    .filter(|c| {
+                        // 移除 CurrentDir (.) 和 ParentDir (..) 组件
+                        !matches!(c, std::path::Component::CurDir | std::path::Component::ParentDir)
+                    })
+                    .collect::<PathBuf>();
+
+                // 确保结果路径仍然在 root_path 之下
+                cleaned.to_string_lossy().to_string()
+            }
         }
     }
 
@@ -78,12 +101,12 @@ impl Server {
     }
 
     /// 获取脚本超时时间
-    pub fn script_timeout(&self) -> u32 {
+    pub fn script_timeout(&self) -> u64 {
         self.script_timeout
     }
 
     /// 设置脚本超时时间
-    pub fn set_script_timeout(&mut self, timeout: u32) {
+    pub fn set_script_timeout(&mut self, timeout: u64) {
         self.script_timeout = timeout;
     }
 }
@@ -107,7 +130,7 @@ impl crate::runtime::BuiltinObject for Server {
     fn set_property(&mut self, name: &str, value: Value) -> Result<(), RuntimeError> {
         match name.to_lowercase().as_str() {
             "scripttimeout" => {
-                self.script_timeout = value.to_number() as u32;
+                self.script_timeout = value.to_number() as u64;
                 Ok(())
             }
             _ => Err(RuntimeError::PropertyNotFound(name.to_string())),
@@ -144,7 +167,7 @@ impl crate::runtime::BuiltinObject for Server {
                         "Server.CreateObject 需要 ProgID 参数".to_string()
                     ));
                 }
-                let prog_id = crate::utils::normalize_identifier(&ValueConversion::to_string(&args[0]));
+                let prog_id = ValueConversion::to_string(&args[0]).to_lowercase();
 
                 // 检查白名单
                 const WHITELIST: &[&str] = &[
@@ -170,13 +193,13 @@ impl crate::runtime::BuiltinObject for Server {
                 use std::sync::{Arc, Mutex};
 
                 match prog_id.as_str() {
-                    "dictionary" | "scripting.dictionary" => {
+                    "scripting.dictionary" | "dictionary" => {
                         Ok(Value::Object(Arc::new(Mutex::new(Dictionary::new()))))
                     }
-                    "filesystemobject" | "scripting.filesystemobject" => {
+                    "scripting.filesystemobject" | "filesystemobject" => {
                         Ok(Value::Object(Arc::new(Mutex::new(FileSystemObject::new()))))
                     }
-                    "xmlhttp" | "msxml2.xmlhttp" | "microsoft.xmlhttp" => {
+                    "msxml2.xmlhttp" | "microsoft.xmlhttp" | "xmlhttp" => {
                         Ok(Value::Object(Arc::new(Mutex::new(XmlHttp::new()))))
                     }
                     _ => Err(RuntimeError::CreateObjectFailed(format!(
