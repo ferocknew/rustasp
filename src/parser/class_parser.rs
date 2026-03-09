@@ -201,6 +201,9 @@ impl Parser {
         let mut body = Vec::new();
 
         if is_single_line {
+            // 消耗初始的冒号
+            self.expect(Token::Colon)?;
+
             // 单行 Sub/Function，解析冒号分隔的语句直到 End Function/End Sub
             loop {
                 self.skip_newlines();
