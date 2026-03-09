@@ -176,8 +176,16 @@ impl Parser {
             }
 
             // 解析一条语句
-            if let Some(stmt) = self.parse_stmt()? {
-                stmts.push(stmt);
+            match self.parse_stmt()? {
+                Some(stmt) => stmts.push(stmt),
+                None => {
+                    // parse_stmt 返回 None 可能是因为遇到了终止符
+                    // 再次检查是否遇到终止关键字
+                    if end_keywords.iter().any(|k| self.check_keyword(*k)) {
+                        break;
+                    }
+                    // 如果不是终止关键字，继续解析
+                }
             }
 
             // 如果遇到冒号，继续解析下一条语句（冒号分隔符）
