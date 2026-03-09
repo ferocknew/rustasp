@@ -80,6 +80,14 @@ impl Interpreter {
                 .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
                 .call_method(&method_lower, arg_values);
 
+            // 检查是否调用了 Response.End 方法
+            // 如果是，设置 should_exit 标志以停止后续执行
+            if let Expr::Variable(name) = object {
+                if name.to_lowercase() == "response" && method_lower == "end" {
+                    self.context.set_should_exit();
+                }
+            }
+
             return result;
         }
 

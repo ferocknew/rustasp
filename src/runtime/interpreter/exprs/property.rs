@@ -17,6 +17,23 @@ impl Interpreter {
             }
         }
 
+        // 特殊处理：Response 对象的无参数方法（End, Clear）
+        if let Expr::Variable(name) = object {
+            if name.to_lowercase() == "response" {
+                match property_lower.as_str() {
+                    "end" => {
+                        // 调用 Response.End 方法
+                        return self.eval_response_end();
+                    }
+                    "clear" => {
+                        // 调用 Response.Clear 方法
+                        return self.eval_response_clear();
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         // 统一 trait dispatch：eval object 并访问属性
         let obj_value = self.eval_expr(object)?;
 
@@ -91,6 +108,34 @@ impl Interpreter {
             }
             _ => Err(RuntimeError::PropertyNotFound(format!("Err.{}", property))),
         }
+    }
+
+    /// 处理 Response.End 方法调用
+    fn eval_response_end(&mut self) -> Result<Value, RuntimeError> {
+        // 获取 Response 对象并调用 End 方法
+        if let Some(value) = self.context.get_var("Response") {
+            if let Value::Object(obj) = value {
+                let mut locked = obj.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock Response object".to_string()))?;
+                locked.call_method("end", vec![])?;
+            }
+        }
+        // 设置退出标志
+        self.context.set_should_exit();
+        Ok(Value::Empty)
+    }
+
+    /// 处理 Response.Clear 方法调用
+    fn eval_response_clear(&mut self) -> Result<Value, RuntimeError> {
+        // 获取 Response 对象并调用 Clear 方法
+        if let Some(value) = self.context.get_var("Response") {
+            if let Value::Object(obj) = value {
+                let mut locked = obj.lock()
+                    .map_err(|_| RuntimeError::Generic("Failed to lock Response object".to_string()))?;
+                locked.call_method("clear", vec![])?;
+            }
+        }
+        Ok(Value::Empty)
     }
 
     /// 获取 Count 属性值
