@@ -51,7 +51,7 @@ impl Parser {
     }
 
     /// 检查下一个 token 是否是指定关键字
-    fn peek_next_is_keyword(&self, keyword: Keyword) -> bool {
+    pub fn peek_next_is_keyword(&self, keyword: Keyword) -> bool {
         let next_token = self.peek_ahead(1);
         matches!(next_token, Token::Keyword(k) if *k == keyword)
     }

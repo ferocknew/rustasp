@@ -17,6 +17,8 @@ impl Parser {
 
         // 判断是单行 If 还是多行 If
         // 单行 If: if x = 1 then Response.Write("Yes")
+        // 单行 If (冒号分隔): if x = 1 then : Response.Write("Yes") : End If
+        // 单行 If (带 Else): if x = 1 then : a = 1 : Else : a = 2 : End If
         // 多行 If: if x = 1 then \n ... \n end if
         let is_multiline = self.check(&Token::Newline);
 
@@ -25,20 +27,106 @@ impl Parser {
         if !is_multiline && !self.is_at_end() && !self.check_keyword(Keyword::End) {
             // 单行 If - 支持冒号分隔的多条语句
             // 例如: If x > 0 Then Response.Write "yes" : Response.Write "<br>"
+            // 或者: If x > 0 Then : Response.Write "yes" : End If
+            // 或者: If x > 0 Then : Response.Write "yes" : Else : Response.Write "no" : End If
             let mut body = vec![];
+
+            // 如果 Then 后面是冒号，先消耗它
+            if self.check(&Token::Colon) {
+                // 检查下一个 token，如果是 End，说明这是空的 If 块
+                // 例如: If False Then : End If
+                self.advance(); // 消耗冒号
+                self.skip_newlines();
+
+                // 检查是否是空 If 块
+                if self.check_keyword(Keyword::End) {
+                    // 空 If 块: If False Then : End If
+                    self.expect_keyword(Keyword::End)?;
+                    self.expect_keyword(Keyword::If)?;
+                    return Ok(Some(Stmt::If {
+                        branches: vec![IfBranch { cond, body: vec![] }],
+                        else_block: None,
+                    }));
+                }
+            }
 
             // 解析第一条语句
             if let Some(stmt) = self.parse_stmt()? {
                 body.push(stmt);
 
                 // 处理冒号分隔的后续语句（VBScript 语法糖）
-                while self.match_token(&Token::Colon) {
+                loop {
+                    self.skip_newlines();
+
+                    // 检查是否到达 End If
+                    if self.check_keyword(Keyword::End) {
+                        if self.peek_next_is_keyword(Keyword::If) {
+                            // 这是带 End If 的单行 If
+                            break;
+                        }
+                    }
+
+                    // 检查是否遇到 Else
+                    if self.check_keyword(Keyword::Else) {
+                        // 单行 If 的 Else 分支
+                        self.expect_keyword(Keyword::Else)?;
+                        self.skip_newlines();
+
+                        let mut else_body = vec![];
+
+                        // 检查 Else 后是否有冒号
+                        if self.check(&Token::Colon) {
+                            self.advance(); // 消耗冒号
+                            self.skip_newlines();
+                        }
+
+                        // 解析 Else 分支的语句
+                        loop {
+                            // 检查是否到达 End If
+                            if self.check_keyword(Keyword::End) && self.peek_next_is_keyword(Keyword::If) {
+                                break;
+                            }
+
+                            if let Some(stmt) = self.parse_stmt()? {
+                                else_body.push(stmt);
+                            }
+
+                            self.skip_newlines();
+
+                            // 检查是否有冒号分隔符
+                            if !self.match_token(&Token::Colon) {
+                                break;
+                            }
+
+                            self.skip_newlines();
+                        }
+
+                        // 消耗 End If
+                        self.expect_keyword(Keyword::End)?;
+                        self.expect_keyword(Keyword::If)?;
+
+                        return Ok(Some(Stmt::If {
+                            branches: vec![IfBranch { cond, body }],
+                            else_block: Some(else_body),
+                        }));
+                    }
+
+                    // 检查是否遇到冒号
+                    if !self.match_token(&Token::Colon) {
+                        // 没有冒号了，检查其他结束条件
+                        if self.is_at_end()
+                            || self.check(&Token::Newline)
+                            || self.check_keyword(Keyword::ElseIf)
+                        {
+                            break;
+                        }
+                        continue;
+                    }
+
                     // 跳过冒号后的空白
                     self.skip_newlines();
 
                     // 检查是否到达行尾或文件结束
-                    // 注意：单行 If 语句不能包含 Else 块
-                    // 如果遇到 Else，说明这个 Else 是属于外层的 If 语句，不是当前的单行 If
                     if self.is_at_end()
                         || self.check(&Token::Newline)
                         || self.check_keyword(Keyword::Else)
@@ -53,6 +141,23 @@ impl Parser {
                         body.push(next_stmt);
                     }
                 }
+            } else {
+                // 空语句块: If False Then : End If
+                // 检查是否有 End If
+                if self.check_keyword(Keyword::End) && self.peek_next_is_keyword(Keyword::If) {
+                    self.expect_keyword(Keyword::End)?;
+                    self.expect_keyword(Keyword::If)?;
+                    return Ok(Some(Stmt::If {
+                        branches: vec![IfBranch { cond, body: vec![] }],
+                        else_block: None,
+                    }));
+                }
+            }
+
+            // 检查是否有 End If (单行 If 也可能带 End If)
+            if self.check_keyword(Keyword::End) && self.peek_next_is_keyword(Keyword::If) {
+                self.expect_keyword(Keyword::End)?;
+                self.expect_keyword(Keyword::If)?;
             }
 
             // 单行 If 语句不支持 Else 块
