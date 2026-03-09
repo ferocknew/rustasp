@@ -144,7 +144,8 @@ impl Interpreter {
         }
     }
 
-    /// 执行索引赋值（如 arr(i) = value 或 arr(i,j) = value）
+    /// 执行索引赋值（如 arr(i) = value 或 dict("key") = value）
+    /// 支持多层对象属性访问后的索引赋值，如 Easp.Lang("key") = value
     fn eval_index_assignment(
         &mut self,
         object: &Expr,
@@ -223,6 +224,37 @@ impl Interpreter {
                         self.context.set_var(name.clone(), Value::Array(Arc::new(Mutex::new(vbs_arr))));
                         Ok(Value::Empty)
                     }
+                }
+            }
+            Expr::Property { object: prop_obj, property } => {
+                // 处理属性访问后的索引赋值，如 Easp.Lang("key") = value
+                // 先求值属性访问表达式，得到对象
+                let obj_val = if let Expr::Variable(var_name) = prop_obj.as_ref() {
+                    // 从变量表获取对象
+                    self.context.get_var(var_name)
+                        .ok_or_else(|| RuntimeError::UndefinedVariable(var_name.clone()))?
+                        .clone()
+                } else {
+                    // 递归求值
+                    self.eval_expr(prop_obj)?
+                };
+
+                // 获取属性值（应该是一个对象）
+                if let Value::Object(ref obj) = obj_val {
+                    let obj_guard = obj.lock()
+                        .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
+
+                    // 对对象进行索引赋值
+                    if indices.len() == 1 {
+                        obj_guard.set_index(&index_vals[0], val.clone())?;
+                        return Ok(Value::Empty);
+                    } else {
+                        return Err(RuntimeError::Generic(
+                            "Multi-dimensional index assignment not supported for objects".to_string()
+                        ));
+                    }
+                } else {
+                    return Err(RuntimeError::ObjectRequired);
                 }
             }
             _ => Err(RuntimeError::InvalidAssignment),
