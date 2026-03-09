@@ -130,8 +130,10 @@ impl Parser {
         let mut stmts = vec![];
 
         loop {
+            // 跳过前置的换行符
             self.skip_newlines();
 
+            // 检查是否结束
             if self.is_at_end() {
                 break;
             }
@@ -141,32 +143,33 @@ impl Parser {
                 break;
             }
 
+            // 解析一条语句
             if let Some(stmt) = self.parse_stmt()? {
                 stmts.push(stmt);
             }
 
-            // 如果遇到冒号，继续解析下一条语句
-            if !self.match_token(&Token::Colon) {
-                // 检查是否需要继续（多语句单行情况）
-                self.skip_newlines();
+            // 如果遇到冒号，继续解析下一条语句（冒号分隔符）
+            // 如果遇到换行符，结束（单行语句结束）
+            // 如果遇到终止关键字，结束
+            if self.match_token(&Token::Colon) {
+                // 冒号分隔符，继续解析下一条语句
+                continue;
+            }
 
-                // 如果遇到了终止关键字，退出
-                if end_keywords.iter().any(|k| self.check_keyword(*k)) {
-                    break;
-                }
+            // 检查是否遇到终止关键字
+            if end_keywords.iter().any(|k| self.check_keyword(*k)) {
+                break;
+            }
 
-                // 如果没有换行且没有冒号，结束语句列表
-                if !self.check(&Token::Newline) && !self.is_at_end() {
-                    // 检查是否是另一个语句的开始
-                    // 如果不是终止关键字，继续尝试解析
-                    let should_continue = !end_keywords.iter().any(|k| self.check_keyword(*k));
-                    if !should_continue {
-                        break;
-                    }
-                    // 否则继续循环，尝试解析更多语句
-                } else {
-                    break;
-                }
+            // 如果不是冒号，检查是否有换行符
+            // 如果有换行符，说明语句列表结束
+            if self.check(&Token::Newline) {
+                break;
+            }
+
+            // 如果遇到文件结束，也结束
+            if self.is_at_end() {
+                break;
             }
         }
 

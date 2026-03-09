@@ -22,7 +22,11 @@ impl Parser {
             let body = self.parse_stmt_list_until(&[Keyword::Else, Keyword::End, Keyword::ElseIf])?;
 
             let else_block = if self.match_keyword(Keyword::Else) {
+                // 跳过 Else 后的换行和冒号（单行 If 的常见写法）
                 self.skip_newlines();
+                if self.match_token(&Token::Colon) {
+                    self.skip_newlines();
+                }
                 Some(self.parse_stmt_list_until(&[Keyword::End, Keyword::ElseIf])?)
             } else {
                 None
@@ -62,6 +66,10 @@ impl Parser {
         // 解析 Else 分支
         let else_block = if self.match_keyword(Keyword::Else) {
             self.skip_newlines();
+            // 跳过 Else 后可能的冒号
+            if self.match_token(&Token::Colon) {
+                self.skip_newlines();
+            }
             Some(self.parse_stmt_list_until(&[Keyword::End])?)
         } else {
             None
