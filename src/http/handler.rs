@@ -254,7 +254,8 @@ async fn execute_asp_file(
     let mut engine = crate::asp::Engine::new()
         .with_debug(state.config.debug)
         .with_request_context(request_ctx.clone())
-        .with_session_manager(session_manager);
+        .with_session_manager(session_manager)
+        .with_home_dir(state.config.home_dir.to_string_lossy().to_string());
 
     match engine.execute(&processed_content) {
         Ok(result) => {
@@ -366,7 +367,8 @@ async fn execute_asp_file_without_session(
 
     let mut engine = crate::asp::Engine::new()
         .with_debug(state.config.debug)
-        .with_request_context(request_ctx.clone());
+        .with_request_context(request_ctx.clone())
+        .with_home_dir(state.config.home_dir.to_string_lossy().to_string());
 
     match engine.execute(&processed_content) {
         Ok(result) => {

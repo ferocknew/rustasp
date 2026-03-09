@@ -25,23 +25,66 @@ impl Server {
         self.root_path = path;
     }
 
-    /// MapPath 方法
+    /// MapPath 方法 - 将虚拟路径转换为物理路径
+    ///
+    /// # Examples
+    /// ```
+    /// // root_path = "/var/www"
+    /// server.map_path("/images/a.png") // => "/var/www/images/a.png"
+    /// server.map_path("test.asp")      // => "/var/www/test.asp"
+    /// ```
     pub fn map_path(&self, path: &str) -> String {
+        let path = path.trim();
+
+        // 如果是绝对路径或空路径，直接返回根路径
+        if path.is_empty() {
+            return self.root_path.clone();
+        }
+
+        // 处理绝对路径（以 / 或 \ 开头）
         if path.starts_with('/') || path.starts_with('\\') {
-            format!("{}{}", self.root_path, path)
+            // 移除开头的斜杠后拼接
+            let clean_path = path.trim_start_matches('/').trim_start_matches('\\');
+            if clean_path.is_empty() {
+                return self.root_path.clone();
+            }
+            format!("{}/{}", self.root_path, clean_path)
         } else {
+            // 相对路径，直接拼接
             format!("{}/{}", self.root_path, path)
         }
     }
 
-    /// URLEncode 方法
+    /// URLEncode 方法 - URL 编码
+    ///
+    /// # Examples
+    /// ```
+    /// server.url_encode("hello world") // => "hello%20world"
+    /// server.url_encode("a=b&c=d")     // => "a%3Db%26c%3Dd"
+    /// ```
     pub fn url_encode(&self, s: &str) -> String {
         urlencoding::encode(s).to_string()
     }
 
-    /// HTMLEncode 方法
+    /// HTMLEncode 方法 - HTML 转义
+    ///
+    /// # Examples
+    /// ```
+    /// server.html_encode("<b>")    // => "&lt;b&gt;"
+    /// server.html_encode("a&b")    // => "a&amp;b"
+    /// ```
     pub fn html_encode(&self, s: &str) -> String {
         html_escape::encode_text(s).to_string()
+    }
+
+    /// 获取脚本超时时间
+    pub fn script_timeout(&self) -> u32 {
+        self.script_timeout
+    }
+
+    /// 设置脚本超时时间
+    pub fn set_script_timeout(&mut self, timeout: u32) {
+        self.script_timeout = timeout;
     }
 }
 
@@ -95,16 +138,30 @@ impl crate::runtime::BuiltinObject for Server {
                 Ok(Value::String(self.html_encode(&s)))
             }
             "createobject" => {
-                // Server.CreateObject - 不支持 COM，返回 Empty
-                Ok(Value::Empty)
+                // Server.CreateObject - 不支持 COM 对象
+                // 返回错误提示，而不是 Empty
+                Err(RuntimeError::Generic(format!(
+                    "Server.CreateObject is not supported. COM objects are not available in this Rust-based ASP runtime. \
+                    Consider using built-in objects like Dictionary instead."
+                )))
             }
-            "execute" | "transfer" => {
-                // Server.Execute / Server.Transfer - 暂不支持
-                Ok(Value::Empty)
+            "execute" => {
+                // Server.Execute - 暂不支持
+                Err(RuntimeError::Generic(
+                    "Server.Execute is not yet implemented.".to_string()
+                ))
+            }
+            "transfer" => {
+                // Server.Transfer - 暂不支持
+                Err(RuntimeError::Generic(
+                    "Server.Transfer is not yet implemented.".to_string()
+                ))
             }
             "getlasterror" => {
                 // Server.GetLastError - 暂不支持
-                Ok(Value::Empty)
+                Err(RuntimeError::Generic(
+                    "Server.GetLastError is not yet implemented.".to_string()
+                ))
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }

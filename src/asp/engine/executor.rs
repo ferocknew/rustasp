@@ -19,6 +19,8 @@ pub struct Engine {
     request_context: Option<RequestContext>,
     /// Session 管理器
     session_manager: Option<SessionManager>,
+    /// Web 根目录（用于 Server.MapPath）
+    home_dir: String,
 }
 
 impl Engine {
@@ -28,6 +30,7 @@ impl Engine {
             debug: false,
             request_context: None,
             session_manager: None,
+            home_dir: ".".to_string(),
         }
     }
 
@@ -46,6 +49,12 @@ impl Engine {
     /// 设置请求上下文
     pub fn with_request_context(mut self, ctx: RequestContext) -> Self {
         self.request_context = Some(ctx);
+        self
+    }
+
+    /// 设置 Web 根目录（用于 Server.MapPath）
+    pub fn with_home_dir(mut self, home_dir: String) -> Self {
+        self.home_dir = home_dir;
         self
     }
 
@@ -129,7 +138,15 @@ impl Engine {
             Value::Object(Arc::new(Mutex::new(session))),
         );
 
-        // 5.2 定义 VBScript 内置常量
+        // 5.3 创建 Server 对象并设置根路径
+        let mut server = vbscript::runtime::objects::Server::new();
+        server.set_root_path(self.home_dir.clone());
+        interpreter.context_mut().define_var(
+            "Server".to_string(),
+            Value::Object(Arc::new(Mutex::new(server))),
+        );
+
+        // 5.4 定义 VBScript 内置常量
         Self::define_vbscript_constants(&mut interpreter);
 
         // 6. 注入内建对象（在执行前）
