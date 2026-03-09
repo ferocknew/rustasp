@@ -120,4 +120,56 @@ impl Parser {
 
         Ok(Some(Stmt::ExecuteGlobal(expr)))
     }
+
+    /// 解析语句列表直到遇到终止关键字
+    /// 用于 If、Else、While、For 等语句体
+    pub fn parse_stmt_list_until(
+        &mut self,
+        end_keywords: &[Keyword],
+    ) -> Result<Vec<Stmt>, ParseError> {
+        let mut stmts = vec![];
+
+        loop {
+            self.skip_newlines();
+
+            if self.is_at_end() {
+                break;
+            }
+
+            // 检查是否遇到终止关键字
+            if end_keywords.iter().any(|k| self.check_keyword(*k)) {
+                break;
+            }
+
+            if let Some(stmt) = self.parse_stmt()? {
+                stmts.push(stmt);
+            }
+
+            // 如果遇到冒号，继续解析下一条语句
+            if !self.match_token(&Token::Colon) {
+                // 检查是否需要继续（多语句单行情况）
+                self.skip_newlines();
+
+                // 如果遇到了终止关键字，退出
+                if end_keywords.iter().any(|k| self.check_keyword(*k)) {
+                    break;
+                }
+
+                // 如果没有换行且没有冒号，结束语句列表
+                if !self.check(&Token::Newline) && !self.is_at_end() {
+                    // 检查是否是另一个语句的开始
+                    // 如果不是终止关键字，继续尝试解析
+                    let should_continue = !end_keywords.iter().any(|k| self.check_keyword(*k));
+                    if !should_continue {
+                        break;
+                    }
+                    // 否则继续循环，尝试解析更多语句
+                } else {
+                    break;
+                }
+            }
+        }
+
+        Ok(stmts)
+    }
 }
