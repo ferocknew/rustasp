@@ -31,7 +31,14 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             let s = ValueConversion::to_string(&args[0]);
             let n = ValueConversion::to_number(&args[1]) as usize;
-            Value::String(s.chars().rev().take(n).collect::<String>().chars().rev().collect::<String>())
+            // 优化：直接计算起始位置，避免双重反转
+            let char_count = s.chars().count();
+            if n >= char_count {
+                Value::String(s)
+            } else {
+                let start = char_count - n;
+                Value::String(s.chars().skip(start).collect::<String>())
+            }
         }
         BuiltinToken::Mid => {
             if args.len() < 2 {

@@ -50,6 +50,29 @@ mod tests {
         // Trim
         let result = BuiltinExecutor::execute(BuiltinToken::Trim, &[Value::String("  hello  ".to_string())]).unwrap();
         assert_eq!(result, Value::String("hello".to_string()));
+
+        // Left
+        let result = BuiltinExecutor::execute(BuiltinToken::Left, &[Value::String("hello".to_string()), Value::Number(2.0)]).unwrap();
+        assert_eq!(result, Value::String("he".to_string()));
+
+        // Left - 超过字符串长度
+        let result = BuiltinExecutor::execute(BuiltinToken::Left, &[Value::String("hi".to_string()), Value::Number(10.0)]).unwrap();
+        assert_eq!(result, Value::String("hi".to_string()));
+
+        // Right
+        let result = BuiltinExecutor::execute(BuiltinToken::Right, &[Value::String("hello".to_string()), Value::Number(2.0)]).unwrap();
+        assert_eq!(result, Value::String("lo".to_string()));
+
+        // Right - 超过字符串长度
+        let result = BuiltinExecutor::execute(BuiltinToken::Right, &[Value::String("hi".to_string()), Value::Number(10.0)]).unwrap();
+        assert_eq!(result, Value::String("hi".to_string()));
+
+        // Right - 取1个字符（FixSitePath 函数场景）
+        let result = BuiltinExecutor::execute(BuiltinToken::Right, &[Value::String("/path/".to_string()), Value::Number(1.0)]).unwrap();
+        assert_eq!(result, Value::String("/".to_string()));
+
+        let result = BuiltinExecutor::execute(BuiltinToken::Right, &[Value::String("/path".to_string()), Value::Number(1.0)]).unwrap();
+        assert_eq!(result, Value::String("h".to_string()));
     }
 
     #[test]
