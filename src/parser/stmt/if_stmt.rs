@@ -33,7 +33,7 @@ impl Parser {
             };
 
             // 可选的 End If
-            if self.check_keyword(Keyword::End) {
+            if self.check_keyword(Keyword::End) && matches!(self.peek_ahead(1), Token::Keyword(Keyword::If)) {
                 self.expect_keyword(Keyword::End)?;
                 self.expect_keyword(Keyword::If)?;
             }

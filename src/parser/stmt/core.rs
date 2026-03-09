@@ -50,6 +50,12 @@ impl Parser {
             | Token::Keyword(Keyword::Case)
             | Token::Keyword(Keyword::Until) => Ok(None),
 
+            // 冒号 - 空语句（用于语句分隔）
+            Token::Colon => {
+                self.advance(); // consume the colon
+                Ok(None) // empty statement
+            }
+
             Token::Eof => Ok(None),
 
             // 标识符 - 可能是赋值或表达式
@@ -152,7 +158,8 @@ impl Parser {
             // 如果遇到换行符，结束（单行语句结束）
             // 如果遇到终止关键字，结束
             if self.match_token(&Token::Colon) {
-                // 冒号分隔符，继续解析下一条语句
+                // 冒号分隔符，跳过连续的冒号（空语句）
+                while self.match_token(&Token::Colon) {}
                 continue;
             }
 
