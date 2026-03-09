@@ -158,8 +158,8 @@ impl crate::runtime::BuiltinObject for Server {
                 });
 
                 if !is_whitelisted {
-                    return Err(RuntimeError::Generic(format!(
-                        "Server.CreateObject: '{}' 不在白名单中。出于安全考虑，只允许创建以下对象: {}",
+                    return Err(RuntimeError::CreateObjectFailed(format!(
+                        " '{}' 不在白名单中。出于安全考虑，只允许创建以下对象: {}",
                         ValueConversion::to_string(&args[0]),
                         WHITELIST.join(", ")
                     )));
@@ -179,8 +179,8 @@ impl crate::runtime::BuiltinObject for Server {
                     "xmlhttp" | "msxml2.xmlhttp" | "microsoft.xmlhttp" => {
                         Ok(Value::Object(Arc::new(Mutex::new(XmlHttp::new()))))
                     }
-                    _ => Err(RuntimeError::Generic(format!(
-                        "Server.CreateObject: 无法创建对象 '{}'",
+                    _ => Err(RuntimeError::CreateObjectFailed(format!(
+                        "无法创建对象 '{}'",
                         ValueConversion::to_string(&args[0])
                     )))
                 }

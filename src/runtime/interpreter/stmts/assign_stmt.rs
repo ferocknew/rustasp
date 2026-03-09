@@ -3,10 +3,35 @@
 //! 处理 Assignment、Set 及索引/属性赋值
 
 use crate::ast::Expr;
-use crate::runtime::{RuntimeError, Value, ErrorMode};
+use crate::runtime::{RuntimeError, Value, ErrorMode, vb_error};
 use std::sync::{Arc, Mutex};
 
 use super::Interpreter;
+
+/// 从 RuntimeError 中提取错误信息（简化版本）
+fn extract_error_info(error: &RuntimeError) -> (i32, String) {
+    match error {
+        RuntimeError::DivisionByZero => {
+            (vb_error::DIVISION_BY_ZERO, "Division by zero".to_string())
+        }
+        RuntimeError::TypeMismatch(msg) => {
+            (vb_error::TYPE_MISMATCH, format!("Type mismatch: {}", msg))
+        }
+        RuntimeError::ObjectRequired => {
+            (vb_error::OBJECT_REQUIRED, "Object required".to_string())
+        }
+        RuntimeError::UndefinedFunction(name) => {
+            (vb_error::UNDEFINED_FUNCTION, format!("Undefined function: {}", name))
+        }
+        RuntimeError::IndexOutOfBounds(_) => {
+            (vb_error::SUBSCRIPT_OUT_OF_RANGE, "Subscript out of range".to_string())
+        }
+        RuntimeError::CreateObjectFailed(msg) => {
+            (vb_error::CANT_CREATE_OBJECT, format!("Server.CreateObject: {}", msg))
+        }
+        _ => (0, format!("{:?}", error)),
+    }
+}
 
 /// 赋值语句执行器
 impl Interpreter {
@@ -103,6 +128,9 @@ impl Interpreter {
                         match error_mode {
                             ErrorMode::Stop => Err(e),
                             ErrorMode::ResumeNext => {
+                                // 记录错误到 Err 对象
+                                let (number, description) = extract_error_info(&e);
+                                self.context.err.set(number, description);
                                 // 设置变量为 Nothing (Null)
                                 self.context.set_var(name.clone(), Value::Null);
                                 // 返回成功，避免外层再次处理错误

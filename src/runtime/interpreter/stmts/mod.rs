@@ -133,6 +133,9 @@ impl Interpreter {
             RuntimeError::IndexOutOfBounds(_) => {
                 (vb_error::SUBSCRIPT_OUT_OF_RANGE, "Subscript out of range".to_string())
             }
+            RuntimeError::CreateObjectFailed(msg) => {
+                (vb_error::CANT_CREATE_OBJECT, format!("Server.CreateObject: {}", msg))
+            }
             _ => (0, format!("{:?}", error)),
         }
     }

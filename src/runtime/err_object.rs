@@ -59,4 +59,6 @@ pub mod vb_error {
     pub const UNDEFINED_FUNCTION: i32 = 1001;
     /// 数组下标越界
     pub const SUBSCRIPT_OUT_OF_RANGE: i32 = 9;
+    /// 对象创建失败（ActiveX 无法创建对象）
+    pub const CANT_CREATE_OBJECT: i32 = 429;
 }

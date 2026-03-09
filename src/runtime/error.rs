@@ -58,6 +58,9 @@ pub enum RuntimeError {
     #[error("Runtime error: {0}")]
     Generic(String),
 
+    #[error("CreateObject failed: {0}")]
+    CreateObjectFailed(String),
+
     /// 控制流信号（不是真正的错误）
     #[error("Control flow: {0:?}")]
     ControlFlow(ControlFlow),
