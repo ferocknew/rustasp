@@ -11,7 +11,7 @@ pub struct XmlHttp {
     /// 请求 URL
     url: String,
     /// 是否异步
-    async: bool,
+    is_async: bool,
     /// 请求头
     headers: Vec<(String, String)>,
     /// 响应状态
@@ -32,7 +32,7 @@ impl XmlHttp {
         XmlHttp {
             method: String::new(),
             url: String::new(),
-            async: false,
+            is_async: false,
             headers: Vec::new(),
             status: 0,
             status_text: String::new(),
@@ -43,10 +43,10 @@ impl XmlHttp {
     }
 
     /// 打开连接
-    pub fn open(&mut self, method: &str, url: &str, async: Option<bool>) -> Result<(), RuntimeError> {
+    pub fn open(&mut self, method: &str, url: &str, is_async: Option<bool>) -> Result<(), RuntimeError> {
         self.method = method.to_uppercase();
         self.url = url.to_string();
-        self.async = async.unwrap_or(false);
+        self.is_async = is_async.unwrap_or(false);
         self.sent = false;
         Ok(())
     }
@@ -135,12 +135,12 @@ impl BuiltinObject for XmlHttp {
                 }
                 let method = ValueConversion::to_string(&args[0]);
                 let url = ValueConversion::to_string(&args[1]);
-                let async_flag = if args.len() > 2 {
+                let is_async_flag = if args.len() > 2 {
                     Some(args[2].to_bool())
                 } else {
                     None
                 };
-                self.open(&method, &url, async_flag)?;
+                self.open(&method, &url, is_async_flag)?;
                 Ok(Value::Empty)
             }
             "setrequestheader" => {

@@ -228,6 +228,16 @@ DETAILED_ERROR=false
 
 # ASP 文件扩展名（逗号分隔）
 ASP_EXT=asp,asa
+
+# CreateObject 功能配置
+CREATE_OBJECT_ENABLE=true
+# Server.CreateObject 白名单（逗号分隔）
+# 出于安全考虑，只支持以下 3 个对象：
+# - Scripting.Dictionary: 字典对象
+# - Scripting.FileSystemObject: 文件系统对象
+# - MSXML2.XMLHTTP: HTTP 请求对象
+# 注意：不支持的 COM 对象（如 ADODB.Connection）将被拒绝
+CREATE_OBJECT_WHITELIST=Scripting.Dictionary,Scripting.FileSystemObject,MSXML2.XMLHTTP
 ```
 
 ### 运行
