@@ -72,18 +72,18 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p dist
-          cp target/release/asp-lite dist/
+          cp target/release/vbscript dist/
           cp -r www dist/ 2>/dev/null || mkdir -p dist/www
           cp .env.example dist/
           cp README.md dist/
           cp VERSION dist/
           cd dist
-          tar czf "asp-lite-linux-x64-v${{ steps.get_version.outputs.version }}.tar.gz" asp-lite www .env.example README.md VERSION
+          tar czf "vbscript-linux-x64-v${{ steps.get_version.outputs.version }}.tar.gz" vbscript www .env.example README.md VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asp-lite-linux-x64
+          name: vbscript-linux-x64
           path: dist/*.tar.gz
 
   # 构建 Linux musl 版本（静态链接）
@@ -123,18 +123,18 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p dist
-          cp target/x86_64-unknown-linux-musl/release/asp-lite dist/
+          cp target/x86_64-unknown-linux-musl/release/vbscript dist/
           cp -r www dist/ 2>/dev/null || mkdir -p dist/www
           cp .env.example dist/
           cp README.md dist/
           cp VERSION dist/
           cd dist
-          tar czf "asp-lite-linux-musl-x64-v${{ steps.get_version.outputs.version }}.tar.gz" asp-lite www .env.example README.md VERSION
+          tar czf "vbscript-linux-musl-x64-v${{ steps.get_version.outputs.version }}.tar.gz" vbscript www .env.example README.md VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asp-lite-linux-musl-x64
+          name: vbscript-linux-musl-x64
           path: dist/*.tar.gz
 
   # 构建 Windows 版本
@@ -173,18 +173,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp target/release/asp-lite.exe dist/
+          cp target/release/vbscript.exe dist/
           cp -r www dist/ 2>/dev/null || mkdir -p dist/www
           cp .env.example dist/
           cp README.md dist/
           cp VERSION dist/
           cd dist
-          7z a "asp-lite-windows-x64-v${{ steps.get_version.outputs.version }}.zip" asp-lite.exe www .env.example README.md VERSION
+          7z a "vbscript-windows-x64-v${{ steps.get_version.outputs.version }}.zip" vbscript.exe www .env.example README.md VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asp-lite-windows-x64
+          name: vbscript-windows-x64
           path: dist/*.zip
 
   # 构建 macOS 版本
@@ -219,18 +219,18 @@ jobs:
       - name: Package binary
         run: |
           mkdir -p dist
-          cp target/release/asp-lite dist/
+          cp target/release/vbscript dist/
           cp -r www dist/ 2>/dev/null || mkdir -p dist/www
           cp .env.example dist/
           cp README.md dist/
           cp VERSION dist/
           cd dist
-          tar czf "asp-lite-macos-x64-v${{ steps.get_version.outputs.version }}.tar.gz" asp-lite www .env.example README.md VERSION
+          tar czf "vbscript-macos-x64-v${{ steps.get_version.outputs.version }}.tar.gz" vbscript www .env.example README.md VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asp-lite-macos-x64
+          name: vbscript-macos-x64
           path: dist/*.tar.gz
 
   # 创建 Release（仅在推送 tag 时执行）
@@ -257,12 +257,12 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "asp-lite v${{ steps.get_version.outputs.VERSION }}"
+          name: "vbscript v${{ steps.get_version.outputs.VERSION }}"
           files: |
-            artifacts/asp-lite-linux-x64/*.tar.gz
-            artifacts/asp-lite-linux-musl-x64/*.tar.gz
-            artifacts/asp-lite-windows-x64/*.zip
-            artifacts/asp-lite-macos-x64/*.tar.gz
+            artifacts/vbscript-linux-x64/*.tar.gz
+            artifacts/vbscript-linux-musl-x64/*.tar.gz
+            artifacts/vbscript-windows-x64/*.zip
+            artifacts/vbscript-macos-x64/*.tar.gz
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
