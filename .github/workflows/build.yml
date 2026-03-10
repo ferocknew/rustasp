@@ -235,8 +235,7 @@ jobs:
 
       - name: Extract binary
         run: |
-          mkdir -p build
-          tar xzf artifacts/*.tar.gz -C build
+          tar xzf artifacts/*.tar.gz
 
       - name: Get version
         id: get_version
