@@ -329,7 +329,7 @@ services:
       # Server.CreateObject 白名单
       - CREATE_OBJECT_WHITELIST=Scripting.Dictionary,Scripting.FileSystemObject,MSXML2.XMLHTTP
 
-  # 可选：Redis 服务（用于 Session 持久化）
+  # 可选：Redis 服务（用于 Session 持久化，redis 驱动还未支持，后续会支持）
   # redis:
   #   image: redis:7-alpine
   #   container_name: vbscript-redis
