@@ -13,6 +13,12 @@ pub struct Lexer {
     pub(crate) column: usize,
 }
 
+impl Default for Lexer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Lexer {
     /// 创建新的词法分析器
     pub fn new() -> Self {

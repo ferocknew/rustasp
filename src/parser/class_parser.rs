@@ -283,12 +283,11 @@ impl Parser {
                 self.skip_newlines();
 
                 // 检查是否到达 End Function/End Sub
-                if self.check_keyword(Keyword::End) {
-                    if (is_function && self.peek_next_is_keyword(Keyword::Function))
-                        || (is_sub && self.peek_next_is_keyword(Keyword::Sub))
-                    {
-                        break;
-                    }
+                if self.check_keyword(Keyword::End)
+                    && ((is_function && self.peek_next_is_keyword(Keyword::Function))
+                        || (is_sub && self.peek_next_is_keyword(Keyword::Sub)))
+                {
+                    break;
                 }
 
                 // 解析语句

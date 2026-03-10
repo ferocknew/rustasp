@@ -7,7 +7,7 @@
 //! - lexer.rs: 主 Lexer 结构和 tokenize 逻辑
 
 pub mod keyword;
-pub mod lexer;
+mod lexer;
 pub mod scan;
 pub mod token;
 
