@@ -256,7 +256,8 @@ impl Parser {
 
         self.advance(); // 消耗 Function 或 Sub
 
-        let name = self.expect_ident()?;
+        // 允许使用关键字作为方法名（例如 Error）
+        let name = self.expect_ident_or_keyword()?;
 
         let params = self.parse_params()?;
 
@@ -399,7 +400,8 @@ impl Parser {
             });
         };
 
-        let name = self.expect_ident()?;
+        // 允许使用关键字作为属性名（例如 Error）
+        let name = self.expect_ident_or_keyword()?;
 
         let params = self.parse_params()?;
 
