@@ -241,6 +241,115 @@ for segment in segments {
 
 ## 快速开始
 
+### Docker 部署（推荐）
+
+```bash
+# 拉取镜像
+docker pull jonahfu/vbscript:latest
+
+# 运行容器
+docker run -d \
+  --name vbscript \
+  -p 8080:8080 \
+  -v $(pwd)/www:/app/www \
+  jonahfu/vbscript:latest
+```
+
+### Docker Compose 部署
+
+创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  vbscript:
+    image: jonahfu/vbscript:latest
+    container_name: vbscript
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 挂载 ASP 源码目录
+      - ./www:/app/www
+      # 挂载 Session 持久化目录（可选）
+      - ./runtime/sessions:/app/runtime/sessions
+    environment:
+      # ========== 基础 HTTP 服务配置 ==========
+      # 是否显示目录列表
+      - DIRECTORY_LISTING=false
+      # Web 根目录路径（容器内路径）
+      - HOME_DIR=/app/www
+      # 默认索引文件
+      - INDEX_FILE=index.asp,index.html
+      # 索引文件功能开关
+      - INDEX_FILE_ENABLE=true
+      # 服务端口号
+      - PORT=8080
+      # 是否支持父路径访问（安全风险）
+      - ALLOW_PARENT_PATH=false
+      # ASP 文件扩展名
+      - ASP_EXT=asp,asa
+
+      # ========== 调试与错误处理配置 ==========
+      # 是否启用调试模式
+      - DEBUG=false
+      # 是否显示详细错误信息（生产环境建议关闭）
+      - DETAILED_ERROR=false
+      # 自定义错误页面（相对于 HOME_DIR）
+      # - ERROR_PAGE=error.html
+
+      # ========== Session 会话管理配置 ==========
+      # Session 存储模式 (memory/json/redis)
+      # memory - 纯内存存储，重启后丢失
+      # json - JSON文件持久化存储
+      # redis - Redis存储（预留）
+      - SESSION_STORAGE=memory
+      # Session 超时时间（分钟）
+      - SESSION_TIMEOUT=20
+      # Session 存储目录（仅 json 模式）
+      - SESSION_DIR=/app/runtime/sessions
+      # Redis 连接配置（预留，仅 redis 模式）
+      # - REDIS_URL=redis://redis:6379
+      # - REDIS_KEY_PREFIX=vbscript:session:
+
+      # ========== 日期时间格式配置 ==========
+      # 格式说明：yyyy=年 mm=月 dd=日 hh=时 nn=分 ss=秒
+      - NOW_FORMAT=yyyy/mm/dd hh:nn:ss
+      - DATE_FORMAT=yyyy/mm/dd
+      - TIME_FORMAT=hh:nn:ss
+
+      # ========== CreateObject 安全配置 ==========
+      # CreateObject 功能开关
+      - CREATE_OBJECT_ENABLE=true
+      # Server.CreateObject 白名单
+      - CREATE_OBJECT_WHITELIST=Scripting.Dictionary,Scripting.FileSystemObject,MSXML2.XMLHTTP
+
+  # 可选：Redis 服务（用于 Session 持久化）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: vbscript-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+
+# volumes:
+#   redis_data:
+```
+
+启动服务：
+
+```bash
+# 启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止
+docker-compose down
+```
+
 ### 配置
 
 在项目根目录创建 `.env` 文件：
