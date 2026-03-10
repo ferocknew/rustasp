@@ -363,6 +363,10 @@ docker-compose down
 ```env
 # ==================== 基础配置 ====================
 
+# 绑定地址（默认 0.0.0.0，支持 Docker 容器访问）
+# 本地开发可设置为 127.0.0.1
+HOST=0.0.0.0
+
 # 是否显示目录列表 (true/false)
 DIRECTORY_LISTING=false
 
