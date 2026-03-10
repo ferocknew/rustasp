@@ -31,35 +31,8 @@ impl Parser {
         };
         self.skip_newlines();
 
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::Next) {
-                break;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => {
-                    body.push(stmt);
+        let body = self.parse_block_until(&[Keyword::Next])?;
 
-                    // 处理冒号分隔的后续语句
-                    while self.match_token(&Token::Colon) {
-                        self.skip_newlines();
-
-                        if self.is_at_end()
-                            || self.check(&Token::Newline)
-                            || self.check_keyword(Keyword::Next)
-                        {
-                            break;
-                        }
-
-                        if let Some(next_stmt) = self.parse_stmt()? {
-                            body.push(next_stmt);
-                        }
-                    }
-                }
-                None => break,
-            }
-            self.skip_newlines();
-        }
         self.expect_keyword(Keyword::Next)?;
 
         Ok(Some(Stmt::For {
@@ -78,35 +51,8 @@ impl Parser {
         let collection = self.parse_expr(0)?;
         self.skip_newlines();
 
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::Next) {
-                break;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => {
-                    body.push(stmt);
+        let body = self.parse_block_until(&[Keyword::Next])?;
 
-                    // 处理冒号分隔的后续语句
-                    while self.match_token(&Token::Colon) {
-                        self.skip_newlines();
-
-                        if self.is_at_end()
-                            || self.check(&Token::Newline)
-                            || self.check_keyword(Keyword::Next)
-                        {
-                            break;
-                        }
-
-                        if let Some(next_stmt) = self.parse_stmt()? {
-                            body.push(next_stmt);
-                        }
-                    }
-                }
-                None => break,
-            }
-            self.skip_newlines();
-        }
         self.expect_keyword(Keyword::Next)?;
 
         Ok(Some(Stmt::ForEach {
@@ -122,35 +68,8 @@ impl Parser {
         let cond = self.parse_expr(0)?;
         self.skip_newlines();
 
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::Wend) {
-                break;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => {
-                    body.push(stmt);
+        let body = self.parse_block_until(&[Keyword::Wend])?;
 
-                    // 处理冒号分隔的后续语句
-                    while self.match_token(&Token::Colon) {
-                        self.skip_newlines();
-
-                        if self.is_at_end()
-                            || self.check(&Token::Newline)
-                            || self.check_keyword(Keyword::Wend)
-                        {
-                            break;
-                        }
-
-                        if let Some(next_stmt) = self.parse_stmt()? {
-                            body.push(next_stmt);
-                        }
-                    }
-                }
-                None => break,
-            }
-            self.skip_newlines();
-        }
         self.expect_keyword(Keyword::Wend)?;
 
         Ok(Some(Stmt::While { cond, body }))
@@ -179,35 +98,7 @@ impl Parser {
             None
         };
 
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::Loop) {
-                break;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => {
-                    body.push(stmt);
-
-                    // 处理冒号分隔的后续语句
-                    while self.match_token(&Token::Colon) {
-                        self.skip_newlines();
-
-                        if self.is_at_end()
-                            || self.check(&Token::Newline)
-                            || self.check_keyword(Keyword::Loop)
-                        {
-                            break;
-                        }
-
-                        if let Some(next_stmt) = self.parse_stmt()? {
-                            body.push(next_stmt);
-                        }
-                    }
-                }
-                None => break,
-            }
-            self.skip_newlines();
-        }
+        let body = self.parse_block_until(&[Keyword::Loop])?;
 
         self.expect_keyword(Keyword::Loop)?;
 

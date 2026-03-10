@@ -50,7 +50,7 @@ impl Parser {
         let mut branches = vec![];
 
         // 解析第一个 If 分支的 body
-        let body = self.parse_stmt_list_until(&[Keyword::ElseIf, Keyword::Else, Keyword::End])?;
+        let body = self.parse_block_until(&[Keyword::ElseIf, Keyword::Else, Keyword::End])?;
         branches.push(IfBranch { cond, body });
 
         // 解析 ElseIf 分支
@@ -59,7 +59,7 @@ impl Parser {
             self.expect_keyword(Keyword::Then)?;
             self.skip_newlines();
 
-            let body = self.parse_stmt_list_until(&[Keyword::ElseIf, Keyword::Else, Keyword::End])?;
+            let body = self.parse_block_until(&[Keyword::ElseIf, Keyword::Else, Keyword::End])?;
             branches.push(IfBranch { cond, body });
         }
 
@@ -70,7 +70,7 @@ impl Parser {
             if self.match_token(&Token::Colon) {
                 self.skip_newlines();
             }
-            Some(self.parse_stmt_list_until(&[Keyword::End])?)
+            Some(self.parse_block_until(&[Keyword::End])?)
         } else {
             None
         };

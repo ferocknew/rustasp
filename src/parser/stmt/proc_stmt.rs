@@ -10,62 +10,46 @@ use crate::parser::Parser;
 impl Parser {
     /// 解析 Function 定义
     pub fn parse_function(&mut self) -> Result<Option<Stmt>, ParseError> {
-        self.expect_keyword(Keyword::Function)?;
-        let name = self.expect_ident()?;
-
-        let params = self.parse_params()?;
-        self.skip_newlines();
-
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::End) {
-                break;
-            }
-            // 处理冒号语句分隔符
-            if self.match_token(&Token::Colon) {
-                continue;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => body.push(stmt),
-                None => break,
-            }
-            self.skip_newlines();
-        }
-
-        self.expect_keyword(Keyword::End)?;
-        self.expect_keyword(Keyword::Function)?;
-
-        Ok(Some(Stmt::Function { name, params, body }))
+        self.parse_proc(true)
     }
 
     /// 解析 Sub 定义
     pub fn parse_sub(&mut self) -> Result<Option<Stmt>, ParseError> {
-        self.expect_keyword(Keyword::Sub)?;
-        let name = self.expect_ident()?;
+        self.parse_proc(false)
+    }
 
+    /// 解析过程（Function 或 Sub）定义
+    fn parse_proc(&mut self, is_function: bool) -> Result<Option<Stmt>, ParseError> {
+        // 期望 Function 或 Sub 关键字
+        if is_function {
+            self.expect_keyword(Keyword::Function)?;
+        } else {
+            self.expect_keyword(Keyword::Sub)?;
+        }
+
+        let name = self.expect_ident()?;
         let params = self.parse_params()?;
         self.skip_newlines();
 
-        let mut body = vec![];
-        loop {
-            if self.is_at_end() || self.check_keyword(Keyword::End) {
-                break;
-            }
-            // 处理冒号语句分隔符
-            if self.match_token(&Token::Colon) {
-                continue;
-            }
-            match self.parse_stmt()? {
-                Some(stmt) => body.push(stmt),
-                None => break,
-            }
-            self.skip_newlines();
-        }
+        // 解析函数体 - 使用空的 end_keywords，因为我们在 parse_proc 中手动处理 End Function/Sub
+        let body = self.parse_proc_block()?;
 
+        // 期望 End Function / End Sub
         self.expect_keyword(Keyword::End)?;
-        self.expect_keyword(Keyword::Sub)?;
+        if is_function {
+            self.expect_keyword(Keyword::Function)?;
+            Ok(Some(Stmt::Function { name, params, body }))
+        } else {
+            self.expect_keyword(Keyword::Sub)?;
+            Ok(Some(Stmt::Sub { name, params, body }))
+        }
+    }
 
-        Ok(Some(Stmt::Sub { name, params, body }))
+    /// 解析过程体（直到遇到 End Function / End Sub）
+    fn parse_proc_block(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        // 使用空的 end_keywords，因为我们在 parse_proc 中手动处理 End Function/Sub
+        // parse_block_until 会在遇到 End 时停止（不区分 End Function/Sub/If/Select）
+        self.parse_block_until(&[])
     }
 
     /// 解析参数列表

@@ -164,10 +164,22 @@ impl Parser {
                         // 这是 End Select，回退并停止
                         self.seek_to(pos);
                         break;
-                    } else {
-                        // 这是其他 End 语句（如 End If, End Function 等）
+                    }
+                    // 检查是否是 End If（如果 If 在终止关键字列表中）
+                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If) {
+                        // 这是 End If，回退并停止
+                        self.seek_to(pos);
+                        break;
+                    }
+                    // 检查是否是 End Function / End Sub / End Select / End If
+                    else if matches!(self.peek(), Token::Keyword(Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If)) {
+                        // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);
+                    } else {
+                        // 这是其他 End 语句，回退并停止
+                        self.seek_to(pos);
+                        break;
                     }
                 } else {
                     // 其他终止关键字（Case, Else 等），直接停止
@@ -209,10 +221,22 @@ impl Parser {
                         // 这是 End Select，回退并停止
                         self.seek_to(pos);
                         break;
-                    } else {
-                        // 这是其他 End 语句（如 End If, End Function 等）
+                    }
+                    // 检查是否是 End If（如果 If 在终止关键字列表中）
+                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If) {
+                        // 这是 End If，回退并停止
+                        self.seek_to(pos);
+                        break;
+                    }
+                    // 检查是否是 End Function / End Sub / End Select / End If
+                    else if matches!(self.peek(), Token::Keyword(Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If)) {
+                        // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);
+                    } else {
+                        // 这是其他 End 语句，回退并停止
+                        self.seek_to(pos);
+                        break;
                     }
                 } else {
                     // 其他终止关键字（Case, Else 等），直接停止
@@ -233,5 +257,59 @@ impl Parser {
         }
 
         Ok(stmts)
+    }
+
+    /// 解析代码块直到遇到终止关键字
+    /// 用于 Function/Sub、If、Do Loop、For Next 等语句体
+    /// 这个函数会正确处理嵌套结构，让 parse_stmt 来处理终止标记
+    pub fn parse_block_until(
+        &mut self,
+        end_keywords: &[Keyword],
+    ) -> Result<Vec<Stmt>, ParseError> {
+        let mut body = vec![];
+
+        loop {
+            self.skip_newlines();
+
+            if self.is_at_end() {
+                break;
+            }
+
+            // 检查是否遇到终止关键字
+            if end_keywords.iter().any(|k| self.check_keyword(*k)) {
+                // 特殊处理 End 关键字 - 需要向前看检查是否是真正的终止条件
+                if self.check_keyword(Keyword::End) {
+                    let pos = self.pos();
+                    self.advance(); // 消耗 End
+
+                    // 检查是否是嵌套结构的结束标记（End If, End Select, End Function, End Sub）
+                    if matches!(self.peek(), Token::Keyword(Keyword::If | Keyword::Select | Keyword::Function | Keyword::Sub | Keyword::Class | Keyword::Property)) {
+                        // 这些是嵌套结构的结束标记，不应该在这里停止
+                        // 回退，让 parse_stmt 正常处理
+                        self.seek_to(pos);
+                    } else {
+                        // 这是其他 End 语句，回退并停止
+                        self.seek_to(pos);
+                        break;
+                    }
+                } else {
+                    // 其他终止关键字（Next, Loop, Wend, Else, ElseIf, Case 等），直接停止
+                    break;
+                }
+            }
+
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                continue;
+            }
+
+            // 解析语句 - parse_stmt 会在遇到终止关键字时返回 None
+            match self.parse_stmt()? {
+                Some(stmt) => body.push(stmt),
+                None => break,
+            }
+        }
+
+        Ok(body)
     }
 }
