@@ -149,6 +149,18 @@ impl Interpreter {
         Ok(Value::Empty)
     }
 
+    /// 执行 Do...Loop (无限循环)
+    pub fn eval_do_loop(&mut self, body: &[Stmt]) -> Result<Value, RuntimeError> {
+        loop {
+            match self.exec_block(body) {
+                Ok(_) => {}
+                Err(RuntimeError::ControlFlow(ControlFlow::ExitDo)) => break,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(Value::Empty)
+    }
+
     /// 执行 For Each 循环
     pub fn eval_for_each(
         &mut self,
@@ -330,6 +342,11 @@ impl Interpreter {
     /// Exit For
     pub fn eval_exit_for(&mut self) -> Result<Value, RuntimeError> {
         Err(RuntimeError::ControlFlow(ControlFlow::ExitFor))
+    }
+
+    /// Exit Do
+    pub fn eval_exit_do(&mut self) -> Result<Value, RuntimeError> {
+        Err(RuntimeError::ControlFlow(ControlFlow::ExitDo))
     }
 
     /// Exit Function

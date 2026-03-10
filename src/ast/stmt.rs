@@ -46,6 +46,8 @@ pub enum Stmt {
     DoLoopWhile { body: Vec<Stmt>, cond: Expr },
     /// Do...Loop Until
     DoLoopUntil { body: Vec<Stmt>, cond: Expr },
+    /// Do...Loop (无限循环)
+    DoLoop { body: Vec<Stmt> },
     /// While...Wend 循环
     While { cond: Expr, body: Vec<Stmt> },
     /// Select Case 语句
@@ -106,6 +108,11 @@ pub enum Stmt {
         name: String,
         sizes: Vec<Expr>,
         preserve: bool,
+    },
+    /// With 语句
+    With {
+        object: Expr,
+        body: Vec<Stmt>,
     },
     /// Erase
     Erase(String),

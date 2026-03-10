@@ -118,6 +118,9 @@ impl Parser {
                 } else {
                     Some(Stmt::DoLoopUntil { body, cond: cond_expr })
                 });
+            } else {
+                // Do ... Loop (无限循环)
+                return Ok(Some(Stmt::DoLoop { body }));
             }
         }
 

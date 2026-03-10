@@ -89,6 +89,7 @@ impl Interpreter {
             Stmt::DoUntil { cond, body } => self.eval_do_until(cond, body),
             Stmt::DoLoopWhile { body, cond } => self.eval_do_loop_while(body, cond),
             Stmt::DoLoopUntil { body, cond } => self.eval_do_loop_until(body, cond),
+            Stmt::DoLoop { body } => self.eval_do_loop(body),
 
             // 函数相关
             Stmt::Sub { name, params, body } | Stmt::Function { name, params, body } => {
@@ -100,6 +101,7 @@ impl Interpreter {
 
             Stmt::Call { name, args } => self.eval_call(name, args),
             Stmt::ExitFor => self.eval_exit_for(),
+            Stmt::ExitDo => self.eval_exit_do(),
             Stmt::ExitFunction => self.eval_exit_function(),
             Stmt::ExitSub => self.eval_exit_sub(),
             Stmt::ExitProperty => self.eval_exit_property(),
