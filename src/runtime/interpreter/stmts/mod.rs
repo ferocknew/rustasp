@@ -2,12 +2,12 @@
 //!
 //! 处理各种 VBScript 语句的执行逻辑
 
-mod decl_stmt;
 mod assign_stmt;
 mod control_stmt;
+mod decl_stmt;
 
 use crate::ast::{Param, Stmt};
-use crate::runtime::{ClassDef, Function, RuntimeError, Value, VbsClass, ErrorMode, vb_error};
+use crate::runtime::{vb_error, ClassDef, ErrorMode, Function, RuntimeError, Value, VbsClass};
 use std::rc::Rc;
 
 use super::Interpreter;
@@ -45,20 +45,31 @@ impl Interpreter {
         match stmt {
             // 错误处理语句
             Stmt::OnErrorResumeNext => {
-                self.context.current_scope_mut().set_error_mode(ErrorMode::ResumeNext);
+                self.context
+                    .current_scope_mut()
+                    .set_error_mode(ErrorMode::ResumeNext);
                 Ok(Value::Empty)
             }
             Stmt::OnErrorGoto0 => {
-                self.context.current_scope_mut().set_error_mode(ErrorMode::Stop);
+                self.context
+                    .current_scope_mut()
+                    .set_error_mode(ErrorMode::Stop);
                 Ok(Value::Empty)
             }
 
             // 声明语句
-            Stmt::Dim { name, init, is_array, sizes } => {
-                self.eval_dim(name, init.as_ref(), *is_array, sizes)
-            }
+            Stmt::Dim {
+                name,
+                init,
+                is_array,
+                sizes,
+            } => self.eval_dim(name, init.as_ref(), *is_array, sizes),
             Stmt::Const { name, value } => self.eval_const(name, value),
-            Stmt::ReDim { name, sizes, preserve } => self.eval_redim(name, sizes, *preserve),
+            Stmt::ReDim {
+                name,
+                sizes,
+                preserve,
+            } => self.eval_redim(name, sizes, *preserve),
 
             // 赋值语句
             Stmt::Assignment { target, value } => self.eval_assignment(target, value),
@@ -77,7 +88,11 @@ impl Interpreter {
                 body,
             } => self.eval_for(var, start, end, step.as_ref(), body),
             Stmt::While { cond, body } => self.eval_while(cond, body),
-            Stmt::ForEach { var, collection, body } => self.eval_for_each(var, collection, body),
+            Stmt::ForEach {
+                var,
+                collection,
+                body,
+            } => self.eval_for_each(var, collection, body),
             Stmt::Select {
                 expr,
                 cases,
@@ -137,15 +152,18 @@ impl Interpreter {
             RuntimeError::ObjectRequired => {
                 (vb_error::OBJECT_REQUIRED, "Object required".to_string())
             }
-            RuntimeError::UndefinedFunction(name) => {
-                (vb_error::UNDEFINED_FUNCTION, format!("Undefined function: {}", name))
-            }
-            RuntimeError::IndexOutOfBounds(_) => {
-                (vb_error::SUBSCRIPT_OUT_OF_RANGE, "Subscript out of range".to_string())
-            }
-            RuntimeError::CreateObjectFailed(msg) => {
-                (vb_error::CANT_CREATE_OBJECT, format!("Server.CreateObject: {}", msg))
-            }
+            RuntimeError::UndefinedFunction(name) => (
+                vb_error::UNDEFINED_FUNCTION,
+                format!("Undefined function: {}", name),
+            ),
+            RuntimeError::IndexOutOfBounds(_) => (
+                vb_error::SUBSCRIPT_OUT_OF_RANGE,
+                "Subscript out of range".to_string(),
+            ),
+            RuntimeError::CreateObjectFailed(msg) => (
+                vb_error::CANT_CREATE_OBJECT,
+                format!("Server.CreateObject: {}", msg),
+            ),
             _ => (0, format!("{:?}", error)),
         }
     }
@@ -159,7 +177,12 @@ impl Interpreter {
     }
 
     /// 注册函数(Sub 或 Function)
-    pub(crate) fn register_function(&mut self, name: &str, params: &[Param], body: &[Stmt]) -> Result<Value, RuntimeError> {
+    pub(crate) fn register_function(
+        &mut self,
+        name: &str,
+        params: &[Param],
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
         self.context.functions.insert(
             crate::utils::normalize_identifier(name),
             Function {
@@ -172,18 +195,21 @@ impl Interpreter {
     }
 
     /// 注册类定义（预编译 VbsClass 并缓存）
-    pub(crate) fn register_class(&mut self, name: &str, members: &[crate::ast::ClassMember]) -> Result<Value, RuntimeError> {
+    pub(crate) fn register_class(
+        &mut self,
+        name: &str,
+        members: &[crate::ast::ClassMember],
+    ) -> Result<Value, RuntimeError> {
         let normalized_name = crate::utils::normalize_identifier(name);
-        
+
         // 预编译 VbsClass（只构建一次）
         let vbs_class = VbsClass::from_ast(name.to_string(), members.to_vec());
-        
+
         // 缓存编译后的类
-        self.context.classes.insert(
-            normalized_name.clone(),
-            Rc::new(vbs_class),
-        );
-        
+        self.context
+            .classes
+            .insert(normalized_name.clone(), Rc::new(vbs_class));
+
         // 保留原始定义用于调试
         self.context.class_defs.insert(
             normalized_name,
@@ -199,8 +225,8 @@ impl Interpreter {
     /// 执行 Execute 语句
     /// Execute 在当前作用域中动态执行 VBScript 代码
     fn eval_execute(&mut self, expr: &crate::ast::Expr) -> Result<Value, RuntimeError> {
-        use crate::parser::Parser;
         use crate::parser::lexer::tokenize;
+        use crate::parser::Parser;
 
         // 1. 计算表达式得到字符串
         let code_value = self.eval_expr(expr)?;
@@ -208,7 +234,7 @@ impl Interpreter {
             Value::String(s) => s.clone(),
             _ => {
                 return Err(RuntimeError::TypeMismatch(
-                    "Execute argument must be a string".to_string()
+                    "Execute argument must be a string".to_string(),
                 ));
             }
         };
@@ -218,7 +244,8 @@ impl Interpreter {
             Ok(tokens) => tokens,
             Err(e) => {
                 return Err(RuntimeError::Generic(format!(
-                    "Execute tokenization error: {}", e
+                    "Execute tokenization error: {}",
+                    e
                 )));
             }
         };
@@ -236,9 +263,7 @@ impl Interpreter {
                 Ok(Some(stmt)) => stmts.push(stmt),
                 Ok(None) => break, // 解析完成
                 Err(e) => {
-                    return Err(RuntimeError::Generic(format!(
-                        "Execute parse error: {}", e
-                    )));
+                    return Err(RuntimeError::Generic(format!("Execute parse error: {}", e)));
                 }
             }
         }
@@ -273,8 +298,8 @@ impl Interpreter {
     /// 执行 ExecuteGlobal 语句
     /// ExecuteGlobal 在全局作用域中动态执行 VBScript 代码
     fn eval_execute_global(&mut self, expr: &crate::ast::Expr) -> Result<Value, RuntimeError> {
-        use crate::parser::Parser;
         use crate::parser::lexer::tokenize;
+        use crate::parser::Parser;
 
         // 1. 计算表达式得到字符串
         let code_value = self.eval_expr(expr)?;
@@ -282,7 +307,7 @@ impl Interpreter {
             Value::String(s) => s.clone(),
             _ => {
                 return Err(RuntimeError::TypeMismatch(
-                    "ExecuteGlobal argument must be a string".to_string()
+                    "ExecuteGlobal argument must be a string".to_string(),
                 ));
             }
         };
@@ -292,7 +317,8 @@ impl Interpreter {
             Ok(tokens) => tokens,
             Err(e) => {
                 return Err(RuntimeError::Generic(format!(
-                    "ExecuteGlobal tokenization error: {}", e
+                    "ExecuteGlobal tokenization error: {}",
+                    e
                 )));
             }
         };
@@ -311,7 +337,8 @@ impl Interpreter {
                 Ok(None) => break, // 解析完成
                 Err(e) => {
                     return Err(RuntimeError::Generic(format!(
-                        "ExecuteGlobal parse error: {}", e
+                        "ExecuteGlobal parse error: {}",
+                        e
                     )));
                 }
             }

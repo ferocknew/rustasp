@@ -36,7 +36,11 @@ impl VbsClass {
                 ClassMember::Field(field) => {
                     fields.insert(field.name.clone(), field);
                 }
-                ClassMember::Const { name, value: _, visibility } => {
+                ClassMember::Const {
+                    name,
+                    value: _,
+                    visibility,
+                } => {
                     // 常量值需要在解释阶段求值，这里先存储为 Empty
                     // 解释器会在注册类时求值这些常量
                     constants.insert(name, (Value::Empty, visibility));
@@ -46,7 +50,11 @@ impl VbsClass {
                 }
                 ClassMember::Property(property) => {
                     // 属性名包含类型后缀，如 Name_Get, Name_Let, Name_Set
-                    let key = format!("{}_{}", property.name, Self::prop_type_suffix(&property.prop_type));
+                    let key = format!(
+                        "{}_{}",
+                        property.name,
+                        Self::prop_type_suffix(&property.prop_type)
+                    );
                     properties.insert(key, property);
                 }
             }

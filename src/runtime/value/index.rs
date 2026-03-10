@@ -16,7 +16,8 @@ impl ValueIndex for Value {
                 if let Value::Number(i) = index {
                     let i = *i as usize;
                     // 使用 flat_index 计算索引（一维数组）
-                    let locked_arr = arr.lock()
+                    let locked_arr = arr
+                        .lock()
                         .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
 
                     match locked_arr.flat_index(&[i]) {
@@ -38,9 +39,11 @@ impl ValueIndex for Value {
             }
             Value::Object(obj) => {
                 // 使用 BuiltinObject trait 的 index 方法
-                match obj.lock()
+                match obj
+                    .lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
-                    .index(index) {
+                    .index(index)
+                {
                     Ok(value) => Ok(value),
                     Err(_) => Ok(Value::Empty),
                 }

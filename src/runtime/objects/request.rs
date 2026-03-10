@@ -99,7 +99,9 @@ impl Request {
 
     /// 获取 QueryString 第一个值
     pub fn query_string(&self, key: &str) -> Option<&String> {
-        self.query_string.get(&key.to_lowercase()).and_then(|v| v.first())
+        self.query_string
+            .get(&key.to_lowercase())
+            .and_then(|v| v.first())
     }
 
     /// 获取 Form 第一个值
@@ -166,11 +168,11 @@ impl crate::runtime::BuiltinObject for Request {
                 match self.binary_read(bytes_to_read) {
                     Ok(data) => {
                         // 将字节数组转换为 Value::Array
-                        let array_values: Vec<Value> = data
-                            .into_iter()
-                            .map(|b| Value::Number(b as f64))
-                            .collect();
-                        Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(array_values)))))
+                        let array_values: Vec<Value> =
+                            data.into_iter().map(|b| Value::Number(b as f64)).collect();
+                        Ok(Value::Array(Arc::new(Mutex::new(
+                            crate::runtime::VbsArray::from_vec(array_values),
+                        ))))
                     }
                     Err(e) => Err(e),
                 }
@@ -183,8 +185,11 @@ impl crate::runtime::BuiltinObject for Request {
                 match self.query_string.get(&key) {
                     Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
                     Some(values) => {
-                        let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-                        Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(arr)))))
+                        let arr: Vec<Value> =
+                            values.iter().map(|s| Value::String(s.clone())).collect();
+                        Ok(Value::Array(Arc::new(Mutex::new(
+                            crate::runtime::VbsArray::from_vec(arr),
+                        ))))
                     }
                     None => Ok(Value::Empty),
                 }
@@ -197,8 +202,11 @@ impl crate::runtime::BuiltinObject for Request {
                 match self.form.get(&key) {
                     Some(values) if values.len() == 1 => Ok(Value::String(values[0].clone())),
                     Some(values) => {
-                        let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-                        Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(arr)))))
+                        let arr: Vec<Value> =
+                            values.iter().map(|s| Value::String(s.clone())).collect();
+                        Ok(Value::Array(Arc::new(Mutex::new(
+                            crate::runtime::VbsArray::from_vec(arr),
+                        ))))
                     }
                     None => Ok(Value::Empty),
                 }
@@ -237,14 +245,18 @@ impl crate::runtime::BuiltinObject for Request {
                 return Ok(Value::String(values[0].clone()));
             }
             let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-            return Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(arr)))));
+            return Ok(Value::Array(Arc::new(Mutex::new(
+                crate::runtime::VbsArray::from_vec(arr),
+            ))));
         }
         if let Some(values) = self.form.get(&key_str) {
             if values.len() == 1 {
                 return Ok(Value::String(values[0].clone()));
             }
             let arr: Vec<Value> = values.iter().map(|s| Value::String(s.clone())).collect();
-            return Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(arr)))));
+            return Ok(Value::Array(Arc::new(Mutex::new(
+                crate::runtime::VbsArray::from_vec(arr),
+            ))));
         }
         Ok(Value::Empty)
     }

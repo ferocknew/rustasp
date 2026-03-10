@@ -57,7 +57,11 @@ impl RequestContext {
                     let parts: Vec<&str> = pair.splitn(2, '=').collect();
                     if !parts.is_empty() && !parts[0].is_empty() {
                         let key = parts[0].to_lowercase();
-                        let value = if parts.len() == 2 { parts[1].to_string() } else { String::new() };
+                        let value = if parts.len() == 2 {
+                            parts[1].to_string()
+                        } else {
+                            String::new()
+                        };
                         map.entry(key).or_insert_with(Vec::new).push(value);
                     }
                 }
@@ -79,7 +83,11 @@ impl RequestContext {
                     let parts: Vec<&str> = pair.splitn(2, '=').collect();
                     if !parts.is_empty() && !parts[0].is_empty() {
                         let key = parts[0].to_lowercase();
-                        let value = if parts.len() == 2 { parts[1].to_string() } else { String::new() };
+                        let value = if parts.len() == 2 {
+                            parts[1].to_string()
+                        } else {
+                            String::new()
+                        };
                         map.entry(key).or_insert_with(Vec::new).push(value);
                     }
                 }
@@ -133,7 +141,10 @@ impl RequestContext {
         let mut server_variables = HashMap::new();
         server_variables.insert("REQUEST_METHOD".to_string(), method.clone());
         server_variables.insert("PATH_INFO".to_string(), path.clone());
-        server_variables.insert("QUERY_STRING".to_string(), uri.query().unwrap_or("").to_string());
+        server_variables.insert(
+            "QUERY_STRING".to_string(),
+            uri.query().unwrap_or("").to_string(),
+        );
         server_variables.insert("SERVER_PROTOCOL".to_string(), "HTTP/1.1".to_string());
         server_variables.insert("SERVER_NAME".to_string(), "localhost".to_string());
         server_variables.insert("SERVER_PORT".to_string(), "8080".to_string());
@@ -187,7 +198,9 @@ impl RequestContext {
     /// 获取查询字符串第一个值
     #[allow(dead_code)]
     pub fn query_first(&self, key: &str) -> Option<&String> {
-        self.query_string.get(&key.to_lowercase()).and_then(|v| v.first())
+        self.query_string
+            .get(&key.to_lowercase())
+            .and_then(|v| v.first())
     }
 
     /// 获取查询字符串所有值
@@ -199,7 +212,9 @@ impl RequestContext {
     /// 获取表单数据第一个值
     #[allow(dead_code)]
     pub fn form_first(&self, key: &str) -> Option<&String> {
-        self.form_data.get(&key.to_lowercase()).and_then(|v| v.first())
+        self.form_data
+            .get(&key.to_lowercase())
+            .and_then(|v| v.first())
     }
 
     /// 获取表单数据所有值

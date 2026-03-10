@@ -2,8 +2,8 @@
 
 use crate::ast::Param;
 use crate::ast::Stmt;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 

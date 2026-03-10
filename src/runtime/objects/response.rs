@@ -223,12 +223,30 @@ impl crate::runtime::BuiltinObject for Response {
             "contenttype" => Ok(Value::String(self.content_type.clone())),
             "status" => Ok(Value::Number(self.status as f64)),
             // 新增属性
-            "charset" => Ok(self.get_charset().map(|s| Value::String(s.clone())).unwrap_or(Value::Empty)),
-            "codepage" => Ok(self.codepage.map(|n| Value::Number(n as f64)).unwrap_or(Value::Empty)),
-            "cachecontrol" => Ok(self.get_cache_control().map(|s| Value::String(s.clone())).unwrap_or(Value::Empty)),
-            "expires" => Ok(self.get_expires().map(|n| Value::Number(n as f64)).unwrap_or(Value::Empty)),
-            "expiresabsolute" => Ok(self.get_expires_absolute().map(|n| Value::Number(n)).unwrap_or(Value::Empty)),
-            "pics" => Ok(self.get_pics().map(|s| Value::String(s.clone())).unwrap_or(Value::Empty)),
+            "charset" => Ok(self
+                .get_charset()
+                .map(|s| Value::String(s.clone()))
+                .unwrap_or(Value::Empty)),
+            "codepage" => Ok(self
+                .codepage
+                .map(|n| Value::Number(n as f64))
+                .unwrap_or(Value::Empty)),
+            "cachecontrol" => Ok(self
+                .get_cache_control()
+                .map(|s| Value::String(s.clone()))
+                .unwrap_or(Value::Empty)),
+            "expires" => Ok(self
+                .get_expires()
+                .map(|n| Value::Number(n as f64))
+                .unwrap_or(Value::Empty)),
+            "expiresabsolute" => Ok(self
+                .get_expires_absolute()
+                .map(|n| Value::Number(n))
+                .unwrap_or(Value::Empty)),
+            "pics" => Ok(self
+                .get_pics()
+                .map(|s| Value::String(s.clone()))
+                .unwrap_or(Value::Empty)),
             "isclientconnected" => Ok(Value::Boolean(self.is_client_connected())),
             // Cookies 集合返回一个标记对象
             "cookies" => {
@@ -345,7 +363,9 @@ impl crate::runtime::BuiltinObject for Response {
                 match &args[0] {
                     Value::Array(ref arr) => {
                         let locked_arr = arr.lock().unwrap();
-                        let bytes: Vec<u8> = locked_arr.data.iter()
+                        let bytes: Vec<u8> = locked_arr
+                            .data
+                            .iter()
                             .map(|v| ValueConversion::to_number(v) as u8)
                             .collect();
                         self.binary_write(&bytes);

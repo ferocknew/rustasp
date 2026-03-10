@@ -16,7 +16,7 @@ mod xmlhttp;
 // 重导出 Dictionary 对象
 pub use dictionary::Dictionary;
 // 重导出对象工厂
-pub use factory::{create_object, is_whitelisted, get_supported_objects};
+pub use factory::{create_object, get_supported_objects, is_whitelisted};
 // 重导出 FileSystemObject 对象
 pub use filesystemobject::FileSystemObject;
 // 重导出 Request 对象
@@ -30,6 +30,6 @@ pub use server::Server;
 // 重导出 SessionManager
 pub use session_manager::SessionManager;
 // 重导出 Session 存储相关
-pub use session_store::{SessionStore, MemoryStore, JsonFileStore, create_store};
+pub use session_store::{create_store, JsonFileStore, MemoryStore, SessionStore};
 // 重导出 XmlHttp 对象
 pub use xmlhttp::XmlHttp;

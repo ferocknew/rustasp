@@ -228,8 +228,5 @@ static KEYWORDS: &[(&str, Keyword)] = &[
 /// 查找关键字
 pub fn lookup_keyword(s: &str) -> Option<Keyword> {
     let lower = s.to_ascii_lowercase();
-    KEYWORDS
-        .iter()
-        .find(|(k, _)| *k == lower)
-        .map(|(_, v)| *v)
+    KEYWORDS.iter().find(|(k, _)| *k == lower).map(|(_, v)| *v)
 }

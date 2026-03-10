@@ -25,7 +25,7 @@ impl Interpreter {
             for dim_expr in sizes {
                 let dim_val = self.eval_expr(dim_expr)?;
                 let dim = match dim_val {
-                    Value::Number(n) => n as usize + 1,  // +1 因为 0-based
+                    Value::Number(n) => n as usize + 1, // +1 因为 0-based
                     _ => {
                         return Err(RuntimeError::Generic(format!(
                             "Array size must be a number, got {:?}",
@@ -78,7 +78,7 @@ impl Interpreter {
         for dim_expr in sizes {
             let dim_val = self.eval_expr(dim_expr)?;
             let dim = match dim_val {
-                Value::Number(n) => n as usize + 1,  // +1 因为 0-based
+                Value::Number(n) => n as usize + 1, // +1 因为 0-based
                 _ => {
                     return Err(RuntimeError::Generic(format!(
                         "Array size must be a number, got {:?}",
@@ -92,14 +92,18 @@ impl Interpreter {
         // 检查变量是否存在
         if let Some(Value::Array(ref arr_ref)) = self.context.get_var(name) {
             // 使用 VbsArray::redim 方法
-            let mut arr = arr_ref.lock()
+            let mut arr = arr_ref
+                .lock()
                 .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
             arr.redim(new_dims, preserve);
             Ok(Value::Empty)
         } else {
             // 数组不存在，创建新数组
             let vbs_arr = VbsArray::new(new_dims);
-            self.context.set_var(name.to_string(), Value::Array(Arc::new(Mutex::new(vbs_arr))));
+            self.context.set_var(
+                name.to_string(),
+                Value::Array(Arc::new(Mutex::new(vbs_arr))),
+            );
             Ok(Value::Empty)
         }
     }

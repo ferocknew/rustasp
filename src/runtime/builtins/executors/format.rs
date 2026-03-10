@@ -2,8 +2,8 @@
 //!
 //! 处理 FormatCurrency、FormatNumber、FormatPercent、RGB 等格式化函数
 
-use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
+use crate::runtime::{RuntimeError, Value, ValueConversion};
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
     let result = match token {

@@ -109,20 +109,22 @@ impl SessionManager {
         self.save_session_data(&session_data)?;
 
         // 更新缓存
-        self.cache.insert(session.session_id().to_string(), session.clone());
+        self.cache
+            .insert(session.session_id().to_string(), session.clone());
 
         Ok(())
     }
 
     /// 保存 Session 数据到文件
     pub fn save_session_data(&self, session_data: &SessionData) -> Result<(), String> {
-        let file_path = self.session_dir.join(format!("{}.json", session_data.session_id));
+        let file_path = self
+            .session_dir
+            .join(format!("{}.json", session_data.session_id));
 
         let json = serde_json::to_string_pretty(session_data)
             .map_err(|e| format!("无法序列化 Session 数据: {}", e))?;
 
-        fs::write(&file_path, json)
-            .map_err(|e| format!("无法写入 Session 文件: {}", e))?;
+        fs::write(&file_path, json).map_err(|e| format!("无法写入 Session 文件: {}", e))?;
 
         Ok(())
     }
@@ -135,11 +137,11 @@ impl SessionManager {
             return Ok(None);
         }
 
-        let json = fs::read_to_string(&file_path)
-            .map_err(|e| format!("无法读取 Session 文件: {}", e))?;
+        let json =
+            fs::read_to_string(&file_path).map_err(|e| format!("无法读取 Session 文件: {}", e))?;
 
-        let session_data: SessionData = serde_json::from_str(&json)
-            .map_err(|e| format!("无法解析 Session 数据: {}", e))?;
+        let session_data: SessionData =
+            serde_json::from_str(&json).map_err(|e| format!("无法解析 Session 数据: {}", e))?;
 
         Ok(Some(session_data))
     }
@@ -149,8 +151,7 @@ impl SessionManager {
         let file_path = self.session_dir.join(format!("{}.json", session_id));
 
         if file_path.exists() {
-            fs::remove_file(&file_path)
-                .map_err(|e| format!("无法删除 Session 文件: {}", e))?;
+            fs::remove_file(&file_path).map_err(|e| format!("无法删除 Session 文件: {}", e))?;
         }
 
         Ok(())
@@ -171,8 +172,8 @@ impl SessionManager {
     pub fn cleanup_expired_sessions(&self) -> Result<usize, String> {
         let mut cleaned_count = 0;
 
-        let entries = fs::read_dir(&self.session_dir)
-            .map_err(|e| format!("无法读取 Session 目录: {}", e))?;
+        let entries =
+            fs::read_dir(&self.session_dir).map_err(|e| format!("无法读取 Session 目录: {}", e))?;
 
         for entry in entries {
             let entry = entry.map_err(|e| format!("无法读取目录项: {}", e))?;
@@ -184,9 +185,7 @@ impl SessionManager {
             }
 
             // 尝试加载并检查是否过期
-            let file_name = path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("");
+            let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
             if let Ok(Some(session_data)) = self.load_session_data(file_name) {
                 if self.is_expired(&session_data) {
@@ -259,7 +258,7 @@ mod tests {
         let session2 = SessionManager::generate_session_id();
 
         manager.create_session(session1.clone(), 1).unwrap(); // 1秒过期
-        manager.create_session(session2.clone(), 60).unwrap();  // 60秒过期
+        manager.create_session(session2.clone(), 60).unwrap(); // 60秒过期
 
         // 等待第一个 Session 过期
         std::thread::sleep(std::time::Duration::from_secs(2));

@@ -1,8 +1,8 @@
 //! 日期时间函数执行器
 
-use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
-use chrono::{Datelike, Timelike, NaiveDate, NaiveDateTime};
+use crate::runtime::{RuntimeError, Value, ValueConversion};
+use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
 
 /// 解析 VBScript 时间字符串
 /// 支持格式: "12:30:45", "4:35:17 PM", "14:30" 等
@@ -11,19 +11,19 @@ fn parse_vbscript_time(time_str: &str) -> Option<chrono::NaiveTime> {
 
     // 处理 AM/PM 标记
     let (time_part, is_pm, has_period) = if trimmed.ends_with("pm") {
-        (trimmed[..trimmed.len()-2].trim().to_string(), true, true)
+        (trimmed[..trimmed.len() - 2].trim().to_string(), true, true)
     } else if trimmed.ends_with("am") {
-        (trimmed[..trimmed.len()-2].trim().to_string(), false, true)
+        (trimmed[..trimmed.len() - 2].trim().to_string(), false, true)
     } else {
         (trimmed.to_string(), false, false)
     };
 
     // 尝试各种时间格式
     let formats = [
-        "%H:%M:%S",    // 14:30:45
-        "%H:%M",       // 14:30
-        "%I:%M:%S",    // 2:30:45 (12小时制)
-        "%I:%M",       // 2:30 (12小时制)
+        "%H:%M:%S",     // 14:30:45
+        "%H:%M",        // 14:30
+        "%I:%M:%S",     // 2:30:45 (12小时制)
+        "%I:%M",        // 2:30 (12小时制)
         "%H:%M:%S %.f", // 带毫秒
     ];
 
@@ -31,19 +31,14 @@ fn parse_vbscript_time(time_str: &str) -> Option<chrono::NaiveTime> {
         if let Ok(mut time) = chrono::NaiveTime::parse_from_str(&time_part, format) {
             // 如果是 12 小时制且是 PM，且小时不是 12
             if has_period && is_pm && time.hour() < 12 {
-                time = chrono::NaiveTime::from_hms_opt(
-                    time.hour() + 12,
-                    time.minute(),
-                    time.second()
-                ).unwrap_or(time);
+                time =
+                    chrono::NaiveTime::from_hms_opt(time.hour() + 12, time.minute(), time.second())
+                        .unwrap_or(time);
             }
             // 如果是 12 小时制且是 AM，且小时是 12
             if has_period && !is_pm && time.hour() == 12 {
-                time = chrono::NaiveTime::from_hms_opt(
-                    0,
-                    time.minute(),
-                    time.second()
-                ).unwrap_or(time);
+                time = chrono::NaiveTime::from_hms_opt(0, time.minute(), time.second())
+                    .unwrap_or(time);
             }
             return Some(time);
         }
@@ -59,7 +54,7 @@ fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
 
     // 移除 # 包围（VBScript 日期字面量 #2024-01-01#）
     let clean_str = if trimmed.starts_with('#') && trimmed.ends_with('#') {
-        &trimmed[1..trimmed.len()-1]
+        &trimmed[1..trimmed.len() - 1]
     } else {
         trimmed
     };
@@ -82,14 +77,9 @@ fn parse_vbscript_date(date_str: &str) -> Option<NaiveDateTime> {
     // 尝试各种纯日期格式
     let date_formats = [
         // ISO 格式
-        "%Y-%m-%d",
-        "%Y/%m/%d",
-        // 美式格式
-        "%m/%d/%Y",
-        "%m-%d-%Y",
-        // 短年份格式
-        "%y-%m-%d",
-        "%y/%m/%d",
+        "%Y-%m-%d", "%Y/%m/%d", // 美式格式
+        "%m/%d/%Y", "%m-%d-%Y", // 短年份格式
+        "%y-%m-%d", "%y/%m/%d",
     ];
 
     for format in &date_formats {
@@ -112,8 +102,9 @@ fn calculate_date_diff(interval: &str, date1: NaiveDateTime, date2: NaiveDateTim
             // 年份差：比较年份数字
             let years = date2.year() - date1.year();
             // 如果月份和日期还没到，减去1年
-            if date2.month() < date1.month() ||
-               (date2.month() == date1.month() && date2.day() < date1.day()) {
+            if date2.month() < date1.month()
+                || (date2.month() == date1.month() && date2.day() < date1.day())
+            {
                 years as i64 - 1
             } else {
                 years as i64
@@ -166,12 +157,10 @@ fn get_language() -> String {
 /// 获取配置的日期格式字符串
 fn get_datetime_format() -> (String, String, String) {
     // 从环境变量读取配置，使用默认值
-    let now_format = std::env::var("NOW_FORMAT")
-        .unwrap_or_else(|_| "yyyy/mm/dd hh:nn:ss".to_string());
-    let date_format = std::env::var("DATE_FORMAT")
-        .unwrap_or_else(|_| "yyyy/mm/dd".to_string());
-    let time_format = std::env::var("TIME_FORMAT")
-        .unwrap_or_else(|_| "hh:nn:ss".to_string());
+    let now_format =
+        std::env::var("NOW_FORMAT").unwrap_or_else(|_| "yyyy/mm/dd hh:nn:ss".to_string());
+    let date_format = std::env::var("DATE_FORMAT").unwrap_or_else(|_| "yyyy/mm/dd".to_string());
+    let time_format = std::env::var("TIME_FORMAT").unwrap_or_else(|_| "hh:nn:ss".to_string());
 
     // 转换格式字符串：yyyy/mm/dd hh:nn:ss -> %Y/%m/%d %H:%M:%S
     let now_format_str = convert_vbscript_format(&now_format);
@@ -203,18 +192,18 @@ fn convert_vbscript_format(format: &str) -> String {
 
     // 按长度从长到短处理，避免短占位符提前匹配
     result = result
-        .replace("yyyy", "%Y")  // 四位年份
-        .replace("yy", "%y")    // 两位年份
-        .replace("mm", "%m")    // 月份（带前导零）
-        .replace("m", "%m")     // 月份（不带前导零）
-        .replace("dd", "%d")    // 日期（带前导零）
-        .replace("d", "%d")     // 日期（不带前导零）
-        .replace("hh", "%H")    // 小时（带前导零）
-        .replace("h", "%H")     // 小时（不带前导零）
-        .replace("nn", "%M")    // 分钟（带前导零）
-        .replace("n", "%M")     // 分钟（不带前导零）
-        .replace("ss", "%S")    // 秒（带前导零）
-        .replace("s", "%S");    // 秒（不带前导零）
+        .replace("yyyy", "%Y") // 四位年份
+        .replace("yy", "%y") // 两位年份
+        .replace("mm", "%m") // 月份（带前导零）
+        .replace("m", "%m") // 月份（不带前导零）
+        .replace("dd", "%d") // 日期（带前导零）
+        .replace("d", "%d") // 日期（不带前导零）
+        .replace("hh", "%H") // 小时（带前导零）
+        .replace("h", "%H") // 小时（不带前导零）
+        .replace("nn", "%M") // 分钟（带前导零）
+        .replace("n", "%M") // 分钟（不带前导零）
+        .replace("ss", "%S") // 秒（带前导零）
+        .replace("s", "%S"); // 秒（不带前导零）
 
     result
 }
@@ -345,14 +334,30 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 if abbreviate {
                     ["日", "一", "二", "三", "四", "五", "六"]
                 } else {
-                    ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
+                    [
+                        "星期日",
+                        "星期一",
+                        "星期二",
+                        "星期三",
+                        "星期四",
+                        "星期五",
+                        "星期六",
+                    ]
                 }
             } else {
                 // 英文星期名称
                 if abbreviate {
                     ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
                 } else {
-                    ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+                    [
+                        "Sunday",
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                    ]
                 }
             };
 
@@ -376,15 +381,42 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let lang = get_language();
             let name = if lang == "zh-cn" || lang == "zh" {
                 // 中文月份名称
-                ["一月", "二月", "三月", "四月", "五月", "六月",
-                 "七月", "八月", "九月", "十月", "十一月", "十二月"]
+                [
+                    "一月",
+                    "二月",
+                    "三月",
+                    "四月",
+                    "五月",
+                    "六月",
+                    "七月",
+                    "八月",
+                    "九月",
+                    "十月",
+                    "十一月",
+                    "十二月",
+                ]
             } else {
                 // 英文月份名称
                 if abbreviate {
-                    ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                    [
+                        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+                        "Nov", "Dec",
+                    ]
                 } else {
-                    ["January", "February", "March", "April", "May", "June",
-                     "July", "August", "September", "October", "November", "December"]
+                    [
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                    ]
                 }
             };
 
@@ -555,7 +587,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
 
             // 处理月份溢出（支持 month=0, month=-1, month=13 等）
             // month=0 -> 上一年12月，month=13 -> 下一年1月
-            let month_offset = month - 1;  // 转换为 0-based (0=1月)
+            let month_offset = month - 1; // 转换为 0-based (0=1月)
             let year_offset = month_offset / 12;
             let adjusted_month = month_offset % 12;
 
@@ -566,10 +598,12 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 (year + year_offset, adjusted_month)
             };
 
-            let adjusted_month = adjusted_month + 1;  // 转换回 1-based (1=1月)
+            let adjusted_month = adjusted_month + 1; // 转换回 1-based (1=1月)
 
             // 尝试创建日期（chrono会自动处理日期溢出，如2月30日会返回None）
-            if let Some(date) = NaiveDate::from_ymd_opt(adjusted_year, adjusted_month as u32, day as u32) {
+            if let Some(date) =
+                NaiveDate::from_ymd_opt(adjusted_year, adjusted_month as u32, day as u32)
+            {
                 let (_, date_format, _) = get_datetime_format();
                 Value::String(date.format(&date_format).to_string())
             } else {
@@ -593,7 +627,8 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let norm_minute = ((normalized_seconds % 3600) / 60) as u32;
             let norm_second = (normalized_seconds % 60) as u32;
 
-            if let Some(time) = chrono::NaiveTime::from_hms_opt(norm_hour, norm_minute, norm_second) {
+            if let Some(time) = chrono::NaiveTime::from_hms_opt(norm_hour, norm_minute, norm_second)
+            {
                 let (_, _, time_format) = get_datetime_format();
                 Value::String(time.format(&time_format).to_string())
             } else {

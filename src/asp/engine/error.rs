@@ -102,23 +102,25 @@ fn clean_error_message(message: &str) -> String {
     let msg = message.to_string();
 
     // 移除技术性前缀
-    let msg = msg.replace("Parser error: ", "")
-                 .replace("Lexer error: ", "")
-                 .replace("Runtime error: ", "");
+    let msg = msg
+        .replace("Parser error: ", "")
+        .replace("Lexer error: ", "")
+        .replace("Runtime error: ", "");
 
     // 将英文错误翻译成中文
-    let msg = msg.replace("Unexpected token in expression:", "表达式中出现意外的标记:")
-                 .replace("Expected", "期望")
-                 .replace("found", "但找到")
-                 .replace("Undefined variable", "未定义的变量")
-                 .replace("Type mismatch", "类型不匹配")
-                 .replace("Division by zero", "除零错误")
-                 .replace("Object required", "需要对象")
-                 .replace("Property not found", "属性不存在")
-                 .replace("Method not found", "方法不存在")
-                 .replace("Invalid assignment", "无效的赋值")
-                 .replace("at line", "位于第")
-                 .replace("column", "列");
+    let msg = msg
+        .replace("Unexpected token in expression:", "表达式中出现意外的标记:")
+        .replace("Expected", "期望")
+        .replace("found", "但找到")
+        .replace("Undefined variable", "未定义的变量")
+        .replace("Type mismatch", "类型不匹配")
+        .replace("Division by zero", "除零错误")
+        .replace("Object required", "需要对象")
+        .replace("Property not found", "属性不存在")
+        .replace("Method not found", "方法不存在")
+        .replace("Invalid assignment", "无效的赋值")
+        .replace("at line", "位于第")
+        .replace("column", "列");
 
     msg.trim().to_string()
 }

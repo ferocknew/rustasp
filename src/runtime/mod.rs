@@ -4,25 +4,25 @@
 
 mod class;
 mod context;
+mod err_object;
 mod error;
 mod error_mode;
-mod err_object;
 mod interpreter;
 mod scope;
 
 pub mod builtins;
-pub mod value;
 pub mod objects;
+pub mod value;
 
 pub use class::{VbsClass, VbsInstance};
 pub use context::{ClassDef, Context, Function};
 // 重新导出 Rc 供其他模块使用
-pub use std::rc::Rc;
+pub use err_object::{vb_error, ErrObject};
 pub use error::{ControlFlow, RuntimeError};
 pub use error_mode::ErrorMode;
-pub use err_object::{ErrObject, vb_error};
 pub use interpreter::Interpreter;
 pub use scope::Scope;
+pub use std::rc::Rc;
 pub use value::{Value, ValueCompare, ValueConversion, ValueIndex, ValueOps, VbsArray};
 
 use std::sync::{Arc, Mutex};

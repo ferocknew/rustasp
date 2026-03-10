@@ -110,10 +110,7 @@ pub enum Stmt {
         preserve: bool,
     },
     /// With 语句
-    With {
-        object: Expr,
-        body: Vec<Stmt>,
-    },
+    With { object: Expr, body: Vec<Stmt> },
     /// Erase
     Erase(String),
     /// Execute

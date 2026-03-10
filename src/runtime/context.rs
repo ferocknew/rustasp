@@ -1,10 +1,10 @@
 //! 执行上下文
 
+use super::objects::Response;
+use super::ErrObject;
 use super::Scope;
 use super::Value;
-use super::objects::Response;
 use super::VbsClass;
-use super::ErrObject;
 use crate::ast::Param;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -196,7 +196,9 @@ impl Context {
 
     /// 获取请求参数的第一个值
     pub fn get_request_param(&self, key: &str) -> Option<&String> {
-        self.request_data.get(&key.to_lowercase()).and_then(|v| v.first())
+        self.request_data
+            .get(&key.to_lowercase())
+            .and_then(|v| v.first())
     }
 
     /// 获取请求参数的所有值

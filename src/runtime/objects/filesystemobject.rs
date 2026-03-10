@@ -49,9 +49,8 @@ impl FileSystemObject {
             return Err(RuntimeError::Generic(format!("文件不存在: {}", path)));
         }
 
-        let metadata = fs::metadata(path).map_err(|e| {
-            RuntimeError::Generic(format!("无法读取文件元数据: {}", e))
-        })?;
+        let metadata = fs::metadata(path)
+            .map_err(|e| RuntimeError::Generic(format!("无法读取文件元数据: {}", e)))?;
 
         Ok(File {
             path: path.to_string(),
@@ -62,15 +61,18 @@ impl FileSystemObject {
                 .to_string(),
             size: metadata.len(),
             created: metadata.created().ok().map(|t| {
-                let duration_since_epoch = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let duration_since_epoch =
+                    t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
                 duration_since_epoch.as_secs() as f64
             }),
             modified: metadata.modified().ok().map(|t| {
-                let duration_since_epoch = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let duration_since_epoch =
+                    t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
                 duration_since_epoch.as_secs() as f64
             }),
             accessed: metadata.accessed().ok().map(|t| {
-                let duration_since_epoch = t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+                let duration_since_epoch =
+                    t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
                 duration_since_epoch.as_secs() as f64
             }),
         })
@@ -82,14 +84,12 @@ impl FileSystemObject {
             return Err(RuntimeError::Generic(format!("文件夹不存在: {}", path)));
         }
 
-        let _metadata = fs::metadata(path).map_err(|e| {
-            RuntimeError::Generic(format!("无法读取文件夹元数据: {}", e))
-        })?;
+        let _metadata = fs::metadata(path)
+            .map_err(|e| RuntimeError::Generic(format!("无法读取文件夹元数据: {}", e)))?;
 
         // 读取文件夹内容
-        let entries = fs::read_dir(path).map_err(|e| {
-            RuntimeError::Generic(format!("无法读取文件夹内容: {}", e))
-        })?;
+        let entries = fs::read_dir(path)
+            .map_err(|e| RuntimeError::Generic(format!("无法读取文件夹内容: {}", e)))?;
 
         let mut files = Vec::new();
         let mut subfolders = Vec::new();
@@ -144,7 +144,7 @@ impl FileSystemObject {
             drive_type: "Fixed".to_string(),
             is_ready: true,
             file_system: "NTFS".to_string(),
-            total_size: 107374182400.0, // 100 GB
+            total_size: 107374182400.0,     // 100 GB
             available_space: 53687091200.0, // 50 GB
         })
     }
@@ -265,7 +265,7 @@ impl File {
 
         // 创建一个简单的对象表示
         Value::Object(Arc::new(Mutex::new(
-            crate::runtime::objects::Dictionary::from_hashmap(dict)
+            crate::runtime::objects::Dictionary::from_hashmap(dict),
         )))
     }
 }
@@ -300,39 +300,56 @@ impl Folder {
         let mut dict = std::collections::HashMap::new();
         dict.insert("Path".to_string(), Value::String(self.path.clone()));
         dict.insert("Name".to_string(), Value::String(self.name.clone()));
-        dict.insert("ParentFolder".to_string(), Value::String(self.parent.clone()));
+        dict.insert(
+            "ParentFolder".to_string(),
+            Value::String(self.parent.clone()),
+        );
         dict.insert("ShortPath".to_string(), Value::String(self.path.clone()));
         dict.insert("ShortName".to_string(), Value::String(self.name.clone()));
 
         // 创建 Files 集合
-        let files_array: Vec<Value> = self.files.iter().map(|f| {
-            let mut file_dict = std::collections::HashMap::new();
-            file_dict.insert("Name".to_string(), Value::String(f.name.clone()));
-            file_dict.insert("Size".to_string(), Value::Number(f.size as f64));
-            Value::Object(Arc::new(Mutex::new(
-                crate::runtime::objects::Dictionary::from_hashmap(file_dict)
-            )))
-        }).collect();
+        let files_array: Vec<Value> = self
+            .files
+            .iter()
+            .map(|f| {
+                let mut file_dict = std::collections::HashMap::new();
+                file_dict.insert("Name".to_string(), Value::String(f.name.clone()));
+                file_dict.insert("Size".to_string(), Value::Number(f.size as f64));
+                Value::Object(Arc::new(Mutex::new(
+                    crate::runtime::objects::Dictionary::from_hashmap(file_dict),
+                )))
+            })
+            .collect();
 
-        dict.insert("Files".to_string(), Value::Array(Arc::new(Mutex::new(
-            crate::runtime::VbsArray::from_vec(files_array)
-        ))));
+        dict.insert(
+            "Files".to_string(),
+            Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(
+                files_array,
+            )))),
+        );
 
         // 创建 SubFolders 集合
-        let subfolders_array: Vec<Value> = self.subfolders.iter().map(|f| {
-            let mut folder_dict = std::collections::HashMap::new();
-            folder_dict.insert("Name".to_string(), Value::String(f.name.clone()));
-            Value::Object(Arc::new(Mutex::new(
-                crate::runtime::objects::Dictionary::from_hashmap(folder_dict)
-            )))
-        }).collect();
+        let subfolders_array: Vec<Value> = self
+            .subfolders
+            .iter()
+            .map(|f| {
+                let mut folder_dict = std::collections::HashMap::new();
+                folder_dict.insert("Name".to_string(), Value::String(f.name.clone()));
+                Value::Object(Arc::new(Mutex::new(
+                    crate::runtime::objects::Dictionary::from_hashmap(folder_dict),
+                )))
+            })
+            .collect();
 
-        dict.insert("SubFolders".to_string(), Value::Array(Arc::new(Mutex::new(
-            crate::runtime::VbsArray::from_vec(subfolders_array)
-        ))));
+        dict.insert(
+            "SubFolders".to_string(),
+            Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(
+                subfolders_array,
+            )))),
+        );
 
         Value::Object(Arc::new(Mutex::new(
-            crate::runtime::objects::Dictionary::from_hashmap(dict)
+            crate::runtime::objects::Dictionary::from_hashmap(dict),
         )))
     }
 }
@@ -353,15 +370,27 @@ impl Drive {
         use std::sync::{Arc, Mutex};
 
         let mut dict = std::collections::HashMap::new();
-        dict.insert("DriveLetter".to_string(), Value::String(self.letter.clone()));
-        dict.insert("DriveType".to_string(), Value::String(self.drive_type.clone()));
+        dict.insert(
+            "DriveLetter".to_string(),
+            Value::String(self.letter.clone()),
+        );
+        dict.insert(
+            "DriveType".to_string(),
+            Value::String(self.drive_type.clone()),
+        );
         dict.insert("IsReady".to_string(), Value::Boolean(self.is_ready));
-        dict.insert("FileSystem".to_string(), Value::String(self.file_system.clone()));
+        dict.insert(
+            "FileSystem".to_string(),
+            Value::String(self.file_system.clone()),
+        );
         dict.insert("TotalSize".to_string(), Value::Number(self.total_size));
-        dict.insert("AvailableSpace".to_string(), Value::Number(self.available_space));
+        dict.insert(
+            "AvailableSpace".to_string(),
+            Value::Number(self.available_space),
+        );
 
         Value::Object(Arc::new(Mutex::new(
-            crate::runtime::objects::Dictionary::from_hashmap(dict)
+            crate::runtime::objects::Dictionary::from_hashmap(dict),
         )))
     }
 }

@@ -42,7 +42,12 @@ impl XmlHttp {
     }
 
     /// 打开连接
-    pub fn open(&mut self, method: &str, url: &str, is_async: Option<bool>) -> Result<(), RuntimeError> {
+    pub fn open(
+        &mut self,
+        method: &str,
+        url: &str,
+        is_async: Option<bool>,
+    ) -> Result<(), RuntimeError> {
         self.method = method.to_uppercase();
         self.url = url.to_string();
         self.is_async = is_async.unwrap_or(false);
@@ -130,7 +135,9 @@ impl BuiltinObject for XmlHttp {
         match name.to_lowercase().as_str() {
             "open" => {
                 if args.len() < 2 {
-                    return Err(RuntimeError::Generic("Open 方法需要至少 2 个参数".to_string()));
+                    return Err(RuntimeError::Generic(
+                        "Open 方法需要至少 2 个参数".to_string(),
+                    ));
                 }
                 let method = ValueConversion::to_string(&args[0]);
                 let url = ValueConversion::to_string(&args[1]);
@@ -144,7 +151,9 @@ impl BuiltinObject for XmlHttp {
             }
             "setrequestheader" => {
                 if args.len() < 2 {
-                    return Err(RuntimeError::Generic("SetRequestHeader 方法需要 2 个参数".to_string()));
+                    return Err(RuntimeError::Generic(
+                        "SetRequestHeader 方法需要 2 个参数".to_string(),
+                    ));
                 }
                 let name = ValueConversion::to_string(&args[0]);
                 let value = ValueConversion::to_string(&args[1]);
@@ -169,11 +178,12 @@ impl BuiltinObject for XmlHttp {
                     return Ok(Value::Empty);
                 }
                 let name = ValueConversion::to_string(&args[0]);
-                Ok(self.get_response_header(&name).map(Value::String).unwrap_or(Value::Empty))
+                Ok(self
+                    .get_response_header(&name)
+                    .map(Value::String)
+                    .unwrap_or(Value::Empty))
             }
-            "getallresponseheaders" => {
-                Ok(Value::String(self.get_all_response_headers()))
-            }
+            "getallresponseheaders" => Ok(Value::String(self.get_all_response_headers())),
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }
     }

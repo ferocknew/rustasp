@@ -1,8 +1,8 @@
 //! 声明语句解析 - Dim / Const / Option / ReDim
 
 use crate::ast::Stmt;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -57,7 +57,10 @@ impl Parser {
                         // 跳过初始化（如果有）
                         if self.match_token(&Token::Eq) {
                             // 跳过初始化表达式
-                            while !self.check(&Token::Comma) && !self.is_at_end() && !self.check(&Token::Newline) {
+                            while !self.check(&Token::Comma)
+                                && !self.is_at_end()
+                                && !self.check(&Token::Newline)
+                            {
                                 self.advance();
                             }
                         }

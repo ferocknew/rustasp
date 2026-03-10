@@ -240,9 +240,18 @@ pub const TOKEN_REGISTRY: &[(&str, BuiltinToken)] = &[
     ("formatnumber", BuiltinToken::FormatNumber),
     ("formatpercent", BuiltinToken::FormatPercent),
     ("scriptengine", BuiltinToken::ScriptEngine),
-    ("scriptenginemajorversion", BuiltinToken::ScriptEngineMajorVersion),
-    ("scriptengineminorversion", BuiltinToken::ScriptEngineMinorVersion),
-    ("scriptenginebuildversion", BuiltinToken::ScriptEngineBuildVersion),
+    (
+        "scriptenginemajorversion",
+        BuiltinToken::ScriptEngineMajorVersion,
+    ),
+    (
+        "scriptengineminorversion",
+        BuiltinToken::ScriptEngineMinorVersion,
+    ),
+    (
+        "scriptenginebuildversion",
+        BuiltinToken::ScriptEngineBuildVersion,
+    ),
     ("erase", BuiltinToken::Erase),
     ("escape", BuiltinToken::Escape),
     ("unescape", BuiltinToken::Unescape),

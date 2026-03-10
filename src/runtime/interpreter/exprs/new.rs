@@ -1,7 +1,7 @@
 //! New 表达式求值（类实例化）
 
-use crate::runtime::{RuntimeError, Value};
 use crate::runtime::objects::{create_object, get_supported_objects};
+use crate::runtime::{RuntimeError, Value};
 
 use super::super::Interpreter;
 
@@ -22,7 +22,9 @@ impl Interpreter {
             let instance_value = instance.to_value();
 
             // 克隆构造函数体（需要在借用 vbs_class 之前完成）
-            let init_body = vbs_class.get_method("class_initialize").map(|m| m.body.clone());
+            let init_body = vbs_class
+                .get_method("class_initialize")
+                .map(|m| m.body.clone());
 
             // 调用构造函数 Class_Initialize（如果存在）
             if let Some(body) = init_body {
@@ -31,7 +33,8 @@ impl Interpreter {
                     self.context.push_scope();
 
                     // 设置 Me 变量指向当前实例
-                    self.context.set_var("Me".to_string(), instance_value.clone());
+                    self.context
+                        .set_var("Me".to_string(), instance_value.clone());
 
                     // 执行构造函数体（暂时忽略错误，因为构造函数不应该有返回值）
                     let _ = self.eval_stmt(stmt);
@@ -69,8 +72,7 @@ impl Interpreter {
                 let supported = get_supported_objects().join(", ");
                 Err(RuntimeError::Generic(format!(
                     "Server.CreateObject: '{}' 不在白名单中。支持的对象: {}",
-                    prog_id,
-                    supported
+                    prog_id, supported
                 )))
             }
             Err(e) => Err(e),

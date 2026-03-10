@@ -1,8 +1,8 @@
 //! 语句解析核心 - parse_stmt 分发器
 
 use crate::ast::Stmt;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -99,7 +99,9 @@ impl Parser {
 
         // 检查是否是 Error 关键字
         if !self.match_keyword(Keyword::Error) {
-            return Err(ParseError::ParserError("Expected 'Error' keyword".to_string()));
+            return Err(ParseError::ParserError(
+                "Expected 'Error' keyword".to_string(),
+            ));
         }
 
         // 检查下一个关键字
@@ -113,12 +115,14 @@ impl Parser {
                         self.expect_keyword(Keyword::Next)?;
                         Ok(Some(Stmt::OnErrorResumeNext))
                     }
-                    _ => Err(ParseError::ParserError("Expected 'Next' keyword".to_string())),
+                    _ => Err(ParseError::ParserError(
+                        "Expected 'Next' keyword".to_string(),
+                    )),
                 }
             }
             Token::Ident(ident) if ident.eq_ignore_ascii_case("goto") => {
                 self.advance(); // 消耗 goto
-                // 检查是否是 0
+                                // 检查是否是 0
                 match self.peek() {
                     Token::Number(n) if *n == 0.0 => {
                         self.advance();
@@ -127,7 +131,9 @@ impl Parser {
                     _ => Err(ParseError::ParserError("Expected '0'".to_string())),
                 }
             }
-            _ => Err(ParseError::ParserError("Expected 'Resume' or 'Goto'".to_string())),
+            _ => Err(ParseError::ParserError(
+                "Expected 'Resume' or 'Goto'".to_string(),
+            )),
         }
     }
 
@@ -179,19 +185,27 @@ impl Parser {
                     self.advance(); // 消耗 End
 
                     // 检查是否是 End Select（如果 Select 在终止关键字列表中）
-                    if end_keywords.contains(&Keyword::Select) && self.check_keyword(Keyword::Select) {
+                    if end_keywords.contains(&Keyword::Select)
+                        && self.check_keyword(Keyword::Select)
+                    {
                         // 这是 End Select，回退并停止
                         self.seek_to(pos);
                         break;
                     }
                     // 检查是否是 End If（如果 If 在终止关键字列表中）
-                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If) {
+                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If)
+                    {
                         // 这是 End If，回退并停止
                         self.seek_to(pos);
                         break;
                     }
                     // 检查是否是 End Function / End Sub / End Select / End If
-                    else if matches!(self.peek(), Token::Keyword(Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If)) {
+                    else if matches!(
+                        self.peek(),
+                        Token::Keyword(
+                            Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If
+                        )
+                    ) {
                         // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);
@@ -236,19 +250,27 @@ impl Parser {
                     self.advance(); // 消耗 End
 
                     // 检查是否是 End Select（如果 Select 在终止关键字列表中）
-                    if end_keywords.contains(&Keyword::Select) && self.check_keyword(Keyword::Select) {
+                    if end_keywords.contains(&Keyword::Select)
+                        && self.check_keyword(Keyword::Select)
+                    {
                         // 这是 End Select，回退并停止
                         self.seek_to(pos);
                         break;
                     }
                     // 检查是否是 End If（如果 If 在终止关键字列表中）
-                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If) {
+                    else if end_keywords.contains(&Keyword::If) && self.check_keyword(Keyword::If)
+                    {
                         // 这是 End If，回退并停止
                         self.seek_to(pos);
                         break;
                     }
                     // 检查是否是 End Function / End Sub / End Select / End If
-                    else if matches!(self.peek(), Token::Keyword(Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If)) {
+                    else if matches!(
+                        self.peek(),
+                        Token::Keyword(
+                            Keyword::Function | Keyword::Sub | Keyword::Select | Keyword::If
+                        )
+                    ) {
                         // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);
@@ -275,10 +297,7 @@ impl Parser {
     /// 解析代码块直到遇到终止关键字
     /// 用于 Function/Sub、If、Do Loop、For Next 等语句体
     /// 这个函数会正确处理嵌套结构，让 parse_stmt 来处理终止标记
-    pub fn parse_block_until(
-        &mut self,
-        end_keywords: &[Keyword],
-    ) -> Result<Vec<Stmt>, ParseError> {
+    pub fn parse_block_until(&mut self, end_keywords: &[Keyword]) -> Result<Vec<Stmt>, ParseError> {
         let mut body = vec![];
 
         loop {
@@ -296,7 +315,18 @@ impl Parser {
                     self.advance(); // 消耗 End
 
                     // 检查是否是嵌套结构的结束标记（End If, End Select, End Function, End Sub, End With）
-                    if matches!(self.peek(), Token::Keyword(Keyword::If | Keyword::Select | Keyword::Function | Keyword::Sub | Keyword::Class | Keyword::Property | Keyword::With)) {
+                    if matches!(
+                        self.peek(),
+                        Token::Keyword(
+                            Keyword::If
+                                | Keyword::Select
+                                | Keyword::Function
+                                | Keyword::Sub
+                                | Keyword::Class
+                                | Keyword::Property
+                                | Keyword::With
+                        )
+                    ) {
                         // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);

@@ -2,14 +2,14 @@
 //!
 //! 负责执行 ASP 代码，管理 Session、Request、Response 等对象
 
-use super::super::segmenter::{Segment, SegmentWithPos, segment_with_pos};
+use super::super::segmenter::{segment_with_pos, Segment, SegmentWithPos};
 use crate::http::RequestContext;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use vbscript::ast::Program;
 use vbscript::parser::{tokenize, Parser};
-use vbscript::runtime::Value;
 use vbscript::runtime::objects::{Session, SessionManager};
+use vbscript::runtime::Value;
 
 /// ASP 执行引擎
 pub struct Engine {
@@ -232,12 +232,17 @@ impl Engine {
 
         // 8. 收集输出和 Response 对象
         // 从变量表中获取 Response 对象
-        let mut response = if let Some(Value::Object(ref response_obj)) = interpreter.context().get_var("Response") {
+        let mut response = if let Some(Value::Object(ref response_obj)) =
+            interpreter.context().get_var("Response")
+        {
             // 从 BuiltinObject 中获取 Response
             #[allow(unused_imports)]
             use vbscript::runtime::BuiltinObject;
             if let Ok(resp_guard) = response_obj.lock() {
-                if let Some(resp) = resp_guard.as_any().downcast_ref::<vbscript::runtime::objects::Response>() {
+                if let Some(resp) = resp_guard
+                    .as_any()
+                    .downcast_ref::<vbscript::runtime::objects::Response>()
+                {
                     resp.clone()
                 } else {
                     vbscript::runtime::objects::Response::new()
@@ -268,7 +273,7 @@ impl Engine {
             if cookie_id != Some(&session_id) {
                 response.add_header(
                     "Set-Cookie",
-                    &format!("ASPSESSIONID={}; Path=/; HttpOnly", &session_id)
+                    &format!("ASPSESSIONID={}; Path=/; HttpOnly", &session_id),
                 );
             }
         }
@@ -366,13 +371,13 @@ impl Engine {
 
         // ===== 颜色常量 =====
         context.define_var("vbBlack".to_string(), Value::Number(0.0));
-        context.define_var("vbBlue".to_string(), Value::Number(16711680.0));      // 0xFF0000
-        context.define_var("vbCyan".to_string(), Value::Number(16776960.0));      // 0xFFFF00
-        context.define_var("vbGreen".to_string(), Value::Number(65280.0));        // 0x00FF00
-        context.define_var("vbMagenta".to_string(), Value::Number(16711935.0));   // 0xFF00FF
-        context.define_var("vbRed".to_string(), Value::Number(255.0));            // 0x0000FF
-        context.define_var("vbWhite".to_string(), Value::Number(16777215.0));     // 0xFFFFFF
-        context.define_var("vbYellow".to_string(), Value::Number(65535.0));       // 0x00FFFF
+        context.define_var("vbBlue".to_string(), Value::Number(16711680.0)); // 0xFF0000
+        context.define_var("vbCyan".to_string(), Value::Number(16776960.0)); // 0xFFFF00
+        context.define_var("vbGreen".to_string(), Value::Number(65280.0)); // 0x00FF00
+        context.define_var("vbMagenta".to_string(), Value::Number(16711935.0)); // 0xFF00FF
+        context.define_var("vbRed".to_string(), Value::Number(255.0)); // 0x0000FF
+        context.define_var("vbWhite".to_string(), Value::Number(16777215.0)); // 0xFFFFFF
+        context.define_var("vbYellow".to_string(), Value::Number(65535.0)); // 0x00FFFF
 
         // ===== 字符串常量 =====
         context.define_var("vbCr".to_string(), Value::String("\r".to_string()));
@@ -383,7 +388,10 @@ impl Engine {
         context.define_var("vbNullChar".to_string(), Value::String("\x00".to_string()));
         context.define_var("vbNullString".to_string(), Value::String(String::new()));
         context.define_var("vbTab".to_string(), Value::String("\t".to_string()));
-        context.define_var("vbVerticalTab".to_string(), Value::String("\x0B".to_string()));
+        context.define_var(
+            "vbVerticalTab".to_string(),
+            Value::String("\x0B".to_string()),
+        );
 
         // ===== 其他常量 =====
         context.define_var("vbUseSystem".to_string(), Value::Number(0.0));
@@ -432,7 +440,11 @@ impl Engine {
         use vbscript::parser::ParseError;
 
         match error {
-            ParseError::ParserErrorWithContext { pos, message, context } => {
+            ParseError::ParserErrorWithContext {
+                pos,
+                message,
+                context,
+            } => {
                 let mut result = String::new();
 
                 // ANSI 颜色代码

@@ -105,10 +105,8 @@ impl Config {
             ),
             now_format: std::env::var("NOW_FORMAT")
                 .unwrap_or_else(|_| "YYYY/MM/DD HH:MM:SS".to_string()),
-            date_format: std::env::var("DATE_FORMAT")
-                .unwrap_or_else(|_| "YYYY/MM/DD".to_string()),
-            time_format: std::env::var("TIME_FORMAT")
-                .unwrap_or_else(|_| "HH:MM:SS".to_string()),
+            date_format: std::env::var("DATE_FORMAT").unwrap_or_else(|_| "YYYY/MM/DD".to_string()),
+            time_format: std::env::var("TIME_FORMAT").unwrap_or_else(|_| "HH:MM:SS".to_string()),
         }
     }
 

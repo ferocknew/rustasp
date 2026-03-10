@@ -1,7 +1,7 @@
 //! 对象工厂 - 用于 CreateObject 白名单管理
 
-use crate::runtime::{RuntimeError, Value};
 use crate::runtime::objects::{Dictionary, FileSystemObject, XmlHttp};
+use crate::runtime::{RuntimeError, Value};
 use std::sync::{Arc, Mutex};
 
 /// 对象工厂函数类型

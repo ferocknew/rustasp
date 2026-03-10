@@ -260,7 +260,8 @@ impl crate::runtime::BuiltinObject for Session {
             "removeall" => {
                 if let Ok(mut data) = self.data.lock() {
                     // 只移除用户数据，保留 sessionid 和 timeout
-                    let keys_to_remove: Vec<String> = data.keys()
+                    let keys_to_remove: Vec<String> = data
+                        .keys()
                         .filter(|k| !k.starts_with("__") && *k != "sessionid" && *k != "timeout")
                         .cloned()
                         .collect();

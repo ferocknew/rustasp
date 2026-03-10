@@ -1,7 +1,7 @@
 //! 变量作用域
 
-use super::Value;
 use super::ErrorMode;
+use super::Value;
 use std::collections::HashMap;
 
 /// 作用域

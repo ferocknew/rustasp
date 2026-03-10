@@ -6,8 +6,8 @@ pub mod exprs;
 mod stmts;
 
 use crate::ast::Program;
-use crate::runtime::{Context, RuntimeError, Value};
 use crate::runtime::builtins::TokenRegistry;
+use crate::runtime::{Context, RuntimeError, Value};
 
 /// 解释器
 pub struct Interpreter {
@@ -45,9 +45,9 @@ impl Interpreter {
         for stmt in &program.statements {
             // 跳过类和函数声明（已在预处理阶段注册）
             match stmt {
-                crate::ast::Stmt::Class { .. } |
-                crate::ast::Stmt::Function { .. } |
-                crate::ast::Stmt::Sub { .. } => continue,
+                crate::ast::Stmt::Class { .. }
+                | crate::ast::Stmt::Function { .. }
+                | crate::ast::Stmt::Sub { .. } => continue,
                 _ => {
                     result = self.eval_stmt(stmt)?;
                     if self.context.should_exit {
@@ -60,7 +60,10 @@ impl Interpreter {
     }
 
     /// 预处理阶段：扫描并注册所有的类和函数定义
-    fn preprocess_declarations(&mut self, statements: &[crate::ast::Stmt]) -> Result<Value, RuntimeError> {
+    fn preprocess_declarations(
+        &mut self,
+        statements: &[crate::ast::Stmt],
+    ) -> Result<Value, RuntimeError> {
         use crate::ast::Stmt;
 
         for stmt in statements {

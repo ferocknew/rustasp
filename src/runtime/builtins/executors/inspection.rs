@@ -1,7 +1,7 @@
 //! 检验函数执行器
 
-use crate::runtime::{RuntimeError, Value};
 use super::super::token::BuiltinToken;
+use crate::runtime::{RuntimeError, Value};
 use chrono::Timelike;
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
@@ -44,9 +44,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                         try_parse_date(trimmed).is_some() || try_parse_time(trimmed).is_some()
                     }
                 }
-                Value::Number(n) => {
-                    *n >= -657434.0 && *n <= 2958465.0
-                }
+                Value::Number(n) => *n >= -657434.0 && *n <= 2958465.0,
                 _ => false,
             };
             Value::Boolean(result)
@@ -109,7 +107,7 @@ fn try_parse_date(date_str: &str) -> Option<chrono::NaiveDateTime> {
 
     // 移除 # 包围（VBScript 日期字面量 #2024-01-01#）
     let clean_str = if date_str.starts_with('#') && date_str.ends_with('#') {
-        &date_str[1..date_str.len()-1]
+        &date_str[1..date_str.len() - 1]
     } else {
         date_str
     };
@@ -119,14 +117,9 @@ fn try_parse_date(date_str: &str) -> Option<chrono::NaiveDateTime> {
     // 尝试各种日期格式
     let date_formats = [
         // ISO 格式
-        "%Y-%m-%d",
-        "%Y/%m/%d",
-        // 美式格式
-        "%m/%d/%Y",
-        "%m-%d-%Y",
-        // 短年份格式
-        "%y-%m-%d",
-        "%y/%m/%d",
+        "%Y-%m-%d", "%Y/%m/%d", // 美式格式
+        "%m/%d/%Y", "%m-%d-%Y", // 短年份格式
+        "%y-%m-%d", "%y/%m/%d",
     ];
 
     // 先尝试纯日期
@@ -164,19 +157,19 @@ fn try_parse_time(time_str: &str) -> Option<chrono::NaiveDateTime> {
 
     // 处理 AM/PM 标记
     let (time_part, is_pm, has_period) = if trimmed.ends_with("pm") {
-        (trimmed[..trimmed.len()-2].trim().to_string(), true, true)
+        (trimmed[..trimmed.len() - 2].trim().to_string(), true, true)
     } else if trimmed.ends_with("am") {
-        (trimmed[..trimmed.len()-2].trim().to_string(), false, true)
+        (trimmed[..trimmed.len() - 2].trim().to_string(), false, true)
     } else {
         (trimmed.to_string(), false, false)
     };
 
     // 尝试各种时间格式
     let time_formats = [
-        "%H:%M:%S",    // 14:30:45
-        "%H:%M",       // 14:30
-        "%I:%M:%S",    // 2:30:45 (12小时制)
-        "%I:%M",       // 2:30 (12小时制)
+        "%H:%M:%S",     // 14:30:45
+        "%H:%M",        // 14:30
+        "%I:%M:%S",     // 2:30:45 (12小时制)
+        "%I:%M",        // 2:30 (12小时制)
         "%H:%M:%S %.f", // 带毫秒
     ];
 
@@ -184,19 +177,14 @@ fn try_parse_time(time_str: &str) -> Option<chrono::NaiveDateTime> {
         if let Ok(mut time) = chrono::NaiveTime::parse_from_str(&time_part, format) {
             // 如果是 12 小时制且是 PM，且小时不是 12
             if has_period && is_pm && time.hour() < 12 {
-                time = chrono::NaiveTime::from_hms_opt(
-                    time.hour() + 12,
-                    time.minute(),
-                    time.second()
-                ).unwrap_or(time);
+                time =
+                    chrono::NaiveTime::from_hms_opt(time.hour() + 12, time.minute(), time.second())
+                        .unwrap_or(time);
             }
             // 如果是 12 小时制且是 AM，且小时是 12
             if has_period && !is_pm && time.hour() == 12 {
-                time = chrono::NaiveTime::from_hms_opt(
-                    0,
-                    time.minute(),
-                    time.second()
-                ).unwrap_or(time);
+                time = chrono::NaiveTime::from_hms_opt(0, time.minute(), time.second())
+                    .unwrap_or(time);
             }
             // 将时间转换为日期时间（使用一个基准日期）
             let date = chrono::NaiveDate::from_ymd_opt(1899, 12, 30)?;

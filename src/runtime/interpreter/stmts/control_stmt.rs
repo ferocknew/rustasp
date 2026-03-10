@@ -80,11 +80,7 @@ impl Interpreter {
     }
 
     /// 执行 Do While 循环
-    pub fn eval_do_while(
-        &mut self,
-        cond: &Expr,
-        body: &[Stmt],
-    ) -> Result<Value, RuntimeError> {
+    pub fn eval_do_while(&mut self, cond: &Expr, body: &[Stmt]) -> Result<Value, RuntimeError> {
         while self.eval_expr(cond)?.is_truthy() {
             match self.exec_block(body) {
                 Ok(_) => {}
@@ -96,11 +92,7 @@ impl Interpreter {
     }
 
     /// 执行 Do Until 循环
-    pub fn eval_do_until(
-        &mut self,
-        cond: &Expr,
-        body: &[Stmt],
-    ) -> Result<Value, RuntimeError> {
+    pub fn eval_do_until(&mut self, cond: &Expr, body: &[Stmt]) -> Result<Value, RuntimeError> {
         while !self.eval_expr(cond)?.is_truthy() {
             match self.exec_block(body) {
                 Ok(_) => {}
@@ -172,14 +164,16 @@ impl Interpreter {
 
         let elements = match collection_val {
             Value::Array(ref arr) => {
-                let locked_arr = arr.lock()
+                let locked_arr = arr
+                    .lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
                 locked_arr.data.clone()
             }
             Value::Object(ref obj) => {
                 // 尝试作为字典处理
                 use crate::runtime::objects::Dictionary;
-                let locked_obj = obj.lock()
+                let locked_obj = obj
+                    .lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?;
 
                 if let Some(dict) = locked_obj.as_any().downcast_ref::<Dictionary>() {
@@ -187,12 +181,15 @@ impl Interpreter {
                 } else {
                     // 对于其他对象，尝试调用 items 方法
                     drop(locked_obj);
-                    match obj.lock()
+                    match obj
+                        .lock()
                         .map_err(|_| RuntimeError::Generic("Failed to lock object".to_string()))?
-                        .call_method("items", vec![]) {
+                        .call_method("items", vec![])
+                    {
                         Ok(Value::Array(ref arr)) => {
-                            let locked_arr = arr.lock()
-                                .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
+                            let locked_arr = arr.lock().map_err(|_| {
+                                RuntimeError::Generic("Failed to lock array".to_string())
+                            })?;
                             locked_arr.data.clone()
                         }
                         _ => {
@@ -253,16 +250,12 @@ impl Interpreter {
     }
 
     /// 执行 Call 语句
-    pub fn eval_call(
-        &mut self,
-        name: &str,
-        args: &[Expr],
-    ) -> Result<Value, RuntimeError> {
+    pub fn eval_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
         let name_lower = crate::utils::normalize_identifier(name);
         if let Some(func) = self.context.functions.get(&name_lower).cloned() {
             // 记录 ByRef 参数映射: (参数索引 -> 原始变量名)
             let mut byref_mapping: Vec<(String, String)> = Vec::new();
-            
+
             // 计算参数值
             let mut arg_values = Vec::new();
             for (i, arg) in args.iter().enumerate() {
@@ -274,7 +267,9 @@ impl Interpreter {
                         let param_name = func.params[i].name.clone();
                         byref_mapping.push((param_name, var_name.clone()));
                         // 使用当前变量值
-                        let value = self.context.get_var(var_name)
+                        let value = self
+                            .context
+                            .get_var(var_name)
                             .cloned()
                             .unwrap_or(Value::Empty);
                         arg_values.push(value);
@@ -307,8 +302,8 @@ impl Interpreter {
             for stmt in &func.body {
                 match self.eval_stmt(stmt) {
                     Ok(_) => {}
-                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction)) |
-                    Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction))
+                    | Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
                         // Exit Function/Sub - 正常退出
                         break;
                     }
@@ -320,9 +315,12 @@ impl Interpreter {
             }
 
             // 在 pop_scope 之前保存 ByRef 参数的值
-            let byref_values: Vec<(String, Value)> = byref_mapping.iter()
+            let byref_values: Vec<(String, Value)> = byref_mapping
+                .iter()
                 .filter_map(|(param_name, _)| {
-                    self.context.get_var(param_name).cloned()
+                    self.context
+                        .get_var(param_name)
+                        .cloned()
                         .map(|v| (param_name.clone(), v))
                 })
                 .collect();
@@ -332,7 +330,8 @@ impl Interpreter {
             // 在 pop_scope 之后，将 ByRef 参数的值写回外部变量
             for (param_name, original_var_name) in &byref_mapping {
                 if let Some((_, value)) = byref_values.iter().find(|(pn, _)| pn == param_name) {
-                    self.context.set_var(original_var_name.clone(), value.clone());
+                    self.context
+                        .set_var(original_var_name.clone(), value.clone());
                 }
             }
         }
@@ -366,11 +365,7 @@ impl Interpreter {
 
     /// 执行 With 语句
     /// With 语句允许对单个对象执行多个操作，而无需重复指定对象名称
-    pub fn eval_with(
-        &mut self,
-        object: &Expr,
-        body: &[Stmt],
-    ) -> Result<Value, RuntimeError> {
+    pub fn eval_with(&mut self, object: &Expr, body: &[Stmt]) -> Result<Value, RuntimeError> {
         // 评估对象表达式
         let object_value = self.eval_expr(object)?;
 

@@ -40,7 +40,11 @@ impl Interpreter {
             // 调用和访问
             Expr::Call { name, args } => self.eval_call_expr(name, args),
             Expr::Property { object, property } => self.eval_property(object, property),
-            Expr::Method { object, method, args } => self.eval_method(object, method, args),
+            Expr::Method {
+                object,
+                method,
+                args,
+            } => self.eval_method(object, method, args),
             Expr::Index { object, indices } => self.eval_index(object, indices),
 
             // With 上下文中的访问
@@ -84,9 +88,10 @@ impl Interpreter {
 
     /// 求值数组字面量
     fn eval_array(&mut self, elements: &[Expr]) -> Result<Value, RuntimeError> {
-        let values: Result<Vec<Value>, _> =
-            elements.iter().map(|e| self.eval_expr(e)).collect();
-        Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(values?)))))
+        let values: Result<Vec<Value>, _> = elements.iter().map(|e| self.eval_expr(e)).collect();
+        Ok(Value::Array(Arc::new(Mutex::new(
+            crate::runtime::VbsArray::from_vec(values?),
+        ))))
     }
 
     /// 求值 With 上下文中的属性访问（.property）
@@ -100,7 +105,8 @@ impl Interpreter {
             };
 
             // 临时将对象存储为变量
-            self.context.define_var("[WITH_OBJECT]".to_string(), object.clone());
+            self.context
+                .define_var("[WITH_OBJECT]".to_string(), object.clone());
 
             // 评估属性表达式
             let result = self.eval_expr(&expr);
@@ -127,7 +133,8 @@ impl Interpreter {
             };
 
             // 临时将对象存储为变量
-            self.context.define_var("[WITH_OBJECT]".to_string(), object.clone());
+            self.context
+                .define_var("[WITH_OBJECT]".to_string(), object.clone());
 
             // 评估方法表达式
             let result = self.eval_expr(&expr);

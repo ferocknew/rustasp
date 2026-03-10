@@ -1,8 +1,8 @@
 //! 中缀运算符解析
 
 use crate::ast::BinaryOp;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::{ParseError, Parser};
 
 impl Parser {

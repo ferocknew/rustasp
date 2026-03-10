@@ -1,7 +1,7 @@
 //! 主 Lexer 结构和 tokenize 逻辑
 
-use super::token::{SpannedToken, Token};
 use super::keyword::lookup_keyword;
+use super::token::{SpannedToken, Token};
 use crate::parser::ParseError;
 use crate::utils::normalize_identifier;
 
@@ -95,14 +95,11 @@ impl Lexer {
         let e = self.input[self.pos + 1];
         let m = self.input[self.pos + 2];
 
-        (r == 'r' || r == 'R')
-            && (e == 'e' || e == 'E')
-            && (m == 'm' || m == 'M')
-            && {
-                // 检查后面是否是非字母字符（确保是完整的单词）
-                let next_pos = self.pos + 3;
-                next_pos >= self.input.len() || !self.input[next_pos].is_alphanumeric()
-            }
+        (r == 'r' || r == 'R') && (e == 'e' || e == 'E') && (m == 'm' || m == 'M') && {
+            // 检查后面是否是非字母字符（确保是完整的单词）
+            let next_pos = self.pos + 3;
+            next_pos >= self.input.len() || !self.input[next_pos].is_alphanumeric()
+        }
     }
 
     /// 检查字符是否是标识符起始字符
@@ -284,7 +281,10 @@ impl Lexer {
                     })?;
 
                     Ok(Token::Number(num as f64))
-                } else if (next == 'O' || next == 'o') && self.peek_char(1).is_ascii_digit() && self.peek_char(1) <= '7' {
+                } else if (next == 'O' || next == 'o')
+                    && self.peek_char(1).is_ascii_digit()
+                    && self.peek_char(1) <= '7'
+                {
                     // 八进制：&O77&（必须紧跟 0-7 的数字）
                     self.advance(); // 跳过 O
                     let oct_start = self.pos;

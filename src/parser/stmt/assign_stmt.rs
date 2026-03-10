@@ -54,7 +54,8 @@ impl Parser {
                     pos += 1;
                     // 跳过括号内容
                     let mut depth = 1;
-                    while depth > 0 && pos < 100 {  // 防止无限循环
+                    while depth > 0 && pos < 100 {
+                        // 防止无限循环
                         match self.peek_ahead(pos) {
                             Token::LParen => {
                                 depth += 1;

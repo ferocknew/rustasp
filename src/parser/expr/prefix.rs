@@ -1,8 +1,8 @@
 //! 前缀表达式解析
 
 use crate::ast::{Expr, UnaryOp};
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::{ParseError, Parser};
 
 impl Parser {
@@ -107,7 +107,7 @@ impl Parser {
             // With 上下文中的成员访问：.property 或 .method(...)
             Token::Dot => {
                 self.advance(); // 消耗 .
-                // 点号后面允许标识符或关键字作为属性名
+                                // 点号后面允许标识符或关键字作为属性名
                 let name = match self.peek().clone() {
                     Token::Ident(name) => {
                         self.advance();
@@ -130,20 +130,16 @@ impl Parser {
                     self.advance(); // 消耗 (
                     let args = self.parse_args_in_parens()?;
                     self.expect(Token::RParen)?;
-                    Ok(Expr::WithMethod {
-                        method: name,
-                        args,
-                    })
+                    Ok(Expr::WithMethod { method: name, args })
                 } else {
                     // 先创建 WithProperty，后续可能在 postfix 中转换为 WithMethod
                     self.parse_postfix(Expr::WithProperty { property: name })
                 }
             }
 
-            _ => Err(self.error_with_context(format!(
-                "Unexpected token in expression: {:?}",
-                token
-            ))),
+            _ => {
+                Err(self.error_with_context(format!("Unexpected token in expression: {:?}", token)))
+            }
         }
     }
 

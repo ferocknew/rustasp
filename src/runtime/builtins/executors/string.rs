@@ -1,7 +1,7 @@
 //! 字符串函数执行器
 
-use crate::runtime::{RuntimeError, Value, ValueConversion};
 use super::super::token::BuiltinToken;
+use crate::runtime::{RuntimeError, Value, ValueConversion};
 use std::sync::{Arc, Mutex};
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
@@ -46,8 +46,16 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             let s = ValueConversion::to_string(&args[0]);
             let start = ValueConversion::to_number(&args[1]) as usize;
-            let length = args.get(2).map(|v| ValueConversion::to_number(v) as usize).unwrap_or(s.len());
-            Value::String(s.chars().skip(start.saturating_sub(1)).take(length).collect::<String>())
+            let length = args
+                .get(2)
+                .map(|v| ValueConversion::to_number(v) as usize)
+                .unwrap_or(s.len());
+            Value::String(
+                s.chars()
+                    .skip(start.saturating_sub(1))
+                    .take(length)
+                    .collect::<String>(),
+            )
         }
         BuiltinToken::Asc => {
             if args.is_empty() {
@@ -87,12 +95,18 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             let (start, string1, string2) = if args.len() >= 3 {
                 // 有 start 参数
-                (Some(ValueConversion::to_number(&args[0]) as usize),
-                 ValueConversion::to_string(&args[1]),
-                 ValueConversion::to_string(&args[2]))
+                (
+                    Some(ValueConversion::to_number(&args[0]) as usize),
+                    ValueConversion::to_string(&args[1]),
+                    ValueConversion::to_string(&args[2]),
+                )
             } else {
                 // 没有 start 参数
-                (None, ValueConversion::to_string(&args[0]), ValueConversion::to_string(&args[1]))
+                (
+                    None,
+                    ValueConversion::to_string(&args[0]),
+                    ValueConversion::to_string(&args[1]),
+                )
             };
 
             // 从指定位置开始搜索（VBScript 位置从 1 开始）
@@ -153,7 +167,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let target_lower = string2.to_lowercase();
             let pos = search_lower.rfind(&target_lower);
             let result = if let Some(p) = pos {
-                (p + 1) as f64  // VBScript 位置从 1 开始
+                (p + 1) as f64 // VBScript 位置从 1 开始
             } else {
                 0.0
             };
@@ -227,13 +241,22 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             let string = ValueConversion::to_string(&args[0]);
-            let delimiter = args.get(1).map(|v| ValueConversion::to_string(v)).unwrap_or(" ".to_string());
+            let delimiter = args
+                .get(1)
+                .map(|v| ValueConversion::to_string(v))
+                .unwrap_or(" ".to_string());
 
             let parts: Vec<Value> = if delimiter.is_empty() {
                 // 空分隔符，返回单个字符数组
-                string.chars().map(|c| Value::String(c.to_string())).collect()
+                string
+                    .chars()
+                    .map(|c| Value::String(c.to_string()))
+                    .collect()
             } else {
-                string.split(&delimiter).map(|s| Value::String(s.to_string())).collect()
+                string
+                    .split(&delimiter)
+                    .map(|s| Value::String(s.to_string()))
+                    .collect()
             };
 
             use crate::runtime::VbsArray;
@@ -246,9 +269,19 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             match &args[0] {
                 Value::Array(ref arr) => {
-                    let delimiter = args.get(1).map(|v| ValueConversion::to_string(v)).unwrap_or(" ".to_string());
+                    let delimiter = args
+                        .get(1)
+                        .map(|v| ValueConversion::to_string(v))
+                        .unwrap_or(" ".to_string());
                     let locked_arr = arr.lock().unwrap();
-                    Value::String(locked_arr.data.iter().map(|v| ValueConversion::to_string(v)).collect::<Vec<_>>().join(&delimiter))
+                    Value::String(
+                        locked_arr
+                            .data
+                            .iter()
+                            .map(|v| ValueConversion::to_string(v))
+                            .collect::<Vec<_>>()
+                            .join(&delimiter),
+                    )
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
@@ -266,14 +299,22 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             let n = ValueConversion::to_number(&args[0]) as usize;
-            let ch = ValueConversion::to_string(&args[1]).chars().next().unwrap_or(' ');
+            let ch = ValueConversion::to_string(&args[1])
+                .chars()
+                .next()
+                .unwrap_or(' ');
             Value::String(ch.to_string().repeat(n.min(1000000)))
         }
         BuiltinToken::StrReverse => {
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
-            Value::String(ValueConversion::to_string(&args[0]).chars().rev().collect::<String>())
+            Value::String(
+                ValueConversion::to_string(&args[0])
+                    .chars()
+                    .rev()
+                    .collect::<String>(),
+            )
         }
         BuiltinToken::LenB => {
             // LenB - 返回字符串的字节长度
@@ -323,7 +364,10 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             let s = ValueConversion::to_string(&args[0]);
             let start = ValueConversion::to_number(&args[1]) as usize;
-            let length = args.get(2).map(|v| ValueConversion::to_number(v) as usize).unwrap_or(s.as_bytes().len());
+            let length = args
+                .get(2)
+                .map(|v| ValueConversion::to_number(v) as usize)
+                .unwrap_or(s.as_bytes().len());
             let bytes = s.as_bytes();
             // VBScript 位置从 1 开始，转换为从 0 开始
             let start_byte = start.saturating_sub(1).min(bytes.len());
@@ -344,12 +388,18 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             let (start, string1, string2) = if args.len() >= 3 {
                 // 有 start 参数
-                (Some(ValueConversion::to_number(&args[0]) as usize),
-                 ValueConversion::to_string(&args[1]),
-                 ValueConversion::to_string(&args[2]))
+                (
+                    Some(ValueConversion::to_number(&args[0]) as usize),
+                    ValueConversion::to_string(&args[1]),
+                    ValueConversion::to_string(&args[2]),
+                )
             } else {
                 // 没有 start 参数
-                (None, ValueConversion::to_string(&args[0]), ValueConversion::to_string(&args[1]))
+                (
+                    None,
+                    ValueConversion::to_string(&args[0]),
+                    ValueConversion::to_string(&args[1]),
+                )
             };
 
             let bytes1 = string1.as_bytes();
@@ -387,7 +437,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             let n = (ValueConversion::to_number(&args[0]) as u32) & 0xFF; // 只取低 8 位
-            // 将字节转换为 Latin-1 字符（单字节编码）
+                                                                          // 将字节转换为 Latin-1 字符（单字节编码）
             let ch = (n as u8) as char;
             Value::String(ch.to_string())
         }

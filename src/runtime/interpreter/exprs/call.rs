@@ -1,8 +1,8 @@
 //! 函数调用表达式求值
 
 use crate::ast::Expr;
-use crate::runtime::{ControlFlow, RuntimeError, Value, ValueIndex};
 use crate::runtime::builtins::BuiltinExecutor;
+use crate::runtime::{ControlFlow, RuntimeError, Value, ValueIndex};
 
 use super::super::Interpreter;
 
@@ -12,7 +12,8 @@ impl Interpreter {
         // 优化：先检查是否是内置函数，避免不必要的参数 eval
         if let Some(token) = self.builtin_registry.lookup(name) {
             // 内置函数：先 eval 参数再调用
-            let arg_values: Result<Vec<Value>, _> = args.iter().map(|e| self.eval_expr(e)).collect();
+            let arg_values: Result<Vec<Value>, _> =
+                args.iter().map(|e| self.eval_expr(e)).collect();
             let arg_values = arg_values?;
             return BuiltinExecutor::execute(token, &arg_values);
         }
@@ -22,14 +23,18 @@ impl Interpreter {
     }
 
     /// 用户函数调用
-    fn eval_user_function_call(&mut self, name: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
+    fn eval_user_function_call(
+        &mut self,
+        name: &str,
+        args: &[Expr],
+    ) -> Result<Value, RuntimeError> {
         // 检查是否是用户函数
         let func = self.context.get_function(name).cloned();
-        
+
         if let Some(func) = func {
             // 记录 ByRef 参数映射: (参数索引, 原始变量名) - 优化：使用索引而非参数名
             let mut byref_indices: Vec<(usize, String)> = Vec::new();
-            
+
             // 计算参数值（优化：只 eval 一次）
             let mut arg_values = Vec::new();
             for (i, arg) in args.iter().enumerate() {
@@ -40,7 +45,9 @@ impl Interpreter {
                         // ByRef 参数，记录索引和变量名
                         byref_indices.push((i, var_name.clone()));
                         // 使用当前变量值
-                        let value = self.context.get_var(var_name)
+                        let value = self
+                            .context
+                            .get_var(var_name)
                             .cloned()
                             .unwrap_or(Value::Empty);
                         arg_values.push(value);
@@ -74,8 +81,8 @@ impl Interpreter {
             for stmt in &func.body {
                 match self.eval_stmt(stmt) {
                     Ok(_) => {}
-                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction)) |
-                    Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
+                    Err(RuntimeError::ControlFlow(ControlFlow::ExitFunction))
+                    | Err(RuntimeError::ControlFlow(ControlFlow::ExitSub)) => {
                         // Exit Function/Sub - 正常退出，读取返回值
                         break;
                     }
@@ -87,16 +94,22 @@ impl Interpreter {
             }
 
             // 获取返回值（Function 名称变量的值）
-            let result = self.context.get_var(&func.name)
+            let result = self
+                .context
+                .get_var(&func.name)
                 .or_else(|| self.context.get_var(&func_name_lower))
                 .cloned()
                 .unwrap_or(Value::Empty);
 
             // 在 pop_scope 之前保存 ByRef 参数的值（优化：使用索引直接访问）
-            let byref_values: Vec<Value> = byref_indices.iter()
+            let byref_values: Vec<Value> = byref_indices
+                .iter()
                 .map(|(idx, _)| {
                     let param_name = &func.params[*idx].name;
-                    self.context.get_var(param_name).cloned().unwrap_or(Value::Empty)
+                    self.context
+                        .get_var(param_name)
+                        .cloned()
+                        .unwrap_or(Value::Empty)
                 })
                 .collect();
 
@@ -104,7 +117,8 @@ impl Interpreter {
 
             // 在 pop_scope 之后，将 ByRef 参数的值写回外部变量（优化：O(1) 索引访问）
             for (i, (_, original_var_name)) in byref_indices.iter().enumerate() {
-                self.context.set_var(original_var_name.clone(), byref_values[i].clone());
+                self.context
+                    .set_var(original_var_name.clone(), byref_values[i].clone());
             }
 
             return Ok(result);
@@ -118,9 +132,8 @@ impl Interpreter {
                 match value {
                     Value::Array(_) => {
                         // 是数组，执行索引访问
-                        let index_vals: Result<Vec<Value>, RuntimeError> = args.iter()
-                            .map(|e| self.eval_expr(e))
-                            .collect();
+                        let index_vals: Result<Vec<Value>, RuntimeError> =
+                            args.iter().map(|e| self.eval_expr(e)).collect();
                         let index_vals = index_vals?;
                         return self.eval_value_index_for_array(value, &index_vals);
                     }
@@ -139,16 +152,29 @@ impl Interpreter {
             }
         }
 
-        Err(RuntimeError::UndefinedVariable(format!("Function '{}' or array index", name)))
+        Err(RuntimeError::UndefinedVariable(format!(
+            "Function '{}' or array index",
+            name
+        )))
     }
 
     /// 尝试调用内置函数
-    pub fn call_builtin(&mut self, name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
-        self.builtin_registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
+    pub fn call_builtin(
+        &mut self,
+        name: &str,
+        args: &[Value],
+    ) -> Option<Result<Value, RuntimeError>> {
+        self.builtin_registry
+            .lookup(name)
+            .map(|token| BuiltinExecutor::execute(token, args))
     }
 
     /// 对数组执行多索引访问
-    fn eval_value_index_for_array(&self, value: Value, indices: &[Value]) -> Result<Value, RuntimeError> {
+    fn eval_value_index_for_array(
+        &self,
+        value: Value,
+        indices: &[Value],
+    ) -> Result<Value, RuntimeError> {
         match value {
             Value::Array(ref arr) => {
                 // 将索引转换为 usize
@@ -166,7 +192,8 @@ impl Interpreter {
                 let idx = idx?;
 
                 // 使用 flat_index 计算扁平索引
-                let locked_arr = arr.lock()
+                let locked_arr = arr
+                    .lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
 
                 match locked_arr.flat_index(&idx) {

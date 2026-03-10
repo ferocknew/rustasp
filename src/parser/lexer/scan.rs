@@ -69,8 +69,10 @@ impl super::Lexer {
                     if next_ch == '\n' || next_ch == '\r' {
                         // 跳过 _ 和换行符
                         self.advance(); // 跳过 _
-                        if next_ch == '\r' && next_pos + 1 < self.input.len()
-                            && self.peek_char(2) == '\n' {
+                        if next_ch == '\r'
+                            && next_pos + 1 < self.input.len()
+                            && self.peek_char(2) == '\n'
+                        {
                             // Windows 换行 \r\n
                             self.advance(); // 跳过 \r
                             self.advance(); // 跳过 \n

@@ -1,15 +1,15 @@
 //! 内置函数执行器
 
-use crate::runtime::{RuntimeError, Value};
 use super::token::BuiltinToken;
+use crate::runtime::{RuntimeError, Value};
 
+mod array;
+mod conversion;
+mod datetime;
+mod format;
+mod inspection;
 mod math;
 mod string;
-mod conversion;
-mod array;
-mod datetime;
-mod inspection;
-mod format;
 
 /// 内置函数执行器
 pub struct BuiltinExecutor;

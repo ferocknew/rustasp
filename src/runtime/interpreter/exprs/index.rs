@@ -9,10 +9,8 @@ impl Interpreter {
     /// 处理索引表达式（支持多维索引）
     pub fn eval_index(&mut self, object: &Expr, indices: &[Expr]) -> Result<Value, RuntimeError> {
         // 求值所有索引
-        let index_vals: Result<Vec<Value>, RuntimeError> = indices
-            .iter()
-            .map(|idx| self.eval_expr(idx))
-            .collect();
+        let index_vals: Result<Vec<Value>, RuntimeError> =
+            indices.iter().map(|idx| self.eval_expr(idx)).collect();
         let index_vals = index_vals?;
 
         match object {
@@ -58,7 +56,8 @@ impl Interpreter {
                 let idx = idx?;
 
                 // 使用 flat_index 计算扁平索引
-                let locked_arr = arr.lock()
+                let locked_arr = arr
+                    .lock()
                     .map_err(|_| RuntimeError::Generic("Failed to lock array".to_string()))?;
 
                 match locked_arr.flat_index(&idx) {

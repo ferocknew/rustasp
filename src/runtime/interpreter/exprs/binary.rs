@@ -7,10 +7,15 @@ use super::super::Interpreter;
 
 impl Interpreter {
     /// 执行二元运算
-    pub fn eval_binary(&mut self, left: &Expr, op: BinaryOp, right: &Expr) -> Result<Value, RuntimeError> {
+    pub fn eval_binary(
+        &mut self,
+        left: &Expr,
+        op: BinaryOp,
+        right: &Expr,
+    ) -> Result<Value, RuntimeError> {
         let left_val = self.eval_expr(left)?;
         let right_val = self.eval_expr(right)?;
-        
+
         match op {
             // 比较运算符
             BinaryOp::Eq

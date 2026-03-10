@@ -69,7 +69,10 @@ impl Server {
                     .components()
                     .filter(|c| {
                         // 移除 CurrentDir (.) 和 ParentDir (..) 组件
-                        !matches!(c, std::path::Component::CurDir | std::path::Component::ParentDir)
+                        !matches!(
+                            c,
+                            std::path::Component::CurDir | std::path::Component::ParentDir
+                        )
                     })
                     .collect::<PathBuf>();
 
@@ -173,7 +176,7 @@ impl crate::runtime::BuiltinObject for Server {
                 // Server.CreateObject - 仅支持白名单中的对象
                 if args.is_empty() {
                     return Err(RuntimeError::Generic(
-                        "Server.CreateObject 需要 ProgID 参数".to_string()
+                        "Server.CreateObject 需要 ProgID 参数".to_string(),
                     ));
                 }
 
@@ -189,8 +192,7 @@ impl crate::runtime::BuiltinObject for Server {
                         let supported = get_supported_objects().join(", ");
                         Err(RuntimeError::CreateObjectFailed(format!(
                             "'{}' 不在白名单中。支持的对象: {}",
-                            prog_id,
-                            supported
+                            prog_id, supported
                         )))
                     }
                     Err(e) => Err(e),
@@ -199,19 +201,19 @@ impl crate::runtime::BuiltinObject for Server {
             "Execute" | "execute" | "EXECUTE" => {
                 // Server.Execute - 暂不支持
                 Err(RuntimeError::Generic(
-                    "Server.Execute is not yet implemented.".to_string()
+                    "Server.Execute is not yet implemented.".to_string(),
                 ))
             }
             "Transfer" | "transfer" | "TRANSFER" => {
                 // Server.Transfer - 暂不支持
                 Err(RuntimeError::Generic(
-                    "Server.Transfer is not yet implemented.".to_string()
+                    "Server.Transfer is not yet implemented.".to_string(),
                 ))
             }
             "GetLastError" | "getlasterror" | "GETLASTERROR" | "getLastError" => {
                 // Server.GetLastError - 暂不支持
                 Err(RuntimeError::Generic(
-                    "Server.GetLastError is not yet implemented.".to_string()
+                    "Server.GetLastError is not yet implemented.".to_string(),
                 ))
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),

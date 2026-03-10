@@ -95,19 +95,23 @@ impl BuiltinObject for Dictionary {
             "count" => Ok(Value::Number(self.data.len() as f64)),
             "keys" => {
                 let keys: Vec<Value> = self.data.keys().map(|k| Value::String(k.clone())).collect();
-                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(keys)))))
+                Ok(Value::Array(Arc::new(Mutex::new(
+                    crate::runtime::VbsArray::from_vec(keys),
+                ))))
             }
-            "items" => {
-                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect())))))
-            }
+            "items" => Ok(Value::Array(Arc::new(Mutex::new(
+                crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect()),
+            )))),
             "key" | "item" => {
                 // 这些属性需要参数，返回 Empty
                 Ok(Value::Empty)
             }
             // 尝试作为键访问
-            _ => {
-                Ok(self.data.get(&name.to_lowercase()).cloned().unwrap_or(Value::Empty))
-            }
+            _ => Ok(self
+                .data
+                .get(&name.to_lowercase())
+                .cloned()
+                .unwrap_or(Value::Empty)),
         }
     }
 
@@ -147,17 +151,23 @@ impl BuiltinObject for Dictionary {
             }
             "keys" => {
                 let keys: Vec<Value> = self.data.keys().map(|k| Value::String(k.clone())).collect();
-                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(keys)))))
+                Ok(Value::Array(Arc::new(Mutex::new(
+                    crate::runtime::VbsArray::from_vec(keys),
+                ))))
             }
-            "items" => {
-                Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect())))))
-            }
+            "items" => Ok(Value::Array(Arc::new(Mutex::new(
+                crate::runtime::VbsArray::from_vec(self.data.values().cloned().collect()),
+            )))),
             "item" => {
                 if args.is_empty() {
                     return Ok(Value::Empty);
                 }
                 let key = ValueConversion::to_string(&args[0]);
-                Ok(self.data.get(&key.to_lowercase()).cloned().unwrap_or(Value::Empty))
+                Ok(self
+                    .data
+                    .get(&key.to_lowercase())
+                    .cloned()
+                    .unwrap_or(Value::Empty))
             }
             _ => Err(RuntimeError::MethodNotFound(name.to_string())),
         }

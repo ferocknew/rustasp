@@ -5,20 +5,22 @@
 
 use crate::runtime::{RuntimeError, Value};
 
-mod token;
-mod registry;
 mod executors;
+mod registry;
+mod token;
 
+pub use executors::BuiltinExecutor;
+pub use registry::TokenRegistry;
 #[allow(unused_imports)]
 pub use token::BuiltinToken;
-pub use registry::TokenRegistry;
-pub use executors::BuiltinExecutor;
 
 /// 便捷函数：通过函数名直接执行内置函数
 #[allow(dead_code)]
 pub fn execute_builtin(name: &str, args: &[Value]) -> Option<Result<Value, RuntimeError>> {
     let registry = TokenRegistry::new();
-    registry.lookup(name).map(|token| BuiltinExecutor::execute(token, args))
+    registry
+        .lookup(name)
+        .map(|token| BuiltinExecutor::execute(token, args))
 }
 
 #[cfg(test)]
@@ -51,20 +53,30 @@ mod tests {
     #[test]
     fn test_string_functions() {
         use crate::runtime::Value;
-        let result = BuiltinExecutor::execute(BuiltinToken::Len, &[Value::String("hello".to_string())]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::Len, &[Value::String("hello".to_string())])
+                .unwrap();
         assert_eq!(result, Value::Number(5.0));
 
-        let result = BuiltinExecutor::execute(BuiltinToken::UCase, &[Value::String("hello".to_string())]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::UCase, &[Value::String("hello".to_string())])
+                .unwrap();
         assert_eq!(result, Value::String("HELLO".to_string()));
 
-        let result = BuiltinExecutor::execute(BuiltinToken::Trim, &[Value::String("  hello  ".to_string())]).unwrap();
+        let result = BuiltinExecutor::execute(
+            BuiltinToken::Trim,
+            &[Value::String("  hello  ".to_string())],
+        )
+        .unwrap();
         assert_eq!(result, Value::String("hello".to_string()));
     }
 
     #[test]
     fn test_type_conversion() {
         use crate::runtime::Value;
-        let result = BuiltinExecutor::execute(BuiltinToken::CInt, &[Value::String("42".to_string())]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::CInt, &[Value::String("42".to_string())])
+                .unwrap();
         assert_eq!(result, Value::Number(42.0));
 
         let result = BuiltinExecutor::execute(BuiltinToken::CStr, &[Value::Number(42.0)]).unwrap();
@@ -74,16 +86,20 @@ mod tests {
     #[test]
     fn test_inspection_functions() {
         use crate::runtime::Value;
-        let result = BuiltinExecutor::execute(BuiltinToken::IsNumeric, &[Value::Number(42.0)]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::IsNumeric, &[Value::Number(42.0)]).unwrap();
         assert_eq!(result, Value::Boolean(true));
 
-        let result = BuiltinExecutor::execute(BuiltinToken::IsNumeric, &[Value::String("abc".to_string())]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::IsNumeric, &[Value::String("abc".to_string())])
+                .unwrap();
         assert_eq!(result, Value::Boolean(false));
 
         let result = BuiltinExecutor::execute(BuiltinToken::IsEmpty, &[Value::Empty]).unwrap();
         assert_eq!(result, Value::Boolean(true));
 
-        let result = BuiltinExecutor::execute(BuiltinToken::TypeName, &[Value::Number(42.0)]).unwrap();
+        let result =
+            BuiltinExecutor::execute(BuiltinToken::TypeName, &[Value::Number(42.0)]).unwrap();
         assert_eq!(result, Value::String("Double".to_string()));
     }
 }

@@ -1,7 +1,7 @@
 //! Token 注册表
 
-use std::collections::HashMap;
 use super::token::{BuiltinToken, TOKEN_REGISTRY};
+use std::collections::HashMap;
 
 /// Token 注册表
 /// 维护函数名到 Token ID 的映射

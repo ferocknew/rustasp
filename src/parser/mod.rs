@@ -7,8 +7,8 @@ mod error;
 
 // Lexer 子模块
 pub mod lexer;
-pub use lexer::token::{Token, SpannedToken};
 pub use lexer::keyword::Keyword;
+pub use lexer::token::{SpannedToken, Token};
 
 // Parser 核心
 mod class_parser;

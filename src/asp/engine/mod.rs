@@ -3,14 +3,14 @@
 //! 使用 Parser + Runtime 执行 ASP 代码
 //! 支持跨代码块的语句（如 If...Else...End If 分散在多个代码块中）
 
-mod executor;
 mod error;
+mod executor;
 
 pub use executor::Engine;
 
 use std::collections::HashMap;
-use vbscript::runtime::Value;
 use vbscript::runtime::objects::Session;
+use vbscript::runtime::Value;
 use vbscript::Response;
 
 /// ASP 执行结果
@@ -26,7 +26,13 @@ pub struct ExecutionResult {
 pub(super) fn session_to_map(session: &Session) -> HashMap<String, Value> {
     let mut map = HashMap::new();
     // 存储 Session ID
-    map.insert("sessionid".to_string(), Value::String(session.session_id().to_string()));
-    map.insert("timeout".to_string(), Value::Number(session.timeout() as f64));
+    map.insert(
+        "sessionid".to_string(),
+        Value::String(session.session_id().to_string()),
+    );
+    map.insert(
+        "timeout".to_string(),
+        Value::Number(session.timeout() as f64),
+    );
     map
 }

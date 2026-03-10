@@ -48,6 +48,9 @@ impl Parser {
             self.expect_keyword(Keyword::If)?;
         }
 
-        Ok(Some(Stmt::If { branches, else_block }))
+        Ok(Some(Stmt::If {
+            branches,
+            else_block,
+        }))
     }
 }

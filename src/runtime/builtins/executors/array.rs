@@ -1,7 +1,7 @@
 //! 数组函数执行器
 
-use crate::runtime::{RuntimeError, Value, ValueConversion, VbsArray};
 use super::super::token::BuiltinToken;
+use crate::runtime::{RuntimeError, Value, ValueConversion, VbsArray};
 use std::sync::{Arc, Mutex};
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
@@ -18,7 +18,7 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                         if dim_num == 0 {
                             0
                         } else {
-                            dim_num - 1  // 转换为 0-based 索引
+                            dim_num - 1 // 转换为 0-based 索引
                         }
                     } else {
                         0
@@ -50,11 +50,20 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
                 Value::Array(ref arr) => {
                     let locked_arr = arr.lock().unwrap();
                     let criteria = ValueConversion::to_string(&args[1]);
-                    let include = args.get(2).map(|v| ValueConversion::to_bool(v)).unwrap_or(true);
-                    let filtered: Vec<Value> = locked_arr.data.iter()
+                    let include = args
+                        .get(2)
+                        .map(|v| ValueConversion::to_bool(v))
+                        .unwrap_or(true);
+                    let filtered: Vec<Value> = locked_arr
+                        .data
+                        .iter()
                         .filter(|v| {
                             let s = ValueConversion::to_string(*v);
-                            if include { s.contains(&criteria) } else { !s.contains(&criteria) }
+                            if include {
+                                s.contains(&criteria)
+                            } else {
+                                !s.contains(&criteria)
+                            }
                         })
                         .cloned()
                         .collect();

@@ -1,8 +1,8 @@
 //! 后缀表达式解析（成员访问、方法调用、索引访问）
 
 use crate::ast::Expr;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::{ParseError, Parser};
 
 impl Parser {
@@ -13,7 +13,7 @@ impl Parser {
                 // 成员访问：obj.property 或 obj.method(...)
                 Token::Dot => {
                     self.advance(); // 消耗 .
-                    // 点号后面允许标识符或关键字作为属性名（如 Response.End）
+                                    // 点号后面允许标识符或关键字作为属性名（如 Response.End）
                     let name = match self.peek().clone() {
                         Token::Ident(name) => {
                             self.advance();
@@ -153,7 +153,7 @@ impl Parser {
             Token::Null => true,
             Token::Empty => true,
             Token::Keyword(Keyword::True | Keyword::False | Keyword::Null | Keyword::Empty) => true,
-            Token::LParen => true,  // 括号表达式
+            Token::LParen => true, // 括号表达式
             _ => false,
         }
     }

@@ -1,8 +1,10 @@
 //! Class 类解析器
 
-use crate::ast::{ClassMember, FieldDecl, MethodDecl, PropertyDecl, PropertyType, Stmt, Visibility};
-use crate::parser::Keyword;
+use crate::ast::{
+    ClassMember, FieldDecl, MethodDecl, PropertyDecl, PropertyType, Stmt, Visibility,
+};
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -72,7 +74,7 @@ impl Parser {
     fn parse_class_member(&mut self) -> Result<Vec<ClassMember>, ParseError> {
         // 先检查是否到达 End Class（严格检查 End + Class）
         if self.check_keyword(Keyword::End) && self.peek_next_is_keyword(Keyword::Class) {
-            return Ok(vec![]);  // 返回空，让 parse_class 处理 End Class
+            return Ok(vec![]); // 返回空，让 parse_class 处理 End Class
         }
 
         // 解析可见性修饰符（Public/Private）
@@ -103,7 +105,7 @@ impl Parser {
                 // 字段不能是 Default
                 if is_default {
                     return Err(ParseError::ParserError(
-                        "Fields cannot be marked as Default".to_string()
+                        "Fields cannot be marked as Default".to_string(),
                     ));
                 }
                 let fields = self.parse_field(visibility)?;
@@ -115,7 +117,7 @@ impl Parser {
                 // 字段不能是 Default
                 if is_default {
                     return Err(ParseError::ParserError(
-                        "Fields cannot be marked as Default".to_string()
+                        "Fields cannot be marked as Default".to_string(),
                     ));
                 }
                 let fields = self.parse_field(visibility)?;
@@ -131,7 +133,8 @@ impl Parser {
             _ => {
                 let token = self.peek();
                 Err(ParseError::UnexpectedToken {
-                    expected: "class member (Function, Sub, Property, Dim, or identifier)".to_string(),
+                    expected: "class member (Function, Sub, Property, Dim, or identifier)"
+                        .to_string(),
                     found: format!("{:?}", token),
                 })
             }
@@ -176,7 +179,7 @@ impl Parser {
         // 检查是否有数组声明（空括号 ()）
         if self.check(&Token::LParen) {
             self.advance(); // 消耗 LParen
-            // 检查是否是空括号（数组声明）
+                            // 检查是否是空括号（数组声明）
             if self.check(&Token::RParen) {
                 self.advance(); // 消耗 RParen
             } else {
@@ -204,7 +207,7 @@ impl Parser {
             // 检查是否有数组声明（空括号 ()）
             if self.check(&Token::LParen) {
                 self.advance(); // 消耗 LParen
-                // 检查是否是空括号（数组声明）
+                                // 检查是否是空括号（数组声明）
                 if self.check(&Token::RParen) {
                     self.advance(); // 消耗 RParen
                 } else {
@@ -243,7 +246,11 @@ impl Parser {
     ///     Name = value
     /// End Sub
     /// ```
-    fn parse_method(&mut self, visibility: Visibility, is_default: bool) -> Result<MethodDecl, ParseError> {
+    fn parse_method(
+        &mut self,
+        visibility: Visibility,
+        is_default: bool,
+    ) -> Result<MethodDecl, ParseError> {
         let is_function = self.check_keyword(Keyword::Function);
         let is_sub = self.check_keyword(Keyword::Sub);
 
@@ -381,7 +388,11 @@ impl Parser {
     ///     mName = value
     /// End Property
     /// ```
-    fn parse_property(&mut self, visibility: Visibility, is_default: bool) -> Result<PropertyDecl, ParseError> {
+    fn parse_property(
+        &mut self,
+        visibility: Visibility,
+        is_default: bool,
+    ) -> Result<PropertyDecl, ParseError> {
         self.expect_keyword(Keyword::Property)?;
 
         let prop_type = if self.check_keyword(Keyword::Get) {

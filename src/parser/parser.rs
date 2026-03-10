@@ -2,8 +2,8 @@
 //!
 //! 只包含 Parser struct 和基础工具方法
 
-use crate::parser::Keyword;
 use crate::parser::lexer::{SpannedToken, Token};
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 
 /// 解析器
@@ -66,7 +66,8 @@ impl Parser {
 
     /// 是否到达末尾
     pub fn is_at_end(&self) -> bool {
-        self.pos >= self.spanned_tokens.len() || matches!(self.spanned_tokens[self.pos].token, Token::Eof)
+        self.pos >= self.spanned_tokens.len()
+            || matches!(self.spanned_tokens[self.pos].token, Token::Eof)
     }
 
     /// 检查当前 token 是否匹配

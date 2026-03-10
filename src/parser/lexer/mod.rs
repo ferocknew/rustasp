@@ -6,15 +6,15 @@
 //! - scan.rs: 扫描工具函数（scan_while, scan_until 等）
 //! - lexer.rs: 主 Lexer 结构和 tokenize 逻辑
 
-pub mod token;
 pub mod keyword;
-pub mod scan;
 pub mod lexer;
+pub mod scan;
+pub mod token;
 
 // 重新导出常用类型
-pub use token::{Token, SpannedToken};
 pub use keyword::Keyword;
 pub use lexer::Lexer;
+pub use token::{SpannedToken, Token};
 
 use crate::parser::ParseError;
 

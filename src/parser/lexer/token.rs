@@ -58,6 +58,10 @@ pub struct SpannedToken {
 
 impl SpannedToken {
     pub fn new(token: Token, line: usize, column: usize) -> Self {
-        Self { token, line, column }
+        Self {
+            token,
+            line,
+            column,
+        }
     }
 }

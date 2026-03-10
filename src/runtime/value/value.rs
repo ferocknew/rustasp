@@ -53,13 +53,9 @@ impl PartialEq for Value {
             (Value::Number(a), Value::Number(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
             // 数组比较：通过 Arc::ptr_eq 比较是否同一个数组
-            (Value::Array(a), Value::Array(b)) => {
-                Arc::ptr_eq(a, b)
-            }
+            (Value::Array(a), Value::Array(b)) => Arc::ptr_eq(a, b),
             // 对象比较：通过 Arc::ptr_eq 比较是否同一个对象
-            (Value::Object(a), Value::Object(b)) => {
-                Arc::ptr_eq(a, b)
-            }
+            (Value::Object(a), Value::Object(b)) => Arc::ptr_eq(a, b),
             _ => false,
         }
     }

@@ -2,8 +2,8 @@
 
 use crate::ast::Expr;
 use crate::ast::Stmt;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -114,9 +114,15 @@ impl Parser {
             if is_while_bottom || is_until_bottom {
                 let cond_expr = self.parse_expr(0)?;
                 return Ok(if is_while_bottom {
-                    Some(Stmt::DoLoopWhile { body, cond: cond_expr })
+                    Some(Stmt::DoLoopWhile {
+                        body,
+                        cond: cond_expr,
+                    })
                 } else {
-                    Some(Stmt::DoLoopUntil { body, cond: cond_expr })
+                    Some(Stmt::DoLoopUntil {
+                        body,
+                        cond: cond_expr,
+                    })
                 });
             } else {
                 // Do ... Loop (无限循环)

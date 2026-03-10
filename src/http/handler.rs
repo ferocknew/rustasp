@@ -23,10 +23,12 @@ pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> im
     if state.config.debug {
         let method = request.method();
         let headers = request.headers();
-        let user_agent = headers.get("user-agent")
+        let user_agent = headers
+            .get("user-agent")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("Unknown");
-        let content_type = headers.get("content-type")
+        let content_type = headers
+            .get("content-type")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("None");
 
@@ -39,7 +41,10 @@ pub async fn handle_asp(uri: Uri, state: AppState, request: Request<Body>) -> im
     let request_ctx = RequestContext::from_request(request).await;
 
     // 解析路径
-    let resolver = PathResolver::new(state.config.home_dir.clone(), state.config.allow_parent_paths);
+    let resolver = PathResolver::new(
+        state.config.home_dir.clone(),
+        state.config.allow_parent_paths,
+    );
     let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
@@ -88,7 +93,10 @@ pub async fn handle_static(uri: Uri, state: AppState, request: Request<Body>) ->
     let error_gen = ErrorPageGenerator::from_state(&state).await;
 
     // 解析路径
-    let resolver = PathResolver::new(state.config.home_dir.clone(), state.config.allow_parent_paths);
+    let resolver = PathResolver::new(
+        state.config.home_dir.clone(),
+        state.config.allow_parent_paths,
+    );
     let file_path = match resolver.resolve(uri_str) {
         Ok(path) => path,
         Err(e) => {
@@ -219,19 +227,20 @@ async fn execute_asp_file(
     };
 
     // 预处理 include 指令
-    let processed_content = match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
-        Ok(c) => c,
-        Err(e) => {
-            return error_gen.generate(&ErrorInfo::new(
-                "handler.rs",
-                0,
-                uri_str,
-                file_path.display().to_string(),
-                ErrorKind::AspExecution,
-                format!("Include error: {}", e),
-            ));
-        }
-    };
+    let processed_content =
+        match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
+            Ok(c) => c,
+            Err(e) => {
+                return error_gen.generate(&ErrorInfo::new(
+                    "handler.rs",
+                    0,
+                    uri_str,
+                    file_path.display().to_string(),
+                    ErrorKind::AspExecution,
+                    format!("Include error: {}", e),
+                ));
+            }
+        };
 
     // 创建 SessionManager
     let session_manager = match SessionManager::new(&state.config.runtime_dir) {
@@ -239,7 +248,14 @@ async fn execute_asp_file(
         Err(e) => {
             eprintln!("警告: 无法创建 SessionManager: {}", e);
             // 没有 SessionManager 也能继续，只是没有 Session 持久化
-            return execute_asp_file_without_session(file_path, uri_str, state, request_ctx, error_gen).await;
+            return execute_asp_file_without_session(
+                file_path,
+                uri_str,
+                state,
+                request_ctx,
+                error_gen,
+            )
+            .await;
         }
     };
 
@@ -262,7 +278,11 @@ async fn execute_asp_file(
             // 调试信息：显示执行结果
             if state.config.debug {
                 println!("   ✅ ASP 执行成功");
-                println!("   📊 输出长度: {} bytes, 状态码: {}", result.output.len(), result.response.get_status());
+                println!(
+                    "   📊 输出长度: {} bytes, 状态码: {}",
+                    result.output.len(),
+                    result.response.get_status()
+                );
             }
 
             // 检查是否是重定向
@@ -288,7 +308,8 @@ async fn execute_asp_file(
             let mut builder = AxumResponse::builder();
 
             // 设置状态码
-            let status = StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
+            let status =
+                StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
             builder = builder.status(status);
 
             // 设置 Content-Type
@@ -297,7 +318,8 @@ async fn execute_asp_file(
 
             // 添加自定义响应头（包括 Session Cookie）
             for (name, value) in result.response.get_headers() {
-                if name != "Location" {  // Location 已在重定向中处理
+                if name != "Location" {
+                    // Location 已在重定向中处理
                     builder = builder.header(name, value);
                 }
             }
@@ -351,19 +373,20 @@ async fn execute_asp_file_without_session(
     };
 
     // 预处理 include 指令
-    let processed_content = match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
-        Ok(c) => c,
-        Err(e) => {
-            return error_gen.generate(&ErrorInfo::new(
-                "handler.rs",
-                0,
-                uri_str,
-                file_path.display().to_string(),
-                ErrorKind::AspExecution,
-                format!("Include error: {}", e),
-            ));
-        }
-    };
+    let processed_content =
+        match crate::asp::preprocess(&content, file_path, &state.config.home_dir) {
+            Ok(c) => c,
+            Err(e) => {
+                return error_gen.generate(&ErrorInfo::new(
+                    "handler.rs",
+                    0,
+                    uri_str,
+                    file_path.display().to_string(),
+                    ErrorKind::AspExecution,
+                    format!("Include error: {}", e),
+                ));
+            }
+        };
 
     let mut engine = crate::asp::Engine::new()
         .with_debug(state.config.debug)
@@ -375,14 +398,19 @@ async fn execute_asp_file_without_session(
             // 调试信息：显示执行结果
             if state.config.debug {
                 println!("   ✅ ASP 执行成功 (无 Session)");
-                println!("   📊 输出长度: {} bytes, 状态码: {}", result.output.len(), result.response.get_status());
+                println!(
+                    "   📊 输出长度: {} bytes, 状态码: {}",
+                    result.output.len(),
+                    result.response.get_status()
+                );
             }
 
             // 构建响应
             let mut builder = AxumResponse::builder();
 
             // 设置状态码
-            let status = StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
+            let status =
+                StatusCode::from_u16(result.response.get_status()).unwrap_or(StatusCode::OK);
             builder = builder.status(status);
 
             // 设置 Content-Type
@@ -436,7 +464,11 @@ pub async fn generate_directory_listing(dir: &PathBuf, url_path: &str) -> AxumRe
     let list_items: String = items
         .into_iter()
         .map(|(name, is_dir)| {
-            let display = if is_dir { format!("{}/", name) } else { name.clone() };
+            let display = if is_dir {
+                format!("{}/", name)
+            } else {
+                name.clone()
+            };
             let href = if url_path.is_empty() || url_path == "/" {
                 format!("/{}", name)
             } else {

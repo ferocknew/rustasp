@@ -2,8 +2,8 @@
 
 use crate::ast::CaseClause;
 use crate::ast::Stmt;
-use crate::parser::Keyword;
 use crate::parser::lexer::Token;
+use crate::parser::Keyword;
 use crate::parser::ParseError;
 use crate::parser::Parser;
 
@@ -29,7 +29,9 @@ impl Parser {
             }
 
             if self.is_at_end() {
-                return Err(ParseError::ParserError("Unexpected end of file in Select Case".to_string()));
+                return Err(ParseError::ParserError(
+                    "Unexpected end of file in Select Case".to_string(),
+                ));
             }
 
             // 期望 Case 关键字
