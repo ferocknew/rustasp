@@ -195,27 +195,28 @@ fn convert_vbscript_format(format: &str) -> String {
     //   - 在时间格式中 (如 HH:MM:SS) -> %M (分钟)
     // SS -> %S (秒)
 
-    // 判断是日期格式还是时间格式：如果包含 HH 则是时间格式
-    let is_time_format = format.contains("HH");
+    // 复杂格式处理：先处理时间部分的 MM（分钟），再处理日期部分的 MM（月份）
+    let mut result = format.to_string();
 
-    if is_time_format {
-        // 时间格式：MM 是分钟
-        format
-            .replace("YYYY", "%Y")
-            .replace("YY", "%y")
-            .replace("DD", "%d")
-            .replace("HH", "%H")
-            .replace("MM", "%M")  // 分钟
-            .replace("SS", "%S")
-    } else {
-        // 日期格式：MM 是月份
-        format
-            .replace("YYYY", "%Y")
-            .replace("YY", "%y")
-            .replace("DD", "%d")
-            .replace("MM", "%m")  // 月份
-            .replace("SS", "%S")
+    // 1. 先处理时间格式部分
+    // 找到 HH:MM:SS 这样的时间部分，将其中的 MM 替换为 %M
+    if result.contains("HH:MM") {
+        result = result.replace("HH:MM:SS", "%H:%M:%S");
+        result = result.replace("HH:MM", "%H:%M");
     }
+
+    // 2. 再处理日期格式部分
+    result = result
+        .replace("YYYY", "%Y")
+        .replace("YY", "%y")
+        .replace("DD", "%d")
+        .replace("HH", "%H")
+        .replace("SS", "%S");
+
+    // 3. 最后处理剩下的 MM（月份）
+    result = result.replace("MM", "%m");
+
+    result
 }
 
 pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, RuntimeError> {
@@ -399,20 +400,52 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             let interval = ValueConversion::to_string(&args[0]).to_lowercase();
             let number = ValueConversion::to_number(&args[1]) as i64;
 
-            // 简化实现：使用当前时间
+            // 简化实现：直接使用当前时间进行计算
             let mut date = chrono::Local::now();
 
             match interval.as_str() {
-                "yyyy" => date = date + chrono::Duration::days(number * 365),
-                "q" => date = date + chrono::Duration::days(number * 91),
-                "m" => date = date + chrono::Duration::days(number * 30),
-                "y" => date = date + chrono::Duration::days(number),
-                "d" => date = date + chrono::Duration::days(number),
-                "w" => date = date + chrono::Duration::days(number * 7),
-                "ww" => date = date + chrono::Duration::days(number * 7),
-                "h" => date = date + chrono::Duration::hours(number),
-                "n" => date = date + chrono::Duration::minutes(number),
-                "s" => date = date + chrono::Duration::seconds(number),
+                "yyyy" => {
+                    // 年份加减
+                    let year = date.year() + number as i32;
+                    let month = date.month();
+                    let day = date.day();
+                    date = chrono::Local::now()
+                        .with_year(year)
+                        .unwrap()
+                        .with_month(month)
+                        .unwrap()
+                        .with_day(day)
+                        .unwrap();
+                }
+                "q" => {
+                    // 季度加减（3个月）
+                    date = date + chrono::Duration::days(number * 91);
+                }
+                "m" => {
+                    // 月份加减
+                    date = date + chrono::Duration::days(number * 30);
+                }
+                "y" | "d" => {
+                    // 天数加减
+                    date = date + chrono::Duration::days(number);
+                }
+                "w" => {
+                    // 周数加减（7天）
+                    date = date + chrono::Duration::days(number * 7);
+                }
+                "ww" => {
+                    // 日历周数加减（7天）
+                    date = date + chrono::Duration::days(number * 7);
+                }
+                "h" => {
+                    date = date + chrono::Duration::hours(number);
+                }
+                "n" => {
+                    date = date + chrono::Duration::minutes(number);
+                }
+                "s" => {
+                    date = date + chrono::Duration::seconds(number);
+                }
                 _ => return Ok(Some(Value::Empty)),
             }
 

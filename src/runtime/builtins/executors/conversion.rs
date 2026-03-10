@@ -11,13 +11,29 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             }
             Value::String(ValueConversion::to_string(&args[0]))
         }
-        BuiltinToken::CInt | BuiltinToken::CByte | BuiltinToken::CBool => {
+        BuiltinToken::CInt => {
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let num = ValueConversion::to_number(&args[0]);
+            let rounded = num.round() as i32 as f64;
+            Value::Number(rounded)
+        }
+        BuiltinToken::CLng => {
+            if args.is_empty() {
+                return Err(RuntimeError::ArgumentCountMismatch);
+            }
+            let num = ValueConversion::to_number(&args[0]);
+            let rounded = num.round() as i64 as f64;
+            Value::Number(rounded)
+        }
+        BuiltinToken::CByte | BuiltinToken::CBool => {
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }
             Value::Number(ValueConversion::to_number(&args[0]) as i32 as f64)
         }
-        BuiltinToken::CLng | BuiltinToken::CSng | BuiltinToken::CDbl | BuiltinToken::CCur => {
+        BuiltinToken::CSng | BuiltinToken::CDbl | BuiltinToken::CCur => {
             if args.is_empty() {
                 return Err(RuntimeError::ArgumentCountMismatch);
             }

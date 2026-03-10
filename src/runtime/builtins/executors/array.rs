@@ -13,16 +13,30 @@ pub fn execute(token: BuiltinToken, args: &[Value]) -> Result<Option<Value>, Run
             match &args[0] {
                 Value::Array(ref arr) => {
                     let locked_arr = arr.lock().unwrap();
-                    // 对于一维数组，返回最大索引（dims[0] - 1）
-                    let ubound = locked_arr.dims.first()
-                        .map(|d: &usize| d.saturating_sub(1))
-                        .unwrap_or(0);
+                    let dim = if args.len() > 1 {
+                        let dim_num = ValueConversion::to_number(&args[1]) as usize;
+                        if dim_num == 0 {
+                            0
+                        } else {
+                            dim_num - 1  // 转换为 0-based 索引
+                        }
+                    } else {
+                        0
+                    };
+                    let ubound = if dim < locked_arr.dims.len() {
+                        locked_arr.dims[dim].saturating_sub(1)
+                    } else {
+                        0
+                    };
                     Value::Number(ubound as f64)
                 }
                 _ => return Err(RuntimeError::TypeMismatch("Expected array".to_string())),
             }
         }
-        BuiltinToken::LBound => Value::Number(0.0),
+        BuiltinToken::LBound => {
+            // VBScript 数组的下界始终是 0
+            Value::Number(0.0)
+        }
         BuiltinToken::Array => {
             // Array 函数：将参数转换为一维数组
             let vbs_arr = VbsArray::from_vec(args.to_vec());

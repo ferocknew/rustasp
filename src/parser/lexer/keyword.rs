@@ -71,6 +71,8 @@ pub enum Keyword {
     // 逻辑值
     True,
     False,
+    Null,
+    Empty,
 
     // 动态执行
     Execute,
@@ -133,6 +135,8 @@ impl Keyword {
             Keyword::Type => "Type",
             Keyword::True => "True",
             Keyword::False => "False",
+            Keyword::Null => "Null",
+            Keyword::Empty => "Empty",
             Keyword::Execute => "Execute",
             Keyword::ExecuteGlobal => "ExecuteGlobal",
             Keyword::Eval => "Eval",
@@ -208,6 +212,8 @@ static KEYWORDS: &[(&str, Keyword)] = &[
     ("type", Keyword::Type),
     ("true", Keyword::True),
     ("false", Keyword::False),
+    ("null", Keyword::Null),
+    ("empty", Keyword::Empty),
     ("execute", Keyword::Execute),
     ("executeglobal", Keyword::ExecuteGlobal),
     ("eval", Keyword::Eval),
