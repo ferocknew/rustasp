@@ -2,8 +2,8 @@
 
 一个用 Rust 实现的 Classic ASP（VBScript 子集）运行时，摆脱 IIS，支持容器化部署。
 
-**GitHub**: https://github.com/ferocknew/rustasp
-**Docker Hub**: https://hub.docker.com/r/jonahfu/vbscript
+- **GitHub**: https://github.com/ferocknew/rustasp
+- **Docker Hub**: https://hub.docker.com/r/jonahfu/vbscript
 
 ## 项目目标
 
@@ -11,6 +11,7 @@
 - 摆脱 IIS，支持容器化部署
 - 支持 Nginx 反向代理
 - 强调可维护性、可扩展性、模块解耦
+- 不支持windows 编译（因为没有意义，windows 自带IIS + ASP）
 
 ## 不支持的特性
 
