@@ -199,6 +199,7 @@ pub struct MethodDecl {
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
     pub visibility: Visibility,
+    pub is_default: bool,
 }
 
 /// 属性声明
@@ -209,6 +210,7 @@ pub struct PropertyDecl {
     pub body: Vec<Stmt>,
     pub visibility: Visibility,
     pub prop_type: PropertyType,
+    pub is_default: bool,
 }
 
 /// 属性类型

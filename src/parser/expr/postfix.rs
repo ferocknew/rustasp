@@ -1,6 +1,7 @@
 //! 后缀表达式解析（成员访问、方法调用、索引访问）
 
 use crate::ast::Expr;
+use crate::parser::Keyword;
 use crate::parser::lexer::Token;
 use crate::parser::{ParseError, Parser};
 
@@ -149,6 +150,10 @@ impl Parser {
             Token::String(_) => true,
             Token::Number(_) => true,
             Token::Ident(_) => true,
+            Token::Null => true,
+            Token::Empty => true,
+            Token::Keyword(Keyword::True | Keyword::False) => true,
+            Token::LParen => true,  // 括号表达式
             _ => false,
         }
     }

@@ -58,6 +58,7 @@ pub enum Keyword {
     Get,
     Let,
     With,
+    Default,
 
     // 运算符关键字
     Mod,
@@ -129,6 +130,7 @@ impl Keyword {
             Keyword::Get => "Get",
             Keyword::Let => "Let",
             Keyword::With => "With",
+            Keyword::Default => "Default",
             Keyword::Mod => "Mod",
             Keyword::And => "And",
             Keyword::Or => "Or",
@@ -207,6 +209,7 @@ static KEYWORDS: &[(&str, Keyword)] = &[
     ("get", Keyword::Get),
     ("let", Keyword::Let),
     ("with", Keyword::With),
+    ("default", Keyword::Default),
     ("mod", Keyword::Mod),
     ("and", Keyword::And),
     ("or", Keyword::Or),

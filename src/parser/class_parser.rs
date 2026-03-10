@@ -78,31 +78,46 @@ impl Parser {
         // 解析可见性修饰符（Public/Private）
         let visibility = self.parse_visibility();
 
+        // 解析 Default 修饰符（用于标记类的默认成员）
+        let is_default = self.match_keyword(Keyword::Default);
+
         match self.peek() {
             // Function 或 Sub - 方法成员
             Token::Keyword(Keyword::Function) => {
-                let method = self.parse_method(visibility)?;
+                let method = self.parse_method(visibility, is_default)?;
                 Ok(vec![ClassMember::Method(method)])
             }
             Token::Keyword(Keyword::Sub) => {
-                let method = self.parse_method(visibility)?;
+                let method = self.parse_method(visibility, is_default)?;
                 Ok(vec![ClassMember::Method(method)])
             }
 
             // Property Get/Let/Set - 属性成员
             Token::Keyword(Keyword::Property) => {
-                let property = self.parse_property(visibility)?;
+                let property = self.parse_property(visibility, is_default)?;
                 Ok(vec![ClassMember::Property(property)])
             }
 
             // Dim 或 标识符 - 字段成员
             Token::Keyword(Keyword::Dim) => {
+                // 字段不能是 Default
+                if is_default {
+                    return Err(ParseError::ParserError(
+                        "Fields cannot be marked as Default".to_string()
+                    ));
+                }
                 let fields = self.parse_field(visibility)?;
                 Ok(fields.into_iter().map(ClassMember::Field).collect())
             }
 
             // 标识符 - 简写字段声明（没有 Dim）
             Token::Ident(_) => {
+                // 字段不能是 Default
+                if is_default {
+                    return Err(ParseError::ParserError(
+                        "Fields cannot be marked as Default".to_string()
+                    ));
+                }
                 let fields = self.parse_field(visibility)?;
                 Ok(fields.into_iter().map(ClassMember::Field).collect())
             }
@@ -145,6 +160,7 @@ impl Parser {
     /// Private age
     /// Dim count
     /// Public Lang, [Error], Str, Var  ' 支持逗号分隔的多字段声明
+    /// Private a_sb(), i_index  ' 支持数组声明（空括号）
     /// ```
     fn parse_field(&mut self, visibility: Visibility) -> Result<Vec<FieldDecl>, ParseError> {
         // 跳过 Dim 关键字（如果有）
@@ -156,6 +172,25 @@ impl Parser {
 
         // 解析第一个字段名
         let name = self.expect_ident()?;
+
+        // 检查是否有数组声明（空括号 ()）
+        if self.check(&Token::LParen) {
+            self.advance(); // 消耗 LParen
+            // 检查是否是空括号（数组声明）
+            if self.check(&Token::RParen) {
+                self.advance(); // 消耗 RParen
+            } else {
+                // 不是空括号，可能是带大小的数组声明
+                // 暂时不支持，跳过直到 RParen
+                while !self.check(&Token::RParen) && !self.is_at_end() {
+                    self.advance();
+                }
+                if self.check(&Token::RParen) {
+                    self.advance();
+                }
+            }
+        }
+
         fields.push(FieldDecl {
             name,
             visibility: visibility.clone(),
@@ -165,6 +200,25 @@ impl Parser {
         while self.check(&Token::Comma) {
             self.advance(); // 消耗逗号
             let name = self.expect_ident()?;
+
+            // 检查是否有数组声明（空括号 ()）
+            if self.check(&Token::LParen) {
+                self.advance(); // 消耗 LParen
+                // 检查是否是空括号（数组声明）
+                if self.check(&Token::RParen) {
+                    self.advance(); // 消耗 RParen
+                } else {
+                    // 不是空括号，可能是带大小的数组声明
+                    // 暂时不支持，跳过直到 RParen
+                    while !self.check(&Token::RParen) && !self.is_at_end() {
+                        self.advance();
+                    }
+                    if self.check(&Token::RParen) {
+                        self.advance();
+                    }
+                }
+            }
+
             fields.push(FieldDecl {
                 name,
                 visibility: visibility.clone(),
@@ -189,7 +243,7 @@ impl Parser {
     ///     Name = value
     /// End Sub
     /// ```
-    fn parse_method(&mut self, visibility: Visibility) -> Result<MethodDecl, ParseError> {
+    fn parse_method(&mut self, visibility: Visibility, is_default: bool) -> Result<MethodDecl, ParseError> {
         let is_function = self.check_keyword(Keyword::Function);
         let is_sub = self.check_keyword(Keyword::Sub);
 
@@ -310,6 +364,7 @@ impl Parser {
             params,
             body,
             visibility,
+            is_default,
         })
     }
 
@@ -325,7 +380,7 @@ impl Parser {
     ///     mName = value
     /// End Property
     /// ```
-    fn parse_property(&mut self, visibility: Visibility) -> Result<PropertyDecl, ParseError> {
+    fn parse_property(&mut self, visibility: Visibility, is_default: bool) -> Result<PropertyDecl, ParseError> {
         self.expect_keyword(Keyword::Property)?;
 
         let prop_type = if self.check_keyword(Keyword::Get) {
@@ -394,6 +449,7 @@ impl Parser {
             body,
             visibility,
             prop_type,
+            is_default,
         })
     }
 }
