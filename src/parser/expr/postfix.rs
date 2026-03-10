@@ -152,7 +152,7 @@ impl Parser {
             Token::Ident(_) => true,
             Token::Null => true,
             Token::Empty => true,
-            Token::Keyword(Keyword::True | Keyword::False) => true,
+            Token::Keyword(Keyword::True | Keyword::False | Keyword::Null | Keyword::Empty) => true,
             Token::LParen => true,  // 括号表达式
             _ => false,
         }

@@ -254,7 +254,90 @@ impl Lexer {
             }
             '&' => {
                 self.advance();
-                Ok(Token::Ampersand)
+                // 检查是否是十六进制或八进制数字
+                // VBScript 规则：&H 或 &h 后面必须紧跟十六进制数字
+                //              &O 或 &o 后面必须紧跟 0-7 的数字
+                //              & 后面紧跟 0-7 且前面是数字或表达式分隔符时才是八进制
+                //              否则是字符串连接运算符
+                let next = self.current();
+                let prev_was_digit_or_expr_end = self.pos > 1
+                    && matches!(
+                        self.input[self.pos - 2],
+                        '0'..='9' | ')' | ']' | '"' | ' ' | '\t' | '(' | ','
+                    );
+
+                if (next == 'H' || next == 'h') && self.peek_char(1).is_ascii_hexdigit() {
+                    // 十六进制：&HFF&（必须紧跟数字）
+                    self.advance(); // 跳过 H
+                    let hex_start = self.pos;
+                    self.scan_while(|c| c.is_ascii_hexdigit());
+                    let hex_str: String = self.input[hex_start..self.pos].iter().collect();
+
+                    // 检查尾随的类型标识符
+                    let has_type_suffix = self.current() == '&';
+                    if has_type_suffix {
+                        self.advance();
+                    }
+
+                    let num = u64::from_str_radix(&hex_str, 16).map_err(|_| {
+                        ParseError::LexerError(format!("Invalid hexadecimal number: &H{}", hex_str))
+                    })?;
+
+                    Ok(Token::Number(num as f64))
+                } else if (next == 'O' || next == 'o') && self.peek_char(1).is_ascii_digit() && self.peek_char(1) <= '7' {
+                    // 八进制：&O77&（必须紧跟 0-7 的数字）
+                    self.advance(); // 跳过 O
+                    let oct_start = self.pos;
+                    self.scan_while(|c| c.is_ascii_digit() && c <= '7');
+                    let oct_str: String = self.input[oct_start..self.pos].iter().collect();
+
+                    // 检查尾随的类型标识符
+                    let has_type_suffix = self.current() == '&';
+                    if has_type_suffix {
+                        self.advance();
+                    }
+
+                    if oct_str.is_empty() {
+                        return Err(ParseError::LexerError(format!(
+                            "Invalid octal number at line {}",
+                            self.line
+                        )));
+                    }
+
+                    let num = u64::from_str_radix(&oct_str, 8).map_err(|_| {
+                        ParseError::LexerError(format!("Invalid octal number: &O{}", oct_str))
+                    })?;
+
+                    Ok(Token::Number(num as f64))
+                } else if next.is_ascii_digit() && next <= '7' && prev_was_digit_or_expr_end {
+                    // 简化的八进制表示：&77&
+                    // 只有在前面是数字或表达式结束符时才解析为八进制
+                    let oct_start = self.pos;
+                    self.scan_while(|c| c.is_ascii_digit() && c <= '7');
+                    let oct_str: String = self.input[oct_start..self.pos].iter().collect();
+
+                    // 检查尾随的类型标识符
+                    let has_type_suffix = self.current() == '&';
+                    if has_type_suffix {
+                        self.advance();
+                    }
+
+                    if oct_str.is_empty() {
+                        return Err(ParseError::LexerError(format!(
+                            "Invalid octal number at line {}",
+                            self.line
+                        )));
+                    }
+
+                    let num = u64::from_str_radix(&oct_str, 8).map_err(|_| {
+                        ParseError::LexerError(format!("Invalid octal number: &{}", oct_str))
+                    })?;
+
+                    Ok(Token::Number(num as f64))
+                } else {
+                    // 字符串连接运算符
+                    Ok(Token::Ampersand)
+                }
             }
             '=' => {
                 self.advance();
