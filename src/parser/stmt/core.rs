@@ -308,9 +308,30 @@ impl Parser {
     }
 
     /// 检查是否是 End If
+    /// 允许 End 和 If 之间有换行符
     fn check_end_if(&self) -> bool {
-        self.check_keyword(Keyword::End)
-            && matches!(self.peek_ahead(1), Token::Keyword(Keyword::If))
+        if !self.check_keyword(Keyword::End) {
+            return false;
+        }
+
+        // 检查下一个非换行符的 token 是否是 If
+        let mut offset = 1;
+        while offset < 10 {
+            // 限制向前看的距离，避免无限循环
+            match self.peek_ahead(offset) {
+                Token::Newline => {
+                    offset += 1;
+                }
+                Token::Keyword(Keyword::If) => {
+                    return true;
+                }
+                _ => {
+                    return false;
+                }
+            }
+        }
+
+        false
     }
 
     /// 解析 If 语句的语句列表
