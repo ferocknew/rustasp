@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+target/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (use .env.example instead)
+.env
+
+# Runtime data
+runtime/
+
+# Documentation
+*.md
+!README.md
+
+# Claude
+.claude/
