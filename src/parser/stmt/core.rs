@@ -49,14 +49,29 @@ impl Parser {
             Token::Keyword(Keyword::ExecuteGlobal) => self.parse_execute_global(),
 
             // 终止符 - 返回 None
-            Token::Keyword(Keyword::End)
-            | Token::Keyword(Keyword::Next)
+            // 注意：End 关键字需要特殊处理，因为 End If/End Select/End Function 等不应该在这里返回 None
+            // 而是应该让对应的解析器来消费它们
+            Token::Keyword(Keyword::Next)
             | Token::Keyword(Keyword::Loop)
             | Token::Keyword(Keyword::Wend)
             | Token::Keyword(Keyword::Else)
             | Token::Keyword(Keyword::ElseIf)
             | Token::Keyword(Keyword::Case)
             | Token::Keyword(Keyword::Until) => Ok(None),
+
+            // End 关键字：检查是否是 End If/End Select/End Function/End Sub/End Class/End Property
+            // 如果是，返回 None（让父级解析器处理）
+            // 如果不是（例如单独的 End），也返回 None
+            Token::Keyword(Keyword::End) => {
+                // End 后面可能跟换行符，需要向前看
+                let mut offset = 1;
+                while matches!(self.peek_ahead(offset), Token::Newline) {
+                    offset += 1;
+                }
+                // 如果 End 后面是 If/Select/Function/Sub/Class/Property，返回 None
+                // 否则也返回 None（单独的 End 关键字）
+                Ok(None)
+            }
 
             // 冒号 - 空语句（用于语句分隔）
             Token::Colon => {
@@ -309,7 +324,7 @@ impl Parser {
 
     /// 检查是否是 End If
     /// 允许 End 和 If 之间有换行符
-    fn check_end_if(&self) -> bool {
+    pub fn check_end_if(&self) -> bool {
         if !self.check_keyword(Keyword::End) {
             return false;
         }
@@ -335,7 +350,7 @@ impl Parser {
     }
 
     /// 解析 If 语句的语句列表
-    /// 专门处理 End If 作为终止标记，避免在嵌套 If 时提前停止
+    /// 只检查 Else 和 ElseIf 以及 End If，让 parse_stmt() 递归处理嵌套的 If 语句
     pub fn parse_stmt_list_until_if(&mut self) -> Result<Vec<Stmt>, ParseError> {
         let mut stmts = vec![];
 
@@ -346,40 +361,12 @@ impl Parser {
                 break;
             }
 
-            // 检查是否遇到终止关键字：Else, ElseIf, 或 End If
-            if self.check_keyword(Keyword::Else) || self.check_keyword(Keyword::ElseIf) || self.check_end_if() {
+            // 检查当前层的终止标记：Else, ElseIf, End If
+            if self.check_keyword(Keyword::Else) || self.check_keyword(Keyword::ElseIf) {
                 break;
             }
 
-            // 处理冒号语句分隔符
-            if self.match_token(&Token::Colon) {
-                while self.match_token(&Token::Colon) {}
-                continue;
-            }
-
-            // 解析语句
-            match self.parse_stmt()? {
-                Some(stmt) => stmts.push(stmt),
-                None => break,
-            }
-        }
-
-        Ok(stmts)
-    }
-
-    /// 解析 Else 块的语句列表
-    /// 专门处理 End If 作为终止标记
-    pub fn parse_stmt_list_until_else(&mut self) -> Result<Vec<Stmt>, ParseError> {
-        let mut stmts = vec![];
-
-        loop {
-            self.skip_newlines();
-
-            if self.is_at_end() {
-                break;
-            }
-
-            // 检查是否遇到 End If
+            // 检查 End If - 这是当前 If 块的结束标记
             if self.check_end_if() {
                 break;
             }
@@ -390,7 +377,40 @@ impl Parser {
                 continue;
             }
 
-            // 解析语句
+            // 递归解析语句 - parse_stmt() 会处理嵌套的 If/For/Do/Select/Function/Sub
+            match self.parse_stmt()? {
+                Some(stmt) => stmts.push(stmt),
+                None => break,
+            }
+        }
+
+        Ok(stmts)
+    }
+
+    /// 解析 Else 块的语句列表
+    /// 只检查 End If，让 parse_stmt() 递归处理嵌套的语句
+    pub fn parse_stmt_list_until_else(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut stmts = vec![];
+
+        loop {
+            self.skip_newlines();
+
+            if self.is_at_end() {
+                break;
+            }
+
+            // 检查 End If - 这是当前 If 块的结束标记
+            if self.check_end_if() {
+                break;
+            }
+
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                while self.match_token(&Token::Colon) {}
+                continue;
+            }
+
+            // 递归解析语句 - parse_stmt() 会处理嵌套的 If/For/Do/Select/Function/Sub
             match self.parse_stmt()? {
                 Some(stmt) => stmts.push(stmt),
                 None => break,

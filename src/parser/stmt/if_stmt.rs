@@ -42,8 +42,10 @@ impl Parser {
         };
 
         // 结束标记（可选，单行 If 可以省略）
-        if self.check_keyword(Keyword::End) && matches!(self.peek_ahead(1), Token::Keyword(Keyword::If)) {
+        self.skip_newlines();
+        if self.check_end_if() {
             self.expect_keyword(Keyword::End)?;
+            self.skip_newlines(); // 跳过 End 和 If 之间的换行符
             self.expect_keyword(Keyword::If)?;
         }
 
