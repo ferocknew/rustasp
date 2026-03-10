@@ -140,6 +140,25 @@ impl Parser {
         }
     }
 
+    /// 期望标识符或关键字（允许某些关键字作为标识符）
+    /// 用于函数名、属性名等位置，这些位置可以使用 Error 等关键字
+    pub fn expect_ident_or_keyword(&mut self) -> Result<String, ParseError> {
+        match self.peek().clone() {
+            Token::Ident(name) => {
+                self.advance();
+                Ok(name)
+            }
+            Token::Keyword(kw) => {
+                self.advance();
+                Ok(kw.as_str().to_string())
+            }
+            _ => Err(ParseError::ParserError(format!(
+                "Expected identifier or keyword, got {:?}",
+                self.peek()
+            ))),
+        }
+    }
+
     /// 跳过换行符
     pub fn skip_newlines(&mut self) {
         while self.match_token(&Token::Newline) {}

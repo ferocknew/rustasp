@@ -27,7 +27,8 @@ impl Parser {
             self.expect_keyword(Keyword::Sub)?;
         }
 
-        let name = self.expect_ident()?;
+        // 允许使用关键字作为函数名（例如 Error）
+        let name = self.expect_ident_or_keyword()?;
         let params = self.parse_params()?;
         self.skip_newlines();
 
