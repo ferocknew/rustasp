@@ -104,6 +104,42 @@ impl Parser {
                 self.parse_postfix(expr)
             }
 
+            // With 上下文中的成员访问：.property 或 .method(...)
+            Token::Dot => {
+                self.advance(); // 消耗 .
+                // 点号后面允许标识符或关键字作为属性名
+                let name = match self.peek().clone() {
+                    Token::Ident(name) => {
+                        self.advance();
+                        name
+                    }
+                    Token::Keyword(kw) => {
+                        self.advance();
+                        kw.as_str().to_string()
+                    }
+                    _ => {
+                        return Err(ParseError::ParserError(format!(
+                            "Expected identifier after '.', got {:?}",
+                            self.peek()
+                        )))
+                    }
+                };
+
+                // 检查是否是方法调用（有括号）
+                if self.check(&Token::LParen) {
+                    self.advance(); // 消耗 (
+                    let args = self.parse_args_in_parens()?;
+                    self.expect(Token::RParen)?;
+                    Ok(Expr::WithMethod {
+                        method: name,
+                        args,
+                    })
+                } else {
+                    // 先创建 WithProperty，后续可能在 postfix 中转换为 WithMethod
+                    self.parse_postfix(Expr::WithProperty { property: name })
+                }
+            }
+
             _ => Err(self.error_with_context(format!(
                 "Unexpected token in expression: {:?}",
                 token

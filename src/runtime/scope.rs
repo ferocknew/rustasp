@@ -70,6 +70,12 @@ impl Scope {
         self.variables.insert(name_lower, value);
     }
 
+    /// 删除变量（仅限当前作用域）
+    pub fn remove(&mut self, name: &str) {
+        let name_lower = name.to_lowercase();
+        self.variables.remove(&name_lower);
+    }
+
     /// 设置错误模式
     pub fn set_error_mode(&mut self, mode: ErrorMode) {
         self.error_mode = mode;

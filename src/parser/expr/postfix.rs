@@ -41,10 +41,14 @@ impl Parser {
                     let args = self.parse_args_in_parens()?;
                     self.expect(Token::RParen)?;
 
-                    // 如果 lhs 是 Property，转换为 Method
+                    // 如果 lhs 是 Property 或 WithProperty，转换为 Method
                     lhs = match lhs {
                         Expr::Property { object, property } => Expr::Method {
                             object,
+                            method: property,
+                            args,
+                        },
+                        Expr::WithProperty { property } => Expr::WithMethod {
                             method: property,
                             args,
                         },
@@ -74,6 +78,10 @@ impl Parser {
                     method: property,
                     args,
                 },
+                Expr::WithProperty { property } => Expr::WithMethod {
+                    method: property,
+                    args,
+                },
                 Expr::Variable(name) => Expr::Call { name, args },
                 _ => lhs,
             };
@@ -84,7 +92,7 @@ impl Parser {
 
     /// 解析括号内的参数列表（用逗号分隔）
     /// 调用者已消耗 LParen，需要返回前消耗 RParen
-    fn parse_args_in_parens(&mut self) -> Result<Vec<Expr>, ParseError> {
+    pub fn parse_args_in_parens(&mut self) -> Result<Vec<Expr>, ParseError> {
         let mut args = vec![];
 
         if !self.check(&Token::RParen) {

@@ -363,4 +363,26 @@ impl Interpreter {
     pub fn eval_exit_property(&mut self) -> Result<Value, RuntimeError> {
         Err(RuntimeError::ControlFlow(ControlFlow::ExitProperty))
     }
+
+    /// 执行 With 语句
+    /// With 语句允许对单个对象执行多个操作，而无需重复指定对象名称
+    pub fn eval_with(
+        &mut self,
+        object: &Expr,
+        body: &[Stmt],
+    ) -> Result<Value, RuntimeError> {
+        // 评估对象表达式
+        let object_value = self.eval_expr(object)?;
+
+        // 将对象压入 with_stack
+        self.context.with_stack.push(object_value);
+
+        // 执行 With 块内的语句
+        let result = self.exec_block(body);
+
+        // 从 with_stack 弹出对象
+        self.context.with_stack.pop();
+
+        result
+    }
 }

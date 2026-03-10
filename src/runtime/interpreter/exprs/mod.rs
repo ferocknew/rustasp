@@ -43,6 +43,10 @@ impl Interpreter {
             Expr::Method { object, method, args } => self.eval_method(object, method, args),
             Expr::Index { object, indices } => self.eval_index(object, indices),
 
+            // With 上下文中的访问
+            Expr::WithProperty { property } => self.eval_with_property(property),
+            Expr::WithMethod { method, args } => self.eval_with_method(method, args),
+
             // 其他
             Expr::Array(elements) => self.eval_array(elements),
             Expr::New(class_name) => self.eval_new(class_name),
@@ -83,5 +87,58 @@ impl Interpreter {
         let values: Result<Vec<Value>, _> =
             elements.iter().map(|e| self.eval_expr(e)).collect();
         Ok(Value::Array(Arc::new(Mutex::new(crate::runtime::VbsArray::from_vec(values?)))))
+    }
+
+    /// 求值 With 上下文中的属性访问（.property）
+    fn eval_with_property(&mut self, property: &str) -> Result<Value, RuntimeError> {
+        // 从 with_stack 获取顶层对象
+        if let Some(object) = self.context.with_stack.last() {
+            // 评估属性访问：object.property
+            let expr = Expr::Property {
+                object: Box::new(Expr::Variable("[WITH_OBJECT]".to_string())),
+                property: property.to_string(),
+            };
+
+            // 临时将对象存储为变量
+            self.context.define_var("[WITH_OBJECT]".to_string(), object.clone());
+
+            // 评估属性表达式
+            let result = self.eval_expr(&expr);
+
+            // 清理临时变量
+            self.context.undefine_var("[WITH_OBJECT]");
+
+            result
+        } else {
+            // 不在 With 上下文中，返回 Empty
+            Ok(Value::Empty)
+        }
+    }
+
+    /// 求值 With 上下文中的方法调用（.method(...)）
+    fn eval_with_method(&mut self, method: &str, args: &[Expr]) -> Result<Value, RuntimeError> {
+        // 从 with_stack 获取顶层对象
+        if let Some(object) = self.context.with_stack.last() {
+            // 评估方法调用：object.method(...)
+            let expr = Expr::Method {
+                object: Box::new(Expr::Variable("[WITH_OBJECT]".to_string())),
+                method: method.to_string(),
+                args: args.to_vec(),
+            };
+
+            // 临时将对象存储为变量
+            self.context.define_var("[WITH_OBJECT]".to_string(), object.clone());
+
+            // 评估方法表达式
+            let result = self.eval_expr(&expr);
+
+            // 清理临时变量
+            self.context.undefine_var("[WITH_OBJECT]");
+
+            result
+        } else {
+            // 不在 With 上下文中，返回 Empty
+            Ok(Value::Empty)
+        }
     }
 }

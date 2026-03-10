@@ -91,6 +91,9 @@ impl Interpreter {
             Stmt::DoLoopUntil { body, cond } => self.eval_do_loop_until(body, cond),
             Stmt::DoLoop { body } => self.eval_do_loop(body),
 
+            // With 语句
+            Stmt::With { object, body } => self.eval_with(object, body),
+
             // 函数相关
             Stmt::Sub { name, params, body } | Stmt::Function { name, params, body } => {
                 self.register_function(name, params, body)

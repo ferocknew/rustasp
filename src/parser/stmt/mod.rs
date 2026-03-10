@@ -7,5 +7,6 @@ mod decl_stmt;
 mod assign_stmt;
 mod proc_stmt;
 mod select_stmt;
+mod with_stmt;
 
 // 所有语句解析方法都通过 impl Parser 扩展

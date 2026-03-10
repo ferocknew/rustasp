@@ -47,6 +47,10 @@ pub enum Expr {
     Array(Vec<Expr>),
     /// New 表达式
     New(String),
+    /// With 上下文中的属性访问（.property）
+    WithProperty { property: String },
+    /// With 上下文中的方法调用（.method(...)）
+    WithMethod { method: String, args: Vec<Expr> },
 }
 
 impl Expr {

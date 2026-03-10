@@ -30,6 +30,7 @@ impl Parser {
             Token::Keyword(Keyword::While) => self.parse_while(),
             Token::Keyword(Keyword::Select) => self.parse_select(),
             Token::Keyword(Keyword::Do) => self.parse_do(),
+            Token::Keyword(Keyword::With) => self.parse_with(),
 
             // 错误处理语句
             Token::Keyword(Keyword::On) => self.parse_on_error(),
@@ -83,6 +84,9 @@ impl Parser {
 
             // 标识符 - 可能是赋值或表达式
             Token::Ident(_) => self.parse_ident_stmt(),
+
+            // 点号开头 - With 块内的成员访问
+            Token::Dot => self.parse_dot_stmt(),
 
             // 其他情况当作表达式语句
             _ => self.parse_expr_stmt(),
@@ -291,8 +295,8 @@ impl Parser {
                     let pos = self.pos();
                     self.advance(); // 消耗 End
 
-                    // 检查是否是嵌套结构的结束标记（End If, End Select, End Function, End Sub）
-                    if matches!(self.peek(), Token::Keyword(Keyword::If | Keyword::Select | Keyword::Function | Keyword::Sub | Keyword::Class | Keyword::Property)) {
+                    // 检查是否是嵌套结构的结束标记（End If, End Select, End Function, End Sub, End With）
+                    if matches!(self.peek(), Token::Keyword(Keyword::If | Keyword::Select | Keyword::Function | Keyword::Sub | Keyword::Class | Keyword::Property | Keyword::With)) {
                         // 这些是嵌套结构的结束标记，不应该在这里停止
                         // 回退，让 parse_stmt 正常处理
                         self.seek_to(pos);

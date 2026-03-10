@@ -24,6 +24,8 @@ pub struct Context {
     pub global: Scope,
     /// 当前作用域栈
     pub scope_stack: Vec<Scope>,
+    /// With 对象栈（用于处理 With 块内的 .成员访问）
+    pub with_stack: Vec<Value>,
     /// 函数表
     pub functions: HashMap<String, Function>,
     /// 类表（预编译后的 VbsClass，使用 Rc 共享）
@@ -55,6 +57,7 @@ impl Context {
         Context {
             global: Scope::new(),
             scope_stack: Vec::new(),
+            with_stack: Vec::new(),
             functions: HashMap::new(),
             classes: HashMap::new(),
             class_defs: HashMap::new(),
@@ -133,6 +136,16 @@ impl Context {
             scope.define(name, value);
         } else {
             self.global.define(name, value);
+        }
+    }
+
+    /// 删除变量
+    pub fn undefine_var(&mut self, name: &str) {
+        let name_lower = name.to_lowercase();
+        if let Some(scope) = self.scope_stack.last_mut() {
+            scope.remove(&name_lower);
+        } else {
+            self.global.remove(&name_lower);
         }
     }
 
