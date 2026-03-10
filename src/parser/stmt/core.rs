@@ -244,12 +244,6 @@ impl Parser {
                 }
             }
 
-            // 如果不是冒号，检查是否有换行符
-            // 如果有换行符，说明语句列表结束
-            if self.check(&Token::Newline) {
-                break;
-            }
-
             // 如果遇到文件结束，也结束
             if self.is_at_end() {
                 break;
@@ -311,5 +305,77 @@ impl Parser {
         }
 
         Ok(body)
+    }
+
+    /// 检查是否是 End If
+    fn check_end_if(&self) -> bool {
+        self.check_keyword(Keyword::End)
+            && matches!(self.peek_ahead(1), Token::Keyword(Keyword::If))
+    }
+
+    /// 解析 If 语句的语句列表
+    /// 专门处理 End If 作为终止标记，避免在嵌套 If 时提前停止
+    pub fn parse_stmt_list_until_if(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut stmts = vec![];
+
+        loop {
+            self.skip_newlines();
+
+            if self.is_at_end() {
+                break;
+            }
+
+            // 检查是否遇到终止关键字：Else, ElseIf, 或 End If
+            if self.check_keyword(Keyword::Else) || self.check_keyword(Keyword::ElseIf) || self.check_end_if() {
+                break;
+            }
+
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                while self.match_token(&Token::Colon) {}
+                continue;
+            }
+
+            // 解析语句
+            match self.parse_stmt()? {
+                Some(stmt) => stmts.push(stmt),
+                None => break,
+            }
+        }
+
+        Ok(stmts)
+    }
+
+    /// 解析 Else 块的语句列表
+    /// 专门处理 End If 作为终止标记
+    pub fn parse_stmt_list_until_else(&mut self) -> Result<Vec<Stmt>, ParseError> {
+        let mut stmts = vec![];
+
+        loop {
+            self.skip_newlines();
+
+            if self.is_at_end() {
+                break;
+            }
+
+            // 检查是否遇到 End If
+            if self.check_end_if() {
+                break;
+            }
+
+            // 处理冒号语句分隔符
+            if self.match_token(&Token::Colon) {
+                while self.match_token(&Token::Colon) {}
+                continue;
+            }
+
+            // 解析语句
+            match self.parse_stmt()? {
+                Some(stmt) => stmts.push(stmt),
+                None => break,
+            }
+        }
+
+        Ok(stmts)
     }
 }
