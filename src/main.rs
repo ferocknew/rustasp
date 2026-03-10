@@ -13,11 +13,12 @@ async fn main() {
     // 加载配置
     let config = Config::from_env();
 
+    // 绑定地址：默认 0.0.0.0 以支持 Docker 容器
+    let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let addr = format!("{}:{}", host, config.port);
+
     // 打印启动信息
-    println!(
-        "🚀 VBScript ASP Server starting at http://127.0.0.1:{}",
-        config.port
-    );
+    println!("🚀 VBScript ASP Server starting at http://{}", addr);
     println!("📁 Home directory: {}", config.home_dir.display());
     println!("📄 Index file: {}", config.index_file);
     println!("📋 Directory listing: {}", config.directory_listing);
@@ -29,7 +30,7 @@ async fn main() {
     let app = create_router(state);
 
     // 启动服务器
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
+    let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .unwrap();
     axum::serve(listener, app).await.unwrap();

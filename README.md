@@ -280,6 +280,8 @@ services:
       - ./runtime/sessions:/app/runtime/sessions
     environment:
       # ========== 基础 HTTP 服务配置 ==========
+      # 绑定地址（容器内默认 0.0.0.0）
+      - HOST=0.0.0.0
       # 是否显示目录列表
       - DIRECTORY_LISTING=false
       # Web 根目录路径（容器内路径）
