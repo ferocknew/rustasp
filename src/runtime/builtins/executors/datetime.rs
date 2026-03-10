@@ -167,13 +167,13 @@ fn get_language() -> String {
 fn get_datetime_format() -> (String, String, String) {
     // 从环境变量读取配置，使用默认值
     let now_format = std::env::var("NOW_FORMAT")
-        .unwrap_or_else(|_| "YYYY/MM/DD HH:MM:SS".to_string());
+        .unwrap_or_else(|_| "yyyy/mm/dd hh:nn:ss".to_string());
     let date_format = std::env::var("DATE_FORMAT")
-        .unwrap_or_else(|_| "YYYY/MM/DD".to_string());
+        .unwrap_or_else(|_| "yyyy/mm/dd".to_string());
     let time_format = std::env::var("TIME_FORMAT")
-        .unwrap_or_else(|_| "HH:MM:SS".to_string());
+        .unwrap_or_else(|_| "hh:nn:ss".to_string());
 
-    // 转换格式字符串：YYYY/MM/DD HH:MM:SS -> %Y/%m/%d %H:%M:%S
+    // 转换格式字符串：yyyy/mm/dd hh:nn:ss -> %Y/%m/%d %H:%M:%S
     let now_format_str = convert_vbscript_format(&now_format);
     let date_format_str = convert_vbscript_format(&date_format);
     let time_format_str = convert_vbscript_format(&time_format);
@@ -183,38 +183,38 @@ fn get_datetime_format() -> (String, String, String) {
 
 /// 将 VBScript 日期格式转换为 strftime 格式
 ///
-/// 修复了 MM 被替换两次的 bug：先替换分钟的占位符，再替换月份的占位符
+/// VBScript 标准格式：
+///   yyyy = 四位年份 (2024)
+///   yy = 两位年份 (24)
+///   mm = 月份，带前导零 (01-12)
+///   m = 月份，不带前导零 (1-12)
+///   dd = 日期，带前导零 (01-31)
+///   d = 日期，不带前导零 (1-31)
+///   hh = 小时，带前导零 (00-23)
+///   h = 小时，不带前导零 (0-23)
+///   nn = 分钟，带前导零 (00-59)
+///   n = 分钟，不带前导零 (0-59)
+///   ss = 秒，带前导零 (00-59)
+///   s = 秒，不带前导零 (0-59)
+///
+/// 注意：先处理长占位符，避免被短占位符干扰
 fn convert_vbscript_format(format: &str) -> String {
-    // VBScript 格式转换说明：
-    // YYYY -> %Y (四位年份)
-    // YY -> %y (两位年份)
-    // DD -> %d (日期)
-    // HH -> %H (小时，24小时制)
-    // MM -> 上下文相关：
-    //   - 在日期格式中 (如 YYYY/MM/DD) -> %m (月份)
-    //   - 在时间格式中 (如 HH:MM:SS) -> %M (分钟)
-    // SS -> %S (秒)
-
-    // 复杂格式处理：先处理时间部分的 MM（分钟），再处理日期部分的 MM（月份）
     let mut result = format.to_string();
 
-    // 1. 先处理时间格式部分
-    // 找到 HH:MM:SS 这样的时间部分，将其中的 MM 替换为 %M
-    if result.contains("HH:MM") {
-        result = result.replace("HH:MM:SS", "%H:%M:%S");
-        result = result.replace("HH:MM", "%H:%M");
-    }
-
-    // 2. 再处理日期格式部分
+    // 按长度从长到短处理，避免短占位符提前匹配
     result = result
-        .replace("YYYY", "%Y")
-        .replace("YY", "%y")
-        .replace("DD", "%d")
-        .replace("HH", "%H")
-        .replace("SS", "%S");
-
-    // 3. 最后处理剩下的 MM（月份）
-    result = result.replace("MM", "%m");
+        .replace("yyyy", "%Y")  // 四位年份
+        .replace("yy", "%y")    // 两位年份
+        .replace("mm", "%m")    // 月份（带前导零）
+        .replace("m", "%m")     // 月份（不带前导零）
+        .replace("dd", "%d")    // 日期（带前导零）
+        .replace("d", "%d")     // 日期（不带前导零）
+        .replace("hh", "%H")    // 小时（带前导零）
+        .replace("h", "%H")     // 小时（不带前导零）
+        .replace("nn", "%M")    // 分钟（带前导零）
+        .replace("n", "%M")     // 分钟（不带前导零）
+        .replace("ss", "%S")    // 秒（带前导零）
+        .replace("s", "%S");    // 秒（不带前导零）
 
     result
 }
