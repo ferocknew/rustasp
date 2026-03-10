@@ -2,6 +2,9 @@
 
 一个用 Rust 实现的 Classic ASP（VBScript 子集）运行时，摆脱 IIS，支持容器化部署。
 
+**GitHub**: https://github.com/ferocknew/rustasp
+**Docker Hub**: https://hub.docker.com/r/jonahfu/vbscript
+
 ## 项目目标
 
 - 使用 **Rust** 实现一个 Classic ASP（VBScript 子集）运行时

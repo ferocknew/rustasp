@@ -264,4 +264,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: jonahfu/vbscript
-          readme-filepath: ./dockerhub.md
+          readme-filepath: ./README.md
