@@ -30,8 +30,6 @@ async fn main() {
     let app = create_router(state);
 
     // 启动服务器
-    let listener = tokio::net::TcpListener::bind(&addr)
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
